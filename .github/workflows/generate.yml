@@ -54,4 +54,6 @@ jobs:
         if: inputs.build == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run build.yml --ref "${GITHUB_REF_NAME}" -f app="$APP" -f notes="AI: ${{ inputs.request }}"
+          REQUEST: ${{ inputs.request }}
+        run: |
+          gh workflow run build.yml --ref "${GITHUB_REF_NAME}" -f app="$APP" -f notes="AI: ${REQUEST:0:200}"
