@@ -1,0 +1,313 @@
+{
+ "id": "1793827433633384",
+ "base": "smartphones-store",
+ "title": "متجر الهواتف الذكية",
+ "lang": "flutter",
+ "kind": "pair",
+ "description": "متجر الكتروني للهواتف الزكية",
+ "theme": {
+  "preset": "ai",
+  "seed": "#2563EB",
+  "accent": "#7C3AED",
+  "mode": "dark",
+  "style": "glass",
+  "radius": 16.0,
+  "layout": "tabs"
+ },
+ "schema": [
+  {
+   "name": "categories",
+   "label": "التصنيفات والماركات",
+   "icon": "store",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "name",
+     "label": "اسم التصنيف أو العلامة",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "type",
+     "label": "النوع",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "علامة تجارية",
+      "تصنيف إكسسوارات",
+      "تصنيف هواتف"
+     ],
+     "show": true
+    },
+    {
+     "name": "logo",
+     "label": "الشعار",
+     "type": "image",
+     "show": true
+    },
+    {
+     "name": "description",
+     "label": "الوصف",
+     "type": "longtext",
+     "show": false
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "products",
+   "label": "الهواتف والمنتجات",
+   "icon": "phone",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "name",
+     "label": "اسم المنتج",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "brand_name",
+     "label": "الماركة / التصنيف",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "price",
+     "label": "السعر الأساسي",
+     "type": "decimal",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "discount_price",
+     "label": "سعر العرض",
+     "type": "decimal",
+     "show": true
+    },
+    {
+     "name": "stock_quantity",
+     "label": "كمية المخزون",
+     "type": "int",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "specs",
+     "label": "المواصفات التقنية",
+     "type": "longtext",
+     "required": true,
+     "show": false
+    },
+    {
+     "name": "main_image",
+     "label": "صورة المنتج",
+     "type": "image",
+     "required": true,
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "customer",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "orders",
+   "label": "طلبات الشراء",
+   "icon": "receipt",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "order_code",
+     "label": "رقم الطلب",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "total_amount",
+     "label": "إجمالي المبلغ",
+     "type": "decimal",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "status",
+     "label": "حالة الطلب",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "قيد التجهيز",
+      "تم الشحن",
+      "تم التسليم",
+      "ملغي"
+     ],
+     "default": "قيد التجهيز",
+     "show": true,
+     "adminOnly": true
+    },
+    {
+     "name": "payment_method",
+     "label": "طريقة الدفع",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "بطاقة ائتمان",
+      "الدفع عند الاستلام",
+      "Apple Pay"
+     ],
+     "show": true
+    },
+    {
+     "name": "payment_status",
+     "label": "حالة الدفع",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "بانتظار الدفع",
+      "تم الدفع",
+      "مسترد"
+     ],
+     "default": "بانتظار الدفع",
+     "show": true,
+     "adminOnly": true
+    },
+    {
+     "name": "shipping_address",
+     "label": "عنوان الشحن",
+     "type": "longtext",
+     "required": true,
+     "show": false
+    },
+    {
+     "name": "coupon_code",
+     "label": "كود الخصم",
+     "type": "text",
+     "show": false
+    }
+   ],
+   "notify": {
+    "onInsert": "admin",
+    "onUpdate": "owner"
+   },
+   "realtime": true
+  },
+  {
+   "name": "order_items",
+   "label": "عناصر الطلب",
+   "icon": "checklist",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "order_code",
+     "label": "رقم الطلب",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "product_name",
+     "label": "اسم المنتج",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "quantity",
+     "label": "الكمية",
+     "type": "int",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "unit_price",
+     "label": "سعر القطعة",
+     "type": "decimal",
+     "required": true,
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "reviews",
+   "label": "تقييمات المنتجات",
+   "icon": "star",
+   "owner": "public",
+   "columns": [
+    {
+     "name": "product_name",
+     "label": "اسم الهاتف",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "rating",
+     "label": "التقييم",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+     ],
+     "show": true
+    },
+    {
+     "name": "comment",
+     "label": "التعليق",
+     "type": "longtext",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  }
+ ],
+ "backend": "supabase",
+ "auth": "email_code",
+ "push": true,
+ "codeMode": "engine",
+ "admins": [
+  "alkahlizero564@gmail.com"
+ ],
+ "serverUrl": "",
+ "headline": "عالم الهواتف الذكية بين يديك",
+ "subtitle": "اكتشف أحدث الأجهزة والإكسسوارات بأسعار حصريّة وتوصيل سريع",
+ "apps": [
+  {
+   "slug": "smartphones-store-customer",
+   "role": "customer",
+   "title": "متجر الهواتف الذكية"
+  },
+  {
+   "slug": "smartphones-store-admin",
+   "role": "admin",
+   "title": "متجر الهواتف الذكية - الإدارة"
+  }
+ ],
+ "createdAt": "2026-11-04T23:23:53.633854",
+ "supabaseUrl": "",
+ "supabaseAnonKey": "",
+ "supabaseRef": "",
+ "brief": "التطبيق: متجر الهواتف الذكية\nتطبيق متجر إلكتروني متكامل لبيع الهواتف الذكية وإكسسواراتها. يتيح للعملاء تصفح الأجهزة بمواصفاتها التفصيلية وإتمام عملية الشراء ومتابعة الشحن، بينما يتيح للإدارة إدارة المخزون وتجهيز الطلبات ومعالجة المبيعات.\nالنوع: تطبيقان متصلان (عميل + إدارة)\nشاشات العميل:\n- الرئيسية: تصفح أحدث الهواتف الذكية، العروض الترويجية، والتصنيفات حسب العلامة التجارية\n- تفاصيل الهاتف: عرض المواصفات التقنية الكاملة، الصور، السعر، وتقييمات المستخدمين وإضافته للسلة\n- سلة التسوق: مراجعة المنتجات المختارة، تعديل الكميات، وإدخال كود الخصم\n- إتمام الطلب: اختيار عنوان الشحن، حديد طريقة الدفع، وتأكيد الشراء\n- طلباتي: تتبع حالة الطلبات الحالية (قيد التجهيز، تم الشحن، تم التسليم) وعرض السجل السابق\n- الملف الشخصي: إدارة البيانات الشخصية، العناوين المحفوظة، وإعدادات الحساب\n\nشاشات الإدارة:\n- لوحة التحكم Dashboard: متابعة إحصائيات المبيعات، إجمالي الأرباح، وأحدث الطلبات\n- إدارة المنتجات: إضافة هواتف جديدة، تعديل المواصفات والأسعار، وتحديث كميات المخزون\n- إدارة الطلبات: استعراض الطلبات الواردة، تغيير حالة الطلب، طباعة الفواتير\n- إدارة التصنيفات والماركات: إضافة وتعديل العلامات التجارية (مثل Apple, Samsung) والتصنيفات\n\nالبيانات:\n- User: id, name, email, phone, addresses, role (customer/admin)\n- Product: id, name, brand, specs, price, discount_price, stock_quantity, images, category_id\n- Category: id, name, logo_url\n- Order: id, user_id, items, total_price, status, payment_method, payment_status, shipping_address, created_at\n- OrderItem: id, product_id, quantity, unit_price\n\nالإشعارات:\n- تغير حالة الطلب ← يتم إرسال إشعار للعميل (مثال: تم شحن طلبك)\n- تأكيد طلب جديد ← يتم إرسال إشعار للإدارة لتجهيز الشحنة\n- توفر هاتف كان نادراً أو عرض جديد ← إشعار لجميع العملاء\n\nتسجيل الدخول: بريد + رمز تأكيد"
+}

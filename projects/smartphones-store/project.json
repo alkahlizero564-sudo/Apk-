@@ -1,0 +1,25 @@
+{
+ "base": "smartphones-store",
+ "prefix": "smartphones_store",
+ "lang": "flutter",
+ "backend": "supabase",
+ "auth": "email_code",
+ "push": true,
+ "admins": [
+  "alkahlizero564@gmail.com"
+ ],
+ "apps": [
+  {
+   "slug": "smartphones-store-customer",
+   "role": "customer",
+   "title": "متجر الهواتف الذكية",
+   "package": "com.alpha.smartphones_store_customer"
+  },
+  {
+   "slug": "smartphones-store-admin",
+   "role": "admin",
+   "title": "متجر الهواتف الذكية - الإدارة",
+   "package": "com.alpha.smartphones_store_admin"
+  }
+ ]
+}
