@@ -306,8 +306,8 @@
   }
  ],
  "createdAt": "2026-11-04T23:23:53.633854",
- "supabaseUrl": "",
- "supabaseAnonKey": "",
+ "supabaseUrl": "https://jvjtgzewumfecjdpekna.supabase.co",
+ "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2anRnemV3dW1mZWNqZHBla25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDYzMzcsImV4cCI6MjEwNzIyMjMzN30.1gck73ek8ErBtcF7xAtFM1TdvNim_1NzFVNej_mptBE",
  "supabaseRef": "",
  "brief": "التطبيق: متجر الهواتف الذكية\nتطبيق متجر إلكتروني متكامل لبيع الهواتف الذكية وإكسسواراتها. يتيح للعملاء تصفح الأجهزة بمواصفاتها التفصيلية وإتمام عملية الشراء ومتابعة الشحن، بينما يتيح للإدارة إدارة المخزون وتجهيز الطلبات ومعالجة المبيعات.\nالنوع: تطبيقان متصلان (عميل + إدارة)\nشاشات العميل:\n- الرئيسية: تصفح أحدث الهواتف الذكية، العروض الترويجية، والتصنيفات حسب العلامة التجارية\n- تفاصيل الهاتف: عرض المواصفات التقنية الكاملة، الصور، السعر، وتقييمات المستخدمين وإضافته للسلة\n- سلة التسوق: مراجعة المنتجات المختارة، تعديل الكميات، وإدخال كود الخصم\n- إتمام الطلب: اختيار عنوان الشحن، حديد طريقة الدفع، وتأكيد الشراء\n- طلباتي: تتبع حالة الطلبات الحالية (قيد التجهيز، تم الشحن، تم التسليم) وعرض السجل السابق\n- الملف الشخصي: إدارة البيانات الشخصية، العناوين المحفوظة، وإعدادات الحساب\n\nشاشات الإدارة:\n- لوحة التحكم Dashboard: متابعة إحصائيات المبيعات، إجمالي الأرباح، وأحدث الطلبات\n- إدارة المنتجات: إضافة هواتف جديدة، تعديل المواصفات والأسعار، وتحديث كميات المخزون\n- إدارة الطلبات: استعراض الطلبات الواردة، تغيير حالة الطلب، طباعة الفواتير\n- إدارة التصنيفات والماركات: إضافة وتعديل العلامات التجارية (مثل Apple, Samsung) والتصنيفات\n\nالبيانات:\n- User: id, name, email, phone, addresses, role (customer/admin)\n- Product: id, name, brand, specs, price, discount_price, stock_quantity, images, category_id\n- Category: id, name, logo_url\n- Order: id, user_id, items, total_price, status, payment_method, payment_status, shipping_address, created_at\n- OrderItem: id, product_id, quantity, unit_price\n\nالإشعارات:\n- تغير حالة الطلب ← يتم إرسال إشعار للعميل (مثال: تم شحن طلبك)\n- تأكيد طلب جديد ← يتم إرسال إشعار للإدارة لتجهيز الشحنة\n- توفر هاتف كان نادراً أو عرض جديد ← إشعار لجميع العملاء\n\nتسجيل الدخول: بريد + رمز تأكيد"
 }
