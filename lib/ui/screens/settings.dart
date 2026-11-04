@@ -199,27 +199,35 @@ class _AiForm extends StatefulWidget {
 
 class _AiFormState extends _FormState<_AiForm> {
   final _claude = TextEditingController();
-  final _gemini = TextEditingController();
+  final _gemini = List.generate(Storage.geminiKeys.length, (_) => TextEditingController());
 
   @override
   void initState() {
     super.initState();
     Storage.secret(Storage.claudeKey).then((t) => _claude.text = t);
-    Storage.secret(Storage.geminiKey).then((t) => _gemini.text = t);
+    for (var i = 0; i < Storage.geminiKeys.length; i++) {
+      Storage.secret(Storage.geminiKeys[i].local).then((t) => _gemini[i].text = t);
+    }
   }
 
   @override
   Widget build(BuildContext context) => frame(
         'الذكاء الاصطناعي',
-        'Claude (الأفضل للكود) أو Gemini (مجاني بحدود) أو الاثنين: إن نفد أحدهما يُستخدم الآخر تلقائياً.',
+        'Claude (الأفضل للكود) أو Gemini (مجاني بحدود) أو الاثنين. حتى 4 مفاتيح Gemini: إذا نفد مفتاح يُستخدم التالي، ثم Claude تلقائياً.',
         link: 'https://console.anthropic.com/settings/keys',
         linkLabel: 'مفتاح Claude',
         [
           TextField(controller: _claude, obscureText: true, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'Claude API key (sk-ant-…)')),
-          TextField(controller: _gemini, obscureText: true, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'Gemini API key (AIza…)')),
+          for (var i = 0; i < _gemini.length; i++)
+            TextField(
+              controller: _gemini[i],
+              obscureText: true,
+              textDirection: TextDirection.ltr,
+              decoration: InputDecoration(labelText: i == 0 ? 'Gemini API key (AIza…)' : 'Gemini API key ${i + 1} (اختياري)'),
+            ),
         ],
         onSave: () => run(() async {
-          final done = await context.read<AppState>().saveKeys(claude: _claude.text, gemini: _gemini.text);
+          final done = await context.read<AppState>().saveKeys(claude: _claude.text, gemini: [for (final c in _gemini) c.text]);
           return done.isEmpty ? 'حُفظ في الهاتف' : 'حُفظ في الهاتف وفي المستودع: ${done.join('، ')}';
         }),
       );

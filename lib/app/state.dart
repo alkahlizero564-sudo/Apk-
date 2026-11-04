@@ -59,7 +59,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> _refreshFlags() async {
     hasGitHub = (await Storage.secret(Storage.githubToken)).isNotEmpty;
-    hasAi = (await Storage.secret(Storage.claudeKey)).isNotEmpty || (await Storage.secret(Storage.geminiKey)).isNotEmpty;
+    hasAi = (await Storage.secret(Storage.claudeKey)).isNotEmpty || (await Storage.geminiKeyValues()).isNotEmpty;
     hasSupabase = (await Storage.secret(Storage.supabaseToken)).isNotEmpty;
     hasFirebase = (await Storage.secret(Storage.firebaseServiceAccount)).isNotEmpty;
   }
@@ -79,7 +79,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<AiDesigner> ai() async =>
-      AiDesigner(claudeKey: await Storage.secret(Storage.claudeKey), geminiKey: await Storage.secret(Storage.geminiKey));
+      AiDesigner(claudeKey: await Storage.secret(Storage.claudeKey), geminiKeys: await Storage.geminiKeyValues());
 
   // ---------------- settings ----------------
 
@@ -101,7 +101,7 @@ class AppState extends ChangeNotifier {
   /// Saves the keys on the phone and as repository secrets (encrypted), where the workflows read them.
   Future<List<String>> saveKeys({
     String? claude,
-    String? gemini,
+    List<String>? gemini,
     String? supabaseToken,
     String? supabaseProjectRef,
     String? firebaseJson,
@@ -124,7 +124,17 @@ class AppState extends ChangeNotifier {
       }
     }
     await put(Storage.claudeKey, claude, 'ANTHROPIC_API_KEY');
-    await put(Storage.geminiKey, gemini, 'GEMINI_API_KEY');
+    if (gemini != null) {
+      for (var i = 0; i < Storage.geminiKeys.length; i++) {
+        final k = Storage.geminiKeys[i];
+        final value = i < gemini.length ? gemini[i] : '';
+        if (value.trim().isEmpty && gh != null && (await Storage.secret(k.local)).isNotEmpty) {
+          // A field that was emptied: remove the old key from the repository too.
+          await gh.deleteSecret(k.secret);
+        }
+        await put(k.local, value, k.secret);
+      }
+    }
     await put(Storage.supabaseToken, supabaseToken, 'SUPABASE_ACCESS_TOKEN');
     await put(Storage.firebaseServiceAccount, firebaseJson, 'FIREBASE_SERVICE_ACCOUNT');
     if (supabaseProjectRef != null) {

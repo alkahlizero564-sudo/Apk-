@@ -7,11 +7,11 @@ import '../models/schema.dart';
 /// AI on the phone (Claude or Gemini, with the user's own keys): designs a database from a description.
 /// Writing app code with AI runs in GitHub Actions (generate.yml), where the build can fix it.
 class AiDesigner {
-  AiDesigner({required this.claudeKey, required this.geminiKey});
+  AiDesigner({required this.claudeKey, required this.geminiKeys});
   final String claudeKey;
-  final String geminiKey;
+  final List<String> geminiKeys;
 
-  bool get available => claudeKey.isNotEmpty || geminiKey.isNotEmpty;
+  bool get available => claudeKey.isNotEmpty || geminiKeys.isNotEmpty;
 
   Future<String> _claude(String prompt) async {
     final res = await http
@@ -30,7 +30,7 @@ class AiDesigner {
     return ((j['content'] as List).where((b) => b['type'] == 'text').map((b) => b['text'])).join();
   }
 
-  Future<String> _gemini(String prompt) async {
+  Future<String> _gemini(String prompt, String geminiKey) async {
     final res = await http
         .post(Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent'),
             headers: {'x-goog-api-key': geminiKey, 'content-type': 'application/json'},
@@ -59,9 +59,10 @@ class AiDesigner {
         last = e;
       }
     }
-    if (geminiKey.isNotEmpty) {
+    // Each Gemini key in turn: a key out of quota does not stop the work.
+    for (final key in geminiKeys) {
       try {
-        return await _gemini(prompt);
+        return await _gemini(prompt, key);
       } catch (e) {
         last = e;
       }

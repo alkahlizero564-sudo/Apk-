@@ -177,6 +177,14 @@ class GitHub {
         body: {'encrypted_value': base64.encode(sealed), 'key_id': '${key['key_id']}'});
   }
 
+  Future<void> deleteSecret(String name) async {
+    try {
+      await _req('DELETE', '/repos/$repo/actions/secrets/$name');
+    } on GitHubError catch (e) {
+      if (e.status != 404) rethrow;
+    }
+  }
+
   Future<Set<String>> secretNames() async {
     final j = await _req('GET', '/repos/$repo/actions/secrets?per_page=100') as Map;
     return ((j['secrets'] as List?) ?? const []).map((e) => '${e['name']}').toSet();
