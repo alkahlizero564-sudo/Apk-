@@ -68,12 +68,36 @@
 
   // ---------------- data on the phone ----------------
   function Local() {
-    const B = { kind: "none", signedIn: true, isAdmin: true, email: null };
+    // The phone's owner manages everything; the preview in Alpha can show the customer's side.
+    const B = { kind: "none", signedIn: true, isAdmin: role !== "customer", email: null };
     B.init = async () => {
       if (!store("alpha_uid")) store("alpha_uid", rid());
       B.userId = store("alpha_uid");
       B.name = store("alpha_name");
+      if (C.preview) seed();
     };
+    // Instant preview in Alpha: a few sample rows per table so every screen shows how it will look.
+    function seed() {
+      const words = ["الأول", "الثاني", "الثالث"];
+      const now = Date.now();
+      for (const t of C.tables || []) {
+        if (rows(t).length) continue;
+        const list = words.map((w, i) => {
+          const r = { id: rid(), created_at: new Date(now - i * 3600e3).toISOString(), updated_at: new Date(now).toISOString(), customer_id: B.userId };
+          for (const c of t.columns || []) {
+            const v = {
+              text: c.label + " " + w, longtext: "وصف تجريبي لـ" + c.label, int: (i + 1) * 3, decimal: [25, 40, 15.5][i],
+              bool: i !== 1, date: new Date(now + i * 864e5).toISOString().slice(0, 10), datetime: new Date(now + i * 864e5).toISOString(),
+              image: "", phone: "+24991234567" + i, email: "user" + (i + 1) + "@example.com",
+              choice: (c.options || [])[i % Math.max(1, (c.options || []).length)],
+            }[c.type || "text"];
+            r[c.name] = v === undefined ? c.label + " " + w : v;
+          }
+          return r;
+        });
+        store("alpha_rows_" + t.name, list);
+      }
+    }
     const rows = (t) => store("alpha_rows_" + t.name) || [];
     B.signIn = async () => {};
     B.signUp = async (name) => { store("alpha_name", name); return false; };

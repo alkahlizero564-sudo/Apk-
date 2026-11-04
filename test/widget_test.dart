@@ -3,10 +3,17 @@ import 'package:alpha/generator/firestore_rules.dart';
 import 'package:alpha/generator/presets.dart';
 import 'package:alpha/generator/sql_generator.dart';
 import 'package:alpha/models/project.dart';
+import 'dart:io';
+
+import 'package:alpha/generator/custom_code.dart';
 import 'package:alpha/models/schema.dart';
+import 'package:alpha/services/ai.dart';
+import 'package:alpha/ui/screens/preview.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('every preset is a valid schema', () {
     for (final p in schemaPresets) {
       expect(p.build().validate(), isEmpty, reason: p.id);
@@ -88,5 +95,49 @@ void main() {
     final roundTrip = Project.fromJson(p.toJson());
     expect(roundTrip.schema.tables.length, p.schema.tables.length);
     expect(roundTrip.apps.map((a) => a.slug), ['bakery-customer', 'bakery-admin']);
+  });
+
+  test('understanding: parsed from the AI answer and turned into the brief', () {
+    final u = Understanding.fromJson({
+      'title': 'مخبز الأمل', 'slug': 'amal-bakery', 'summary': 'طلبات توصيل خبز', 'kind': 'pair', 'lang': 'kotlin',
+      'screens_customer': ['المنتجات: يختار', ''], 'screens_admin': ['الطلبات: يغيّر الحالة'],
+      'data': ['المنتجات: الاسم، السعر'], 'notifications': ['طلب جديد → الإدارة'], 'auth': 'email_code',
+    });
+    expect(u.kind, ProjectKind.pair);
+    expect(u.lang, Lang.kotlin);
+    expect(u.auth, AuthMode.emailCode);
+    expect(u.screensCustomer, ['المنتجات: يختار']);
+    final brief = u.toBrief();
+    expect(brief, contains('شاشات الإدارة:'));
+    expect(brief, contains('بريد + رمز تأكيد'));
+  });
+
+  test('pasted code: language, file and packages', () {
+    const dart = "import 'package:flutter/material.dart';\nimport 'package:fl_chart/fl_chart.dart';\nimport 'package:not_allowed/x.dart';\nvoid main() => runApp(const App());";
+    expect(detectLang(dart), Lang.flutter);
+    expect(detectLang('<?php echo 1;'), Lang.php);
+    expect(detectLang('import flet as ft\nft.run(main)'), Lang.python);
+    expect(detectLang('<!doctype html><html></html>'), Lang.html);
+    expect(detectLang('package app.main\nimport androidx.compose.material3.Text\nfun x() {}'), Lang.kotlin);
+    final libs = {
+      'flutter': {'packages': [{'name': 'fl_chart'}, {'name': 'provider'}]},
+    };
+    final files = customFiles('shop', Lang.flutter, dart, libs);
+    expect(files.keys, containsAll(['apps/shop/custom/lib/main.dart', 'apps/shop/custom/packages.txt']));
+    expect(files['apps/shop/custom/packages.txt'], 'fl_chart\n');
+  });
+
+  test('instant preview page: engine + config + sample data, customer side', () async {
+    final p = Project(
+      id: '1', base: 'shop', title: 'متجر', lang: Lang.kotlin, kind: ProjectKind.single,
+      schema: schemaPresets.firstWhere((x) => x.id == 'store').build(),
+      apps: Project.unitsFor('shop', 'متجر', ProjectKind.single),
+    );
+    final html = await buildPreviewHtml(p, p.apps.first, admin: false);
+    expect(html, contains('"preview":true'));
+    expect(html, contains('"role":"customer"'));
+    expect(html, contains('window.AlphaBackend'));
+    final out = Platform.environment['ALPHA_PREVIEW_OUT'];
+    if (out != null) File(out).writeAsStringSync(html);
   });
 }

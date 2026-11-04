@@ -38,6 +38,7 @@ Map<String, dynamic> appConfig(Project p, AppUnit unit, {Map<String, dynamic>? c
       'package': packageFor(unit.slug),
       if (p.headline.isNotEmpty) 'headline': p.headline,
       if (p.subtitle.isNotEmpty) 'subtitle': p.subtitle,
+      if (p.brief.isNotEmpty) 'brief': p.brief,
     },
     if (p.lang == Lang.php && p.serverUrl.isNotEmpty) 'server': p.serverUrl,
     'theme': p.theme.toJson(),

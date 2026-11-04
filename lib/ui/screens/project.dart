@@ -12,6 +12,7 @@ import '../widgets.dart';
 import 'activity.dart';
 import 'db_studio.dart';
 import 'design_studio.dart';
+import 'preview.dart';
 
 class ProjectScreen extends StatelessWidget {
   const ProjectScreen({super.key, required this.projectId});
@@ -109,6 +110,8 @@ class ProjectScreen extends StatelessWidget {
                       crossAxisSpacing: 8,
                       childAspectRatio: 1,
                       children: [
+                        _Tool(Icons.play_circle_rounded, 'معاينة فورية', AlphaColors.teal,
+                            () => Navigator.push(context, MaterialPageRoute(builder: (_) => PreviewScreen(project: p, customCode: p.lang == Lang.html ? p.customCode : '')))),
                         _Tool(Icons.palette_rounded, 'التصميم', AlphaColors.pink,
                             () => Navigator.push(context, MaterialPageRoute(builder: (_) => DesignStudioScreen(project: p)))),
                         _Tool(Icons.table_chart_rounded, 'البيانات والصلاحيات', AlphaColors.teal,

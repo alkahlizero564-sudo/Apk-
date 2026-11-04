@@ -124,7 +124,9 @@ def prompt_base(cfg, lang):
     api = (ROOT / c["api"]).read_text(encoding="utf-8")
     tables = json.dumps(cfg.get("tables", []), ensure_ascii=False, indent=1)
     theme = json.dumps(cfg.get("theme", {}), ensure_ascii=False)
-    return f"""You write the code of one mobile app made with Alpha.
+    brief = str(cfg["app"].get("brief") or "").strip()
+    brief_note = f"\nThe approved understanding of the app (follow it):\n{brief}\n" if brief else ""
+    return f"""You write the code of one mobile app made with Alpha.{brief_note}
 Language: {lang}. App: «{cfg['app'].get('title')}» (role: {cfg['app'].get('role')} — single app, or the customer / admin app of a connected pair).
 Backend: {cfg['backend'].get('type')} (sign-in: {cfg['backend'].get('auth', 'none')}). Theme: {theme}.
 

@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../generator/app_files.dart';
+import '../generator/custom_code.dart';
 import '../models/project.dart';
 import '../services/ai.dart';
 import '../services/github.dart';
@@ -244,7 +246,13 @@ class AppState extends ChangeNotifier {
         }
       } catch (_) {}
     }
-    await gh.commit(b, message.isEmpty ? 'Alpha: ${p.title}' : message, projectFiles(p, connections: connections));
+    final files = projectFiles(p, connections: connections);
+    if (p.customCode.trim().isNotEmpty && p.apps.isNotEmpty) {
+      // Pasted code is the app's own code (the customer app of a pair); the build checks and fixes it.
+      final libs = parseLibraries(await rootBundle.loadString('factory/libraries.json'));
+      files.addAll(customFiles(p.apps.first.slug, p.lang, p.customCode, libs));
+    }
+    await gh.commit(b, message.isEmpty ? 'Alpha: ${p.title}' : message, files);
   }
 
   Future<void> remove(Project p, {bool fromRepo = false}) async {
