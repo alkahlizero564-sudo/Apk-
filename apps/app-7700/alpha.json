@@ -1,0 +1,76 @@
+{
+ "alpha": 1,
+ "project": "app-7700",
+ "lang": "flutter",
+ "app": {
+  "title": "انا",
+  "slug": "app-7700",
+  "role": "single",
+  "rtl": true,
+  "package": "com.alpha.app_7700"
+ },
+ "theme": {
+  "preset": "mono",
+  "seed": "#18181B",
+  "accent": "#71717A",
+  "mode": "light",
+  "style": "flat",
+  "radius": 22.0,
+  "layout": "tabs"
+ },
+ "backend": {
+  "type": "supabase",
+  "prefix": "app_7700",
+  "auth": "none",
+  "push": false
+ },
+ "tables": [
+  {
+   "name": "expenses",
+   "label": "المصروفات",
+   "icon": "wallet",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "title",
+     "label": "البند",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "amount",
+     "label": "المبلغ",
+     "type": "decimal",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "category",
+     "label": "التصنيف",
+     "type": "choice",
+     "options": [
+      "أكل",
+      "مواصلات",
+      "فواتير",
+      "أخرى"
+     ],
+     "default": "أخرى",
+     "show": true
+    },
+    {
+     "name": "day",
+     "label": "التاريخ",
+     "type": "date",
+     "default": "today",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  }
+ ]
+}

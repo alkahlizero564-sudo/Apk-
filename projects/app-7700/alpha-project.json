@@ -1,0 +1,85 @@
+{
+ "id": "1793821837689707",
+ "base": "app-7700",
+ "title": "انا",
+ "lang": "flutter",
+ "kind": "single",
+ "description": "تتت",
+ "theme": {
+  "preset": "mono",
+  "seed": "#18181B",
+  "accent": "#71717A",
+  "mode": "light",
+  "style": "flat",
+  "radius": 22.0,
+  "layout": "tabs"
+ },
+ "schema": [
+  {
+   "name": "expenses",
+   "label": "المصروفات",
+   "icon": "wallet",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "title",
+     "label": "البند",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "amount",
+     "label": "المبلغ",
+     "type": "decimal",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "category",
+     "label": "التصنيف",
+     "type": "choice",
+     "options": [
+      "أكل",
+      "مواصلات",
+      "فواتير",
+      "أخرى"
+     ],
+     "default": "أخرى",
+     "show": true
+    },
+    {
+     "name": "day",
+     "label": "التاريخ",
+     "type": "date",
+     "default": "today",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  }
+ ],
+ "backend": "supabase",
+ "auth": "none",
+ "push": false,
+ "codeMode": "engine",
+ "admins": [],
+ "serverUrl": "",
+ "headline": "",
+ "subtitle": "",
+ "apps": [
+  {
+   "slug": "app-7700",
+   "role": "single",
+   "title": "انا"
+  }
+ ],
+ "createdAt": "2026-11-04T21:50:37.689707",
+ "supabaseUrl": "",
+ "supabaseAnonKey": "",
+ "supabaseRef": ""
+}

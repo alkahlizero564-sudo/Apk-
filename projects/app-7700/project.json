@@ -1,0 +1,17 @@
+{
+ "base": "app-7700",
+ "prefix": "app_7700",
+ "lang": "flutter",
+ "backend": "supabase",
+ "auth": "none",
+ "push": false,
+ "admins": [],
+ "apps": [
+  {
+   "slug": "app-7700",
+   "role": "single",
+   "title": "انا",
+   "package": "com.alpha.app_7700"
+  }
+ ]
+}
