@@ -1,0 +1,126 @@
+{
+ "id": "1793823391108286",
+ "base": "app-8950",
+ "title": "عَض",
+ "lang": "flutter",
+ "kind": "single",
+ "description": "مخبز العامر",
+ "theme": {
+  "preset": "aurora",
+  "seed": "#6E4BFF",
+  "accent": "#2DD4BF",
+  "mode": "light",
+  "style": "glass",
+  "radius": 18.0,
+  "layout": "tabs"
+ },
+ "schema": [
+  {
+   "name": "places",
+   "label": "الأماكن",
+   "icon": "place",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "title",
+     "label": "الاسم",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "price",
+     "label": "سعر الساعة",
+     "type": "decimal",
+     "show": true
+    },
+    {
+     "name": "image",
+     "label": "صورة",
+     "type": "image",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "bookings",
+   "label": "الحجوزات",
+   "icon": "event",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "place",
+     "label": "المكان",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "day",
+     "label": "اليوم",
+     "type": "date",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "hours",
+     "label": "عدد الساعات",
+     "type": "int",
+     "default": "1",
+     "show": true
+    },
+    {
+     "name": "phone",
+     "label": "الهاتف",
+     "type": "phone",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "status",
+     "label": "الحالة",
+     "type": "choice",
+     "options": [
+      "جديد",
+      "مؤكد",
+      "مرفوض"
+     ],
+     "default": "جديد",
+     "show": true,
+     "adminOnly": true
+    }
+   ],
+   "notify": {
+    "onInsert": "admin",
+    "onUpdate": "owner"
+   },
+   "realtime": true
+  }
+ ],
+ "backend": "supabase",
+ "auth": "none",
+ "push": false,
+ "codeMode": "engine",
+ "admins": [
+  "alkahlizero564@gmail.com"
+ ],
+ "serverUrl": "",
+ "headline": "",
+ "subtitle": "",
+ "apps": [
+  {
+   "slug": "app-8950",
+   "role": "single",
+   "title": "عَض"
+  }
+ ],
+ "createdAt": "2026-11-04T22:16:31.108551",
+ "supabaseUrl": "",
+ "supabaseAnonKey": "",
+ "supabaseRef": ""
+}

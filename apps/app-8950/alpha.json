@@ -1,0 +1,115 @@
+{
+ "alpha": 1,
+ "project": "app-8950",
+ "lang": "flutter",
+ "app": {
+  "title": "عَض",
+  "slug": "app-8950",
+  "role": "single",
+  "rtl": true,
+  "package": "com.alpha.app_8950"
+ },
+ "theme": {
+  "preset": "aurora",
+  "seed": "#6E4BFF",
+  "accent": "#2DD4BF",
+  "mode": "light",
+  "style": "glass",
+  "radius": 18.0,
+  "layout": "tabs"
+ },
+ "backend": {
+  "type": "supabase",
+  "prefix": "app_8950",
+  "auth": "none",
+  "push": false
+ },
+ "tables": [
+  {
+   "name": "places",
+   "label": "الأماكن",
+   "icon": "place",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "title",
+     "label": "الاسم",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "price",
+     "label": "سعر الساعة",
+     "type": "decimal",
+     "show": true
+    },
+    {
+     "name": "image",
+     "label": "صورة",
+     "type": "image",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "bookings",
+   "label": "الحجوزات",
+   "icon": "event",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "place",
+     "label": "المكان",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "day",
+     "label": "اليوم",
+     "type": "date",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "hours",
+     "label": "عدد الساعات",
+     "type": "int",
+     "default": "1",
+     "show": true
+    },
+    {
+     "name": "phone",
+     "label": "الهاتف",
+     "type": "phone",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "status",
+     "label": "الحالة",
+     "type": "choice",
+     "options": [
+      "جديد",
+      "مؤكد",
+      "مرفوض"
+     ],
+     "default": "جديد",
+     "show": true,
+     "adminOnly": true
+    }
+   ],
+   "notify": {
+    "onInsert": "admin",
+    "onUpdate": "owner"
+   },
+   "realtime": true
+  }
+ ]
+}

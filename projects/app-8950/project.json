@@ -1,0 +1,19 @@
+{
+ "base": "app-8950",
+ "prefix": "app_8950",
+ "lang": "flutter",
+ "backend": "supabase",
+ "auth": "none",
+ "push": false,
+ "admins": [
+  "alkahlizero564@gmail.com"
+ ],
+ "apps": [
+  {
+   "slug": "app-8950",
+   "role": "single",
+   "title": "عَض",
+   "package": "com.alpha.app_8950"
+  }
+ ]
+}
