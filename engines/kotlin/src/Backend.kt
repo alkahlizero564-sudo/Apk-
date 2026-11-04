@@ -19,7 +19,12 @@ import java.util.concurrent.TimeUnit
 
 typealias Rec = Map<String, Any?>
 
+const val EMAIL_NOT_CONFIRMED = "EMAIL_NOT_CONFIRMED"
+
 class BackendException(message: String) : Exception(message)
+
+/** Sign-in refused because the email is not confirmed yet: the app shows the code screen. */
+class NeedsConfirmation(val address: String) : Exception("أكّد بريدك أولاً بالرمز الذي وصلك.")
 
 data class AppNotification(val id: String, val title: String, val body: String, val at: Instant, val read: Boolean)
 
@@ -40,7 +45,10 @@ abstract class Backend(val config: AlphaConfig, context: Context) {
     abstract val kind: String
     abstract suspend fun init()
     abstract suspend fun signIn(email: String, password: String)
-    abstract suspend fun signUp(name: String, email: String, password: String)
+    /** Makes the account; true when the email must be confirmed with a code first. */
+    abstract suspend fun signUp(name: String, phone: String, email: String, password: String): Boolean
+    open suspend fun verifyCode(email: String, code: String, password: String) {}
+    open suspend fun resendCode(email: String) {}
     abstract suspend fun signOut()
     abstract suspend fun list(table: TableCfg): List<Rec>
     abstract suspend fun insert(table: TableCfg, values: Rec): Rec
@@ -135,8 +143,9 @@ class LocalBackend(config: AlphaConfig, context: Context) : Backend(config, cont
     }
 
     override suspend fun signIn(email: String, password: String) {}
-    override suspend fun signUp(name: String, email: String, password: String) {
+    override suspend fun signUp(name: String, phone: String, email: String, password: String): Boolean {
         prefs.edit().putString("alpha_name", name).apply()
+        return false
     }
     override suspend fun signOut() {}
 
@@ -176,6 +185,7 @@ class SupabaseBackend(config: AlphaConfig, context: Context) : Backend(config, c
         }.getOrDefault(body)
         val m = msg.lowercase()
         return when {
+            "email not confirmed" in m -> EMAIL_NOT_CONFIRMED
             "invalid login" in m -> "البريد أو كلمة المرور غير صحيحة."
             "already registered" in m || "already been registered" in m -> "هذا البريد مسجّل من قبل، سجّل الدخول."
             "password should be" in m -> "كلمة المرور قصيرة (6 أحرف على الأقل)."
@@ -258,17 +268,46 @@ class SupabaseBackend(config: AlphaConfig, context: Context) : Backend(config, c
 
     override suspend fun signIn(email: String, password: String) {
         val body = JSONObject().put("email", email.trim()).put("password", password)
-        saveSession(JSONObject(call("POST", "/auth/v1/token?grant_type=password", body, refresh = false)))
+        try {
+            saveSession(JSONObject(call("POST", "/auth/v1/token?grant_type=password", body, refresh = false)))
+        } catch (e: BackendException) {
+            if (e.message == EMAIL_NOT_CONFIRMED) throw NeedsConfirmation(email.trim())
+            throw e
+        }
         loadProfile()
     }
 
-    override suspend fun signUp(name: String, email: String, password: String) {
+    override suspend fun signUp(name: String, phone: String, email: String, password: String): Boolean {
         val body = JSONObject().put("email", email.trim()).put("password", password)
-            .put("data", JSONObject().put("full_name", name.trim()))
+            .put("data", JSONObject().put("full_name", name.trim()).put("phone", phone.trim()))
         val s = JSONObject(call("POST", "/auth/v1/signup", body, refresh = false))
-        if (!s.has("access_token")) return signIn(email, password)
+        if (!s.has("access_token")) {
+            if (config.emailCode) return true
+            signIn(email, password)
+            return false
+        }
         saveSession(s)
         loadProfile()
+        return false
+    }
+
+    override suspend fun verifyCode(email: String, code: String, password: String) {
+        val body = JSONObject().put("type", "signup").put("email", email.trim()).put("token", code.trim())
+        val s = try {
+            JSONObject(call("POST", "/auth/v1/verify", body, refresh = false))
+        } catch (e: BackendException) {
+            throw BackendException("الرمز غير صحيح أو انتهت صلاحيته. اطلب رمزاً جديداً.")
+        }
+        if (s.has("access_token")) {
+            saveSession(s)
+            loadProfile()
+        } else {
+            signIn(email, password)
+        }
+    }
+
+    override suspend fun resendCode(email: String) {
+        call("POST", "/auth/v1/resend", JSONObject().put("type", "signup").put("email", email.trim()), refresh = false)
     }
 
     override suspend fun signOut() {

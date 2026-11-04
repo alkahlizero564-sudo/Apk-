@@ -42,11 +42,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         switch ($action) {
             case 'login':
-                $B->signIn((string)$_POST['email'], (string)$_POST['password']);
+                try {
+                    $B->signIn((string)$_POST['email'], (string)$_POST['password']);
+                } catch (NeedsConfirmation $e) {
+                    $_SESSION['pending'] = ['email' => (string)$_POST['email'], 'password' => (string)$_POST['password']];
+                    redirect('?mode=code', 'أكّد بريدك أولاً: أدخل الرمز الذي وصلك');
+                }
                 redirect('?');
             case 'signup':
-                $B->signUp((string)($_POST['name'] ?? ''), (string)$_POST['email'], (string)$_POST['password']);
+                if ($B->signUp((string)($_POST['name'] ?? ''), (string)($_POST['phone'] ?? ''), (string)$_POST['email'], (string)$_POST['password'])) {
+                    $_SESSION['pending'] = ['email' => (string)$_POST['email'], 'password' => (string)$_POST['password']];
+                    redirect('?mode=code', 'أرسلنا رمز التأكيد إلى بريدك');
+                }
                 redirect('?');
+            case 'verify':
+                $p = $_SESSION['pending'] ?? ['email' => '', 'password' => ''];
+                $B->verifyCode($p['email'], (string)($_POST['code'] ?? ''), $p['password']);
+                unset($_SESSION['pending']);
+                redirect('?');
+            case 'resend':
+                $B->resendCode((string)($_SESSION['pending']['email'] ?? ''));
+                redirect('?mode=code', 'أُرسل الرمز من جديد');
             case 'logout':
                 $B->signOut();
                 redirect('?');
@@ -85,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ---------- pages ----------
 if (!$B->signedIn) {
-    render_login($C, $B, ($_GET['mode'] ?? '') === 'signup');
+    render_login($C, $B, (string)($_GET['mode'] ?? 'login'));
     exit;
 }
 if ($B->role === 'admin' && !$B->isAdmin) {

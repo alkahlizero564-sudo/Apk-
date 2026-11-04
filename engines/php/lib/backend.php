@@ -6,12 +6,16 @@ declare(strict_types=1);
 
 final class BackendError extends RuntimeException {}
 
+/** Sign-in refused because the email is not confirmed yet: the app shows the code screen. */
+final class NeedsConfirmation extends RuntimeException {}
+
 abstract class Backend
 {
     public array $config;
     public string $role;
     public string $prefix;
     public bool $needsAccount;
+    public bool $emailCode = false;
     public bool $signedIn = false;
     public bool $isAdmin = false;
     public ?string $userId = null;
@@ -25,12 +29,22 @@ abstract class Backend
         $this->role = $config['app']['role'] ?? 'single';
         $be = $config['backend'] ?? [];
         $this->prefix = $be['prefix'] ?? str_replace('-', '_', (string)($config['app']['slug'] ?? 'app'));
-        $this->needsAccount = ($be['auth'] ?? 'none') === 'email_password';
+        $this->needsAccount = in_array($be['auth'] ?? 'none', ['email_password', 'email_code'], true);
+        $this->emailCode = ($be['auth'] ?? 'none') === 'email_code';
     }
 
     abstract public function init(): void;
     abstract public function signIn(string $email, string $password): void;
-    abstract public function signUp(string $name, string $email, string $password): void;
+    /** Makes the account; true when the email must be confirmed with the 6-digit code first. */
+    abstract public function signUp(string $name, string $phone, string $email, string $password): bool;
+
+    public function verifyCode(string $email, string $code, string $password): void
+    {
+    }
+
+    public function resendCode(string $email): void
+    {
+    }
     abstract public function signOut(): void;
     abstract public function list(array $table): array;
     abstract public function get(array $table, string $id): ?array;
@@ -116,6 +130,9 @@ final class SqliteBackend extends Backend
         $this->db = new PDO('sqlite:' . $dir . '/app.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $this->db->exec('PRAGMA journal_mode=WAL');
         $this->db->exec('create table if not exists users (id text primary key, email text unique, name text, password text, role text not null default \'customer\', created_at text)');
+        if (!in_array('phone', array_column($this->db->query('pragma table_info(users)')->fetchAll(PDO::FETCH_ASSOC), 'name'), true)) {
+            $this->db->exec('alter table users add column phone text');
+        }
         $this->db->exec('create table if not exists notifications (id integer primary key autoincrement, to_user text, to_role text, title text, body text, created_by text, created_at text)');
         foreach ($this->config['tables'] ?? [] as $t) $this->ensureTable($t);
 
@@ -184,7 +201,7 @@ final class SqliteBackend extends Backend
         $this->useUser($u);
     }
 
-    public function signUp(string $name, string $email, string $password): void
+    public function signUp(string $name, string $phone, string $email, string $password): bool
     {
         $email = strtolower(trim($email));
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) throw new BackendError('بريد غير صحيح');
@@ -194,11 +211,12 @@ final class SqliteBackend extends Backend
         if ($s->fetchColumn()) throw new BackendError('هذا البريد مسجّل من قبل، سجّل الدخول.');
         $id = bin2hex(random_bytes(16));
         $role = in_array($email, $this->admins(), true) ? 'admin' : 'customer';
-        $this->db->prepare('insert into users (id, email, name, password, role, created_at) values (?, ?, ?, ?, ?, ?)')
-            ->execute([$id, $email, trim($name), password_hash($password, PASSWORD_DEFAULT), $role, gmdate('c')]);
+        $this->db->prepare('insert into users (id, email, name, phone, password, role, created_at) values (?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$id, $email, trim($name), trim($phone), password_hash($password, PASSWORD_DEFAULT), $role, gmdate('c')]);
         session_regenerate_id(true);
         $_SESSION['alpha_uid'] = $id;
         $this->useUser($this->user($id));
+        return false;
     }
 
     public function signOut(): void
@@ -327,6 +345,7 @@ final class SupabaseBackend extends Backend
         $j = json_decode($body, true);
         $msg = is_array($j) ? ($j['msg'] ?? $j['message'] ?? $j['error_description'] ?? $j['error'] ?? $body) : $body;
         $m = strtolower((string)$msg);
+        if (str_contains($m, 'email not confirmed')) return 'EMAIL_NOT_CONFIRMED';
         if (str_contains($m, 'invalid login')) return 'البريد أو كلمة المرور غير صحيحة.';
         if (str_contains($m, 'already registered') || str_contains($m, 'already been registered')) return 'هذا البريد مسجّل من قبل، سجّل الدخول.';
         if (str_contains($m, 'password should be')) return 'كلمة المرور قصيرة (6 أحرف على الأقل).';
@@ -397,20 +416,49 @@ final class SupabaseBackend extends Backend
 
     public function signIn(string $email, string $password): void
     {
-        $this->save($this->call('POST', '/auth/v1/token?grant_type=password', ['email' => trim($email), 'password' => $password], [], false));
+        try {
+            $this->save($this->call('POST', '/auth/v1/token?grant_type=password', ['email' => trim($email), 'password' => $password], [], false));
+        } catch (BackendError $e) {
+            if ($e->getMessage() === 'EMAIL_NOT_CONFIRMED') throw new NeedsConfirmation('أكّد بريدك أولاً بالرمز الذي وصلك.');
+            throw $e;
+        }
         session_regenerate_id(true);
         $this->profile();
     }
 
-    public function signUp(string $name, string $email, string $password): void
+    public function signUp(string $name, string $phone, string $email, string $password): bool
     {
-        $s = $this->call('POST', '/auth/v1/signup', ['email' => trim($email), 'password' => $password, 'data' => ['full_name' => trim($name)]], [], false);
+        $s = $this->call('POST', '/auth/v1/signup', ['email' => trim($email), 'password' => $password,
+            'data' => ['full_name' => trim($name), 'phone' => trim($phone)]], [], false);
         if (empty($s['access_token'])) {
+            if ($this->emailCode) return true;
             $this->signIn($email, $password);
-            return;
+            return false;
         }
         $this->save($s);
         $this->profile();
+        return false;
+    }
+
+    public function verifyCode(string $email, string $code, string $password): void
+    {
+        try {
+            $s = $this->call('POST', '/auth/v1/verify', ['type' => 'signup', 'email' => trim($email), 'token' => trim($code)], [], false);
+        } catch (BackendError) {
+            throw new BackendError('الرمز غير صحيح أو انتهت صلاحيته. اطلب رمزاً جديداً.');
+        }
+        if (!empty($s['access_token'])) {
+            $this->save($s);
+            session_regenerate_id(true);
+            $this->profile();
+        } else {
+            $this->signIn($email, $password);
+        }
+    }
+
+    public function resendCode(string $email): void
+    {
+        $this->call('POST', '/auth/v1/resend', ['type' => 'signup', 'email' => trim($email)], [], false);
     }
 
     public function signOut(): void

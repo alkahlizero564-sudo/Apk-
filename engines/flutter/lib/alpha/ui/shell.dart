@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../backend.dart';
 import '../config.dart';
+import '../updater.dart';
 import '../wiring.dart';
 import 'icons.dart';
 import 'pages.dart';
@@ -46,6 +47,7 @@ class _AppShellState extends State<AppShell> {
       if (!mounted) return;
       setState(() => _ready = true);
       _afterSignIn();
+      _checkUpdate();
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
     }
@@ -57,6 +59,11 @@ class _AppShellState extends State<AppShell> {
     _checkUnread();
     _poll?.cancel();
     _poll = Timer.periodic(const Duration(seconds: 30), (_) => _checkUnread());
+  }
+
+  Future<void> _checkUpdate() async {
+    final info = await checkForUpdate(widget.config);
+    if (info != null && mounted) await offerUpdate(context, info);
   }
 
   Future<void> _checkUnread() async {

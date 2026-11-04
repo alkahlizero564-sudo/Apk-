@@ -1,10 +1,13 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/state.dart';
 import '../../app/theme.dart';
 import '../../models/project.dart';
+import '../install_sheet.dart';
 import '../widgets.dart';
 import 'activity.dart';
 import 'db_studio.dart';
@@ -269,10 +272,48 @@ class _Tool extends StatelessWidget {
       );
 }
 
-class _AppCard extends StatelessWidget {
+class _AppCard extends StatefulWidget {
   const _AppCard({required this.project, required this.app});
   final Project project;
   final AppUnit app;
+
+  @override
+  State<_AppCard> createState() => _AppCardState();
+}
+
+class _AppCardState extends State<_AppCard> {
+  Uint8List? _icon;
+  bool _savingIcon = false;
+
+  AppUnit get app => widget.app;
+
+  @override
+  void initState() {
+    super.initState();
+    final s = context.read<AppState>();
+    if (s.hasGitHub) {
+      s.icon(app).then((b) {
+        if (b != null && mounted) setState(() => _icon = Uint8List.fromList(b));
+      }).catchError((_) {});
+    }
+  }
+
+  Future<void> _pickIcon() async {
+    final s = context.read<AppState>();
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024, imageQuality: 95);
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    setState(() => _savingIcon = true);
+    try {
+      await s.setIcon(widget.project, app, bytes);
+      setState(() => _icon = bytes);
+      if (mounted) showMessage(context, 'حُفظت الأيقونة: تظهر من البناء القادم');
+    } catch (e) {
+      if (mounted) showMessage(context, '$e', error: true);
+    } finally {
+      if (mounted) setState(() => _savingIcon = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -285,8 +326,37 @@ class _AppCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(app.role == 'admin' ? Icons.admin_panel_settings_rounded : Icons.storefront_rounded, color: AlphaColors.teal, size: 28),
-              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: _savingIcon ? null : _pickIcon,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: 54,
+                        height: 54,
+                        color: AlphaColors.teal.withValues(alpha: 0.15),
+                        child: _savingIcon
+                            ? const Padding(padding: EdgeInsets.all(15), child: CircularProgressIndicator(strokeWidth: 2.4))
+                            : _icon != null
+                                ? Image.memory(_icon!, fit: BoxFit.cover)
+                                : Icon(app.role == 'admin' ? Icons.admin_panel_settings_rounded : Icons.storefront_rounded, color: AlphaColors.teal, size: 28),
+                      ),
+                    ),
+                    PositionedDirectional(
+                      bottom: -4,
+                      end: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(color: AlphaColors.violet, shape: BoxShape.circle),
+                        child: const Icon(Icons.photo_library_rounded, size: 13, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,9 +394,11 @@ class _AppCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: info == null || info.apk.isEmpty ? null : () => launchUrl(Uri.parse(info.apk), mode: LaunchMode.externalApplication),
-                  icon: const Icon(Icons.download_rounded, size: 18),
-                  label: const Text('تحميل APK'),
+                  onPressed: info == null || !s.hasGitHub
+                      ? null
+                      : () => installFromRelease(context, prefix: '${app.slug}-v', title: app.title),
+                  icon: const Icon(Icons.install_mobile_rounded, size: 18),
+                  label: const Text('تثبيت'),
                   style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
                 ),
               ),

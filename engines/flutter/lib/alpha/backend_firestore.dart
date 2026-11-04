@@ -73,13 +73,20 @@ class FirestoreBackend extends Backend {
   Future<T> _wrap<T>(Future<T> Function() f) async {
     try {
       return await f();
+    } on NeedsConfirmation {
+      rethrow;
+    } on BackendError {
+      rethrow;
     } catch (e) {
       throw BackendError(_explain(e));
     }
   }
 
   @override
-  bool get signedIn => _auth.currentUser != null;
+  bool get signedIn {
+    final u = _auth.currentUser;
+    return u != null && (!config.emailCode || u.isAnonymous || u.emailVerified);
+  }
   @override
   String? get userId => _auth.currentUser?.uid;
   @override
@@ -90,23 +97,50 @@ class FirestoreBackend extends Backend {
   bool get isAdmin => config.role != 'customer' && _role == 'admin';
 
   @override
+  bool get confirmsWithLink => true;
+
+  @override
   Future<void> signIn(String email, String password) => _wrap(() async {
         await _auth.signInWithEmailAndPassword(email: email.trim(), password: password);
+        if (config.emailCode && !(_auth.currentUser?.emailVerified ?? true)) throw NeedsConfirmation(email.trim());
         await _loadProfile();
       });
 
   @override
-  Future<void> signUp(String name, String email, String password) => _wrap(() async {
+  Future<bool> signUp(String name, String phone, String email, String password) => _wrap(() async {
         final cred = await _auth.createUserWithEmailAndPassword(email: email.trim(), password: password);
         await cred.user?.updateDisplayName(name.trim());
         await _c('profiles').doc(cred.user!.uid).set({
           'email': email.trim().toLowerCase(),
           'full_name': name.trim(),
+          'phone': phone.trim(),
           'role': 'customer',
           'created_at': DateTime.now().toUtc().toIso8601String(),
         });
+        if (config.emailCode) {
+          await cred.user!.sendEmailVerification();
+          return true;
+        }
+        await _loadProfile();
+        return false;
+      });
+
+  @override
+  Future<void> verifyCode(String email, String code, String password) => _wrap(() async {
+        var user = _auth.currentUser;
+        if (user == null) {
+          await _auth.signInWithEmailAndPassword(email: email.trim(), password: password);
+          user = _auth.currentUser;
+        }
+        await user!.reload();
+        if (!(_auth.currentUser?.emailVerified ?? false)) {
+          throw BackendError('لم يتم التأكيد بعد: افتح الرابط في بريدك ثم اضغط «تحقق».');
+        }
         await _loadProfile();
       });
+
+  @override
+  Future<void> resendCode(String email) => _wrap(() async => _auth.currentUser?.sendEmailVerification());
 
   @override
   Future<void> signOut() async {

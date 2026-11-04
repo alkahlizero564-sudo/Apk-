@@ -407,15 +407,24 @@ class _WizardScreenState extends State<WizardScreen> {
           ),
         if (_backend != BackendType.none || _lang == Lang.php) ...[
           const SectionTitle('تسجيل الدخول'),
-          SegmentedButton<AuthMode>(
-            segments: [for (final a in AuthMode.values) ButtonSegment(value: a, label: Text(a.label))],
-            selected: {_auth},
-            onSelectionChanged: (v) => setState(() => _auth = v.first),
+          RadioGroup<AuthMode>(
+            groupValue: _auth,
+            onChanged: (v) => setState(() => _auth = v!),
+            child: Column(
+              children: [
+                for (final a in AuthMode.values)
+                  RadioListTile<AuthMode>(
+                    contentPadding: EdgeInsets.zero,
+                    value: a,
+                    title: Text(a.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Text(a.hint, style: const TextStyle(color: AlphaColors.muted, fontSize: 12)),
+                  ),
+              ],
+            ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(_auth.hint, style: const TextStyle(color: AlphaColors.muted, fontSize: 12)),
-          ),
+          if (_auth == AuthMode.emailCode)
+            const Text('للرموز الحقيقية للعملاء أضف خادم البريد في الإعدادات > البريد (Gmail يعمل). بدونه يرسل Supabase رموزاً قليلة في الساعة.',
+                style: TextStyle(color: AlphaColors.amber, fontSize: 12, height: 1.5)),
         ],
         if (_backend != BackendType.none && _lang.supportsPush)
           SwitchListTile.adaptive(

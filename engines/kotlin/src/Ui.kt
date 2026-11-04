@@ -221,7 +221,10 @@ fun AlphaApp(backend: Backend, onSignedIn: () -> Unit) {
             config.role == "admin" && !backend.isAdmin -> Empty(Icons.Rounded.Lock, "الحساب ${backend.email ?: ""} ليس مديراً.\nأضف بريده كمدير في Alpha.") {
                 Button(onClick = { scope.launch { backend.signOut(); version++ } }) { Text("تسجيل الخروج") }
             }
-            else -> MainScreen(backend, version) { version++ }
+            else -> {
+                MainScreen(backend, version) { version++ }
+                UpdateDialog(config)
+            }
         }
     }
 }
@@ -245,55 +248,96 @@ fun Empty(icon: ImageVector, text: String, action: (@Composable () -> Unit)? = n
 fun Login(backend: Backend, onDone: () -> Unit) {
     val config = backend.config
     val scope = rememberCoroutineScope()
-    var signup by remember { mutableStateOf(false) }
+    // login | signup | code
+    var mode by remember { mutableStateOf("login") }
     var name by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var info by remember { mutableStateOf<String?>(null) }
     val shape = RoundedCornerShape(config.radius.dp)
+
+    fun submit() {
+        message = null
+        when (mode) {
+            "code" -> if (!Regex("^\\d{6}$").matches(code.trim())) { message = "اكتب الرمز من 6 أرقام"; return }
+            else -> {
+                if (!email.contains("@") || pass.length < 6) { message = "اكتب بريداً صحيحاً وكلمة مرور من 6 أحرف"; return }
+                if (mode == "signup" && (name.trim().length < 2 || !Regex("^[+0-9 ()-]{7,20}$").matches(phone.trim()))) {
+                    message = "اكتب الاسم ورقم هاتف صحيح"; return
+                }
+            }
+        }
+        busy = true
+        scope.launch {
+            try {
+                when (mode) {
+                    "signup" -> if (backend.signUp(name, phone, email, pass)) {
+                        mode = "code"
+                        info = "أرسلنا رمز التأكيد إلى بريدك"
+                    } else onDone()
+                    "code" -> { backend.verifyCode(email, code, pass); onDone() }
+                    else -> { backend.signIn(email, pass); onDone() }
+                }
+            } catch (e: NeedsConfirmation) {
+                mode = "code"
+                info = "أكّد بريدك أولاً: أدخل الرمز الذي وصلك، أو اطلب رمزاً جديداً"
+            } catch (e: Exception) {
+                message = e.message
+            } finally {
+                busy = false
+            }
+        }
+    }
+
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Box(Modifier.fillMaxWidth().height(260.dp).background(brand(config)), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(if (config.role == "admin") Icons.Rounded.Lock else Icons.Rounded.Person, null, Modifier.size(48.dp), tint = Color.White)
                 Spacer(Modifier.height(10.dp))
                 Text(config.title, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                Text(if (config.role == "admin") "لوحة الإدارة" else if (signup) "أنشئ حسابك" else "مرحباً بعودتك", color = Color.White.copy(alpha = 0.85f))
+                Text(
+                    when (mode) { "code" -> "تأكيد البريد الإلكتروني"; "signup" -> "أنشئ حسابك"; else -> if (config.role == "admin") "لوحة الإدارة" else "مرحباً بعودتك" },
+                    color = Color.White.copy(alpha = 0.85f),
+                )
             }
         }
         Card(Modifier.padding(18.dp).fillMaxWidth(), shape = shape) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (signup) OutlinedTextField(name, { name = it }, label = { Text("الاسم") }, singleLine = true, shape = shape, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(email, { email = it }, label = { Text("البريد الإلكتروني") }, singleLine = true, shape = shape,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(pass, { pass = it }, label = { Text("كلمة المرور") }, singleLine = true, shape = shape,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
+                if (mode == "code") {
+                    Text("أدخل الرمز المكوّن من 6 أرقام الذي أرسلناه إلى ${email.trim()}", lineHeight = 22.sp)
+                    OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, label = { Text("الرمز") }, singleLine = true, shape = shape,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                } else {
+                    if (mode == "signup") {
+                        OutlinedTextField(name, { name = it }, label = { Text("الاسم") }, singleLine = true, shape = shape, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(phone, { phone = it }, label = { Text("رقم الهاتف") }, singleLine = true, shape = shape,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth())
+                    }
+                    OutlinedTextField(email, { email = it }, label = { Text("البريد الإلكتروني") }, singleLine = true, shape = shape,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(pass, { pass = it }, label = { Text("كلمة المرور") }, singleLine = true, shape = shape,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
+                }
+                info?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
                 message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Button(
-                    onClick = {
-                        if (!email.contains("@") || pass.length < 6) {
-                            message = "اكتب بريداً صحيحاً وكلمة مرور من 6 أحرف"
-                            return@Button
-                        }
-                        busy = true
-                        message = null
+                Button(onClick = { submit() }, enabled = !busy, shape = shape, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                    Text(when (mode) { "code" -> "تأكيد"; "signup" -> "إنشاء الحساب"; else -> "دخول" }, fontWeight = FontWeight.Bold)
+                }
+                if (mode == "code") {
+                    TextButton(onClick = {
                         scope.launch {
-                            try {
-                                if (signup) backend.signUp(name, email, pass) else backend.signIn(email, pass)
-                                onDone()
-                            } catch (e: Exception) {
-                                message = e.message
-                            } finally {
-                                busy = false
-                            }
+                            try { backend.resendCode(email); info = "أُرسل الرمز من جديد" } catch (e: Exception) { message = e.message }
                         }
-                    },
-                    enabled = !busy, shape = shape, modifier = Modifier.fillMaxWidth().height(52.dp),
-                ) { Text(if (signup) "إنشاء الحساب" else "دخول", fontWeight = FontWeight.Bold) }
-                if (config.role != "admin") {
-                    TextButton(onClick = { signup = !signup }, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (signup) "عندي حساب، سجّل دخولي" else "ما عندي حساب؟ أنشئ واحداً")
+                    }, modifier = Modifier.fillMaxWidth()) { Text("أرسل الرمز مرة أخرى") }
+                    TextButton(onClick = { mode = "login" }, modifier = Modifier.fillMaxWidth()) { Text("رجوع لتسجيل الدخول") }
+                } else {
+                    TextButton(onClick = { mode = if (mode == "signup") "login" else "signup" }, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (mode == "signup") "عندي حساب، سجّل دخولي" else "ما عندي حساب؟ أنشئ واحداً")
                     }
                 }
             }

@@ -21,6 +21,10 @@ class BackendError(Exception):
     pass
 
 
+class NeedsConfirmation(BackendError):
+    """Sign-in refused because the email is not confirmed yet: the app shows the code screen."""
+
+
 def _now():
     return datetime.now(timezone.utc).isoformat()
 
@@ -66,7 +70,8 @@ class Backend:
         self.role = config.get("app", {}).get("role", "single")
         be = config.get("backend") or {}
         self.prefix = be.get("prefix") or str(config.get("app", {}).get("slug", "app")).replace("-", "_")
-        self.needs_account = be.get("auth") == "email_password"
+        self.needs_account = be.get("auth") in ("email_password", "email_code")
+        self.email_code = be.get("auth") == "email_code"
         self.store = Store()
         self.signed_in = False
         self.is_admin = False
@@ -148,8 +153,15 @@ class LocalBackend(Backend):
     def sign_in(self, email, password):
         pass
 
-    def sign_up(self, name, email, password):
+    def sign_up(self, name, phone, email, password):
         self.store.set("alpha_name", name)
+        return False
+
+    def verify_code(self, email, code, password):
+        pass
+
+    def resend_code(self, email):
+        pass
 
     def sign_out(self):
         pass
@@ -204,6 +216,8 @@ class SupabaseBackend(Backend):
         except ValueError:
             pass
         m = str(msg).lower()
+        if "email not confirmed" in m:
+            return "EMAIL_NOT_CONFIRMED"
         if "invalid login" in m:
             return "البريد أو كلمة المرور غير صحيحة."
         if "already registered" in m or "already been registered" in m:
@@ -276,17 +290,42 @@ class SupabaseBackend(Backend):
             self._profile()
 
     def sign_in(self, email, password):
-        self._save(self._call("POST", "/auth/v1/token?grant_type=password",
-                              {"email": email.strip(), "password": password}, refresh=False))
+        try:
+            self._save(self._call("POST", "/auth/v1/token?grant_type=password",
+                                  {"email": email.strip(), "password": password}, refresh=False))
+        except BackendError as e:
+            if str(e) == "EMAIL_NOT_CONFIRMED":
+                raise NeedsConfirmation("أكّد بريدك أولاً بالرمز الذي وصلك.")
+            raise
         self._profile()
 
-    def sign_up(self, name, email, password):
+    def sign_up(self, name, phone, email, password):
+        """Makes the account; True when the email must be confirmed with the 6-digit code first."""
         s = self._call("POST", "/auth/v1/signup",
-                       {"email": email.strip(), "password": password, "data": {"full_name": name.strip()}}, refresh=False)
+                       {"email": email.strip(), "password": password,
+                        "data": {"full_name": name.strip(), "phone": (phone or "").strip()}}, refresh=False)
         if not s.get("access_token"):
-            return self.sign_in(email, password)
+            if self.email_code:
+                return True
+            self.sign_in(email, password)
+            return False
         self._save(s)
         self._profile()
+        return False
+
+    def verify_code(self, email, code, password):
+        try:
+            s = self._call("POST", "/auth/v1/verify", {"type": "signup", "email": email.strip(), "token": code.strip()}, refresh=False)
+        except BackendError:
+            raise BackendError("الرمز غير صحيح أو انتهت صلاحيته. اطلب رمزاً جديداً.")
+        if s and s.get("access_token"):
+            self._save(s)
+            self._profile()
+        else:
+            self.sign_in(email, password)
+
+    def resend_code(self, email):
+        self._call("POST", "/auth/v1/resend", {"type": "signup", "email": email.strip()}, refresh=False)
 
     def sign_out(self):
         try:

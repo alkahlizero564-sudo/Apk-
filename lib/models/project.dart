@@ -44,7 +44,10 @@ enum BackendType {
 
 enum AuthMode {
   none('none', 'بدون تسجيل دخول', 'حساب مخفي لكل جهاز'),
-  emailPassword('email_password', 'بريد + كلمة مرور', 'إنشاء حساب ودخول');
+  emailPassword('email_password', 'بريد + كلمة مرور', 'حساب بالاسم والهاتف والبريد وكلمة مرور'),
+  emailCode('email_code', 'بريد + رمز تأكيد', 'حساب بالاسم والهاتف والبريد، ورمز من 6 أرقام يصل للبريد قبل الدخول');
+
+  bool get needsAccount => this != AuthMode.none;
 
   const AuthMode(this.id, this.label, this.hint);
   final String id;

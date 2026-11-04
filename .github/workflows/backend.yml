@@ -30,6 +30,7 @@ jobs:
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_REF }}
       SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      SUPABASE_SMTP: ${{ secrets.SUPABASE_SMTP }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

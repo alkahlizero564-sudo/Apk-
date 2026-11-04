@@ -16,32 +16,135 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
+enum _Mode { login, signup, code }
+
 class _LoginPageState extends State<LoginPage> {
   final _form = GlobalKey<FormState>();
   final _name = TextEditingController();
+  final _phone = TextEditingController();
   final _email = TextEditingController();
   final _pass = TextEditingController();
-  bool _signup = false;
+  final _code = TextEditingController();
+  _Mode _mode = _Mode.login;
   bool _busy = false;
   bool _hide = true;
 
   AlphaConfig get c => widget.backend.config;
+  Backend get b => widget.backend;
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     setState(() => _busy = true);
     try {
-      if (_signup) {
-        await widget.backend.signUp(_name.text, _email.text, _pass.text);
-      } else {
-        await widget.backend.signIn(_email.text, _pass.text);
+      switch (_mode) {
+        case _Mode.signup:
+          final needsCode = await b.signUp(_name.text, _phone.text, _email.text, _pass.text);
+          if (needsCode) {
+            setState(() => _mode = _Mode.code);
+            if (mounted) toast(context, b.confirmsWithLink ? 'أرسلنا رابط التأكيد إلى بريدك' : 'أرسلنا رمز التأكيد إلى بريدك');
+            return;
+          }
+          widget.onDone();
+        case _Mode.login:
+          await b.signIn(_email.text, _pass.text);
+          widget.onDone();
+        case _Mode.code:
+          await b.verifyCode(_email.text, _code.text, _pass.text);
+          widget.onDone();
       }
-      widget.onDone();
+    } on NeedsConfirmation {
+      if (mounted) {
+        setState(() => _mode = _Mode.code);
+        toast(context, 'أكّد بريدك أولاً: أدخل الرمز الذي وصلك، أو اطلب رمزاً جديداً');
+      }
     } catch (e) {
       if (mounted) toast(context, '$e', error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _resend() async {
+    try {
+      await b.resendCode(_email.text);
+      if (mounted) toast(context, 'أُرسل من جديد إلى ${_email.text.trim()}');
+    } catch (e) {
+      if (mounted) toast(context, '$e', error: true);
+    }
+  }
+
+  String get _subtitle => switch (_mode) {
+        _Mode.code => 'تأكيد البريد الإلكتروني',
+        _Mode.signup => 'أنشئ حسابك',
+        _Mode.login => c.role == 'admin' ? 'لوحة الإدارة' : 'مرحباً بعودتك',
+      };
+
+  List<Widget> _fields() {
+    if (_mode == _Mode.code) {
+      return [
+        Text(
+          b.confirmsWithLink
+              ? 'افتح الرابط الذي أرسلناه إلى ${_email.text.trim()} ثم اضغط «تحقق».'
+              : 'أدخل الرمز المكوّن من 6 أرقام الذي أرسلناه إلى ${_email.text.trim()}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(height: 1.6),
+        ),
+        const SizedBox(height: 14),
+        if (!b.confirmsWithLink)
+          TextFormField(
+            controller: _code,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.ltr,
+            maxLength: 6,
+            style: const TextStyle(fontSize: 26, letterSpacing: 10, fontWeight: FontWeight.w800),
+            decoration: const InputDecoration(counterText: '', hintText: '••••••'),
+            validator: (v) => RegExp(r'^\d{6}$').hasMatch((v ?? '').trim()) ? null : '6 أرقام',
+          ),
+      ];
+    }
+    final signup = _mode == _Mode.signup;
+    return [
+      if (signup) ...[
+        TextFormField(
+          controller: _name,
+          decoration: const InputDecoration(labelText: 'الاسم', prefixIcon: Icon(Icons.person_rounded)),
+          validator: (v) => (v ?? '').trim().length < 2 ? 'اكتب اسمك' : null,
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _phone,
+          keyboardType: TextInputType.phone,
+          textDirection: TextDirection.ltr,
+          decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone_rounded)),
+          validator: (v) => RegExp(r'^[+0-9 ()-]{7,20}$').hasMatch((v ?? '').trim()) ? null : 'رقم غير صحيح',
+        ),
+        const SizedBox(height: 12),
+      ],
+      TextFormField(
+        controller: _email,
+        keyboardType: TextInputType.emailAddress,
+        textDirection: TextDirection.ltr,
+        decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.alternate_email_rounded)),
+        validator: (v) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch((v ?? '').trim()) ? null : 'بريد غير صحيح',
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _pass,
+        obscureText: _hide,
+        textDirection: TextDirection.ltr,
+        decoration: InputDecoration(
+          labelText: 'كلمة المرور',
+          prefixIcon: const Icon(Icons.key_rounded),
+          suffixIcon: IconButton(
+            icon: Icon(_hide ? Icons.visibility_rounded : Icons.visibility_off_rounded),
+            onPressed: () => setState(() => _hide = !_hide),
+          ),
+        ),
+        validator: (v) => (v ?? '').length < 6 ? '6 أحرف على الأقل' : null,
+        onFieldSubmitted: (_) => _submit(),
+      ),
+    ];
   }
 
   @override
@@ -60,14 +163,17 @@ class _LoginPageState extends State<LoginPage> {
                     Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), shape: BoxShape.circle),
-                      child: Icon(c.role == 'admin' ? Icons.admin_panel_settings_rounded : Icons.lock_person_rounded,
-                          color: Colors.white, size: 42),
+                      child: Icon(
+                          _mode == _Mode.code
+                              ? Icons.mark_email_read_rounded
+                              : (c.role == 'admin' ? Icons.admin_panel_settings_rounded : Icons.lock_person_rounded),
+                          color: Colors.white,
+                          size: 42),
                     ),
                     const SizedBox(height: 12),
                     Text(c.title, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 4),
-                    Text(c.role == 'admin' ? 'لوحة الإدارة' : (_signup ? 'أنشئ حسابك' : 'مرحباً بعودتك'),
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.85))),
+                    Text(_subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.85))),
                     const SizedBox(height: 26),
                     Card(
                       child: Padding(
@@ -76,59 +182,35 @@ class _LoginPageState extends State<LoginPage> {
                           key: _form,
                           child: Column(
                             children: [
-                              if (_signup) ...[
-                                TextFormField(
-                                  controller: _name,
-                                  decoration: const InputDecoration(labelText: 'الاسم', prefixIcon: Icon(Icons.person_rounded)),
-                                  validator: (v) => (v ?? '').trim().length < 2 ? 'اكتب اسمك' : null,
-                                ),
-                                const SizedBox(height: 12),
-                              ],
-                              TextFormField(
-                                controller: _email,
-                                keyboardType: TextInputType.emailAddress,
-                                textDirection: TextDirection.ltr,
-                                decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.alternate_email_rounded)),
-                                validator: (v) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch((v ?? '').trim()) ? null : 'بريد غير صحيح',
-                              ),
-                              const SizedBox(height: 12),
-                              TextFormField(
-                                controller: _pass,
-                                obscureText: _hide,
-                                textDirection: TextDirection.ltr,
-                                decoration: InputDecoration(
-                                  labelText: 'كلمة المرور',
-                                  prefixIcon: const Icon(Icons.key_rounded),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(_hide ? Icons.visibility_rounded : Icons.visibility_off_rounded),
-                                    onPressed: () => setState(() => _hide = !_hide),
-                                  ),
-                                ),
-                                validator: (v) => (v ?? '').length < 6 ? '6 أحرف على الأقل' : null,
-                                onFieldSubmitted: (_) => _submit(),
-                              ),
+                              ..._fields(),
                               const SizedBox(height: 18),
                               FilledButton(
                                 onPressed: _busy ? null : _submit,
                                 child: _busy
                                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4))
-                                    : Text(_signup ? 'إنشاء الحساب' : 'دخول'),
+                                    : Text(switch (_mode) {
+                                        _Mode.code => b.confirmsWithLink ? 'تحقق' : 'تأكيد',
+                                        _Mode.signup => 'إنشاء الحساب',
+                                        _Mode.login => 'دخول',
+                                      }),
                               ),
-                              if (c.role != 'admin')
+                              if (_mode == _Mode.code) ...[
+                                TextButton(onPressed: _busy ? null : _resend, child: const Text('أرسل الرمز مرة أخرى')),
+                                TextButton(onPressed: () => setState(() => _mode = _Mode.login), child: const Text('رجوع لتسجيل الدخول')),
+                              ] else
                                 TextButton(
-                                  onPressed: () => setState(() => _signup = !_signup),
-                                  child: Text(_signup ? 'عندي حساب، سجّل دخولي' : 'ما عندي حساب؟ أنشئ واحداً'),
+                                  onPressed: () => setState(() => _mode = _mode == _Mode.signup ? _Mode.login : _Mode.signup),
+                                  child: Text(_mode == _Mode.signup ? 'عندي حساب، سجّل دخولي' : 'ما عندي حساب؟ أنشئ واحداً'),
                                 ),
                             ],
                           ),
                         ),
                       ),
                     ),
-                    if (c.role == 'admin')
+                    if (c.role == 'admin' && _mode != _Mode.code)
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
-                        child: Text('الدخول للإدارة بالبريد المسجّل كمدير فقط',
-                            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
+                        child: Text('الإدارة لبريد المدير المسجّل في Alpha فقط', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
                       ),
                   ],
                 ),

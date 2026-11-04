@@ -7,6 +7,7 @@ import '../generator/app_files.dart';
 import '../models/project.dart';
 import '../services/ai.dart';
 import '../services/github.dart';
+import '../services/installer.dart';
 import '../services/storage.dart';
 import '../services/supabase_admin.dart';
 
@@ -39,15 +40,22 @@ class AppState extends ChangeNotifier {
   bool loading = true;
   String? error;
 
+  /// This Alpha's version code (set by the build with --dart-define) and a newer one found in the releases.
+  static const alphaVersion = int.fromEnvironment('ALPHA_VERSION');
+  String? alphaUpdate;
+  String updatesRepo = '';
+
   Future<void> load() async {
     projects = await Storage.projects();
     repo = await Storage.get('repo', defaultRepo);
     branch = await Storage.get('branch');
     supabaseRef = await Storage.get('supabase_ref');
+    updatesRepo = await Storage.get('updates_repo');
     await _refreshFlags();
     loading = false;
     notifyListeners();
     if (hasGitHub) {
+      checkAlphaUpdate();
       try {
         await refreshRemote();
       } catch (e) {
@@ -76,6 +84,56 @@ class AppState extends ChangeNotifier {
       await Storage.set('branch', branch);
     }
     return branch;
+  }
+
+  Future<Installer> installer() async {
+    final token = await Storage.secret(Storage.githubToken);
+    if (token.isEmpty) throw GitHubError('أضف توكن GitHub في الإعدادات أولاً.');
+    return Installer(token, repo);
+  }
+
+  /// Is a newer Alpha published? Shows the update card on the home screen.
+  Future<void> checkAlphaUpdate() async {
+    try {
+      final rel = await (await installer()).latest('alpha-v');
+      final v = int.tryParse('${rel?['tag_name'] ?? ''}'.replaceFirst('alpha-v', '')) ?? 0;
+      alphaUpdate = alphaVersion > 0 && v > alphaVersion ? '1.0.$v' : null;
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Saves the picked picture as the icon of an app (apps/<slug>/icon.png); the next build uses it.
+  Future<void> setIcon(Project p, AppUnit app, List<int> png) async {
+    final gh = await github();
+    await gh.commit(await _branch(gh), 'Alpha: icon of ${app.title}', {'apps/${app.slug}/icon.png': 'base64:${base64.encode(png)}'});
+  }
+
+  /// The icon saved for an app, if any.
+  Future<List<int>?> icon(AppUnit app) async {
+    final gh = await github();
+    return gh.fileBytes('apps/${app.slug}/icon.png', ref: await _branch(gh));
+  }
+
+  /// A public repository that only holds the built apps, so installed apps download their updates without a
+  /// GitHub account (this repository stays private). The build publishes every new version there.
+  Future<String> createUpdatesRepo() async {
+    final gh = await github();
+    final token = await Storage.secret(Storage.githubToken);
+    final name = '${repo.split('/').last}-updates';
+    final full = await gh.createPublicRepo(name, 'Built apps and their updates (made by Alpha). No source code.');
+    await gh.setVariable('UPDATES_REPO', full);
+    await gh.setSecret('UPDATES_TOKEN', token);
+    updatesRepo = full;
+    await Storage.set('updates_repo', full);
+    notifyListeners();
+    return full;
+  }
+
+  /// Mail server for the sign-up confirmation codes (Supabase sends them through it).
+  Future<void> saveSmtp(Map<String, String> smtp) async {
+    final gh = await github();
+    await gh.setSecret('SUPABASE_SMTP', jsonEncode(smtp));
+    await Storage.set('smtp_host', smtp['host'] ?? '');
   }
 
   Future<AiDesigner> ai() async =>
@@ -258,7 +316,7 @@ class AppState extends ChangeNotifier {
     if (token.isEmpty || ref.isEmpty) throw Exception('أضف توكن Supabase ومعرّف المشروع في الإعدادات.');
     final admin = SupabaseAdmin(token);
     await admin.sql(ref, projectSql(p));
-    await admin.configureAuth(ref, anonymous: p.auth == AuthMode.none);
+    await admin.configureAuth(ref, mode: p.auth.id);
     final key = await admin.anonKey(ref);
     p.supabaseUrl = 'https://$ref.supabase.co';
     if (key != null) p.supabaseAnonKey = key;

@@ -59,9 +59,19 @@ class SupabaseAdmin {
   }
 
   /// Sign-in settings the generated apps need (accounts made without email confirmation; anonymous if asked).
-  Future<void> configureAuth(String ref, {required bool anonymous}) => _req('PATCH', '/projects/$ref/config/auth', {
-        'mailer_autoconfirm': true,
+  /// [mode]: none (anonymous accounts), email_password, or email_code (a 6-digit code confirms the email).
+  Future<void> configureAuth(String ref, {required String mode}) => _req('PATCH', '/projects/$ref/config/auth', {
+        'mailer_autoconfirm': mode != 'email_code',
         'external_email_enabled': true,
-        if (anonymous) 'external_anonymous_users_enabled': true,
+        if (mode == 'none') 'external_anonymous_users_enabled': true,
+        if (mode == 'email_code') ...{
+          'mailer_otp_length': 6,
+          'mailer_otp_exp': 900,
+          'mailer_subjects_confirmation': 'رمز تأكيد حسابك',
+          'mailer_templates_confirmation_content':
+              '<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;text-align:center;padding:24px"><h2>رمز تأكيد حسابك</h2>'
+                  '<p>أدخل هذا الرمز في التطبيق لتأكيد بريدك:</p><p style="font-size:34px;letter-spacing:8px;font-weight:bold">{{ .Token }}</p>'
+                  '<p style="color:#888">الرمز صالح لمدة 15 دقيقة.</p></div>',
+        },
       });
 }

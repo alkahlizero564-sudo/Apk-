@@ -126,6 +126,79 @@ create trigger {p}_push after insert on public.{p}_notifications for each row ex
 """
 
 
+def env_smtp():
+    raw = os.environ.get("SUPABASE_SMTP", "").strip()
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except ValueError:
+        print("::warning::SUPABASE_SMTP is not valid JSON; using Supabase's own mailer")
+        return None
+
+
+CODE_MAIL = (
+    '<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;text-align:center;padding:24px">'
+    "<h2>رمز تأكيد حسابك</h2><p>أدخل هذا الرمز في التطبيق لتأكيد بريدك:</p>"
+    '<p style="font-size:34px;letter-spacing:8px;font-weight:bold">{{ .Token }}</p>'
+    '<p style="color:#888">الرمز صالح لمدة 15 دقيقة. إذا لم تطلبه، تجاهل هذه الرسالة.</p></div>'
+)
+
+
+def auth_config(mode, smtp=None):
+    """Supabase sign-in settings for a project's sign-in mode. email_code: sign-ups get a 6-digit code by email
+    (through the owner's SMTP server when given; Supabase's own mailer sends only a few emails per hour)."""
+    body = {"external_email_enabled": True, "mailer_autoconfirm": mode != "email_code"}
+    if mode == "none":
+        body["external_anonymous_users_enabled"] = True
+    if mode == "email_code":
+        body.update({
+            "mailer_otp_length": 6,
+            "mailer_otp_exp": 900,
+            "mailer_subjects_confirmation": "رمز تأكيد حسابك",
+            "mailer_templates_confirmation_content": CODE_MAIL,
+        })
+        if smtp and smtp.get("host"):
+            host = str(smtp["host"]).strip()
+            body.update({
+                "smtp_host": host,
+                "smtp_port": str(smtp.get("port") or "587"),
+                "smtp_user": smtp.get("user", ""),
+                # Gmail shows app passwords in groups of 4 ("abcd efgh ..."); the spaces are not part of it.
+                "smtp_pass": str(smtp.get("pass", "")).replace(" ", "") if "gmail" in host else smtp.get("pass", ""),
+                "smtp_admin_email": smtp.get("from") or smtp.get("user", ""),
+                "smtp_sender_name": smtp.get("name") or "Alpha",
+                "rate_limit_email_sent": 100,
+            })
+            check_smtp(smtp)
+        else:
+            print("::warning::No mail server (SMTP) saved: Supabase's own mailer sends only a few codes per hour and "
+                  "only to your team's emails. Add SMTP in Alpha > الإعدادات > البريد for real customers.")
+    return body
+
+
+def check_smtp(smtp):
+    """Logs in to the mail server (sends nothing), so a wrong app password shows now, not when a customer waits."""
+    import smtplib
+    import ssl
+    host, port = str(smtp["host"]).strip(), int(smtp.get("port") or 587)
+    pwd = str(smtp.get("pass", "")).replace(" ", "") if "gmail" in host else smtp.get("pass", "")
+    try:
+        if port == 465:
+            server = smtplib.SMTP_SSL(host, port, timeout=30, context=ssl.create_default_context())
+        else:
+            server = smtplib.SMTP(host, port, timeout=30)
+            server.starttls(context=ssl.create_default_context())
+        server.login(smtp.get("user", ""), pwd)
+        server.quit()
+        print(f"Mail server OK: {host} accepts the login of {smtp.get('user', '')}")
+    except smtplib.SMTPAuthenticationError as e:
+        raise SystemExit(f"The mail server {host} refused the login ({e.smtp_code}): the codes would never arrive. "
+                         "For Gmail use an App Password (Google account > Security > 2-Step Verification > App passwords).")
+    except Exception as e:
+        print(f"::warning::Could not check the mail server {host}:{port} ({e})")
+
+
 def setup_supabase(proj, pdir):
     token = need("SUPABASE_ACCESS_TOKEN", "the Supabase access token (supabase.com > Account > Access Tokens)")
     ref = proj.get("supabaseRef") or need("SUPABASE_PROJECT_REF", "the Supabase project ref")
@@ -139,12 +212,12 @@ def setup_supabase(proj, pdir):
     tables = run_sql(ref, token, f"select table_name from information_schema.tables where table_schema = 'public' and table_name like '{p}\\_%' order by 1")
     print("Tables now: " + ", ".join(t["table_name"] for t in tables or []))
 
-    auth = {"mailer_autoconfirm": True, "external_email_enabled": True}
-    if proj.get("auth", "none") == "none":
-        auth["external_anonymous_users_enabled"] = True
+    mode = proj.get("auth", "none")
+    auth = auth_config(mode, env_smtp())
     try:
         sb("PATCH", f"/projects/{ref}/config/auth", token, auth)
-        print("Sign-in configured: " + ("anonymous accounts (one per phone)" if proj.get("auth", "none") == "none" else "email + password"))
+        print("Sign-in configured: " + {"none": "anonymous accounts (one per phone)", "email_password": "email + password",
+                                        "email_code": "email + password, confirmed with a 6-digit code"}.get(mode, mode))
     except RuntimeError as e:
         print(f"::warning::Could not change the sign-in settings: {e}")
 

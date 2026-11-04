@@ -49,7 +49,11 @@ class AlphaConfig(val json: JSONObject) {
 
     val backendType: String = backend.optString("type", "none")
     val prefix: String = backend.optString("prefix", slug.replace("-", "_"))
-    val needsAccount: Boolean = backend.optString("auth", "none") == "email_password"
+    val auth: String = backend.optString("auth", "none")
+    val needsAccount: Boolean = auth == "email_password" || auth == "email_code"
+
+    /** Sign-up is confirmed with a 6-digit code sent to the email. */
+    val emailCode: Boolean = auth == "email_code"
     val push: Boolean = backend.optBoolean("push", false)
 
     val seed: Color = parseColor(theme.optString("seed", "#6E4BFF"), Color(0xFF6E4BFF))

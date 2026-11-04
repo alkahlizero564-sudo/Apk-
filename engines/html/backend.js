@@ -12,7 +12,8 @@
   const role = (C.app && C.app.role) || "single";
   const be = C.backend || { type: "none" };
   const prefix = be.prefix || String((C.app && C.app.slug) || "app").replace(/-/g, "_");
-  const needsAccount = be.auth === "email_password";
+  const needsAccount = be.auth === "email_password" || be.auth === "email_code";
+  const emailCode = be.auth === "email_code";
 
   function store(key, value) {
     try {
@@ -61,6 +62,8 @@
     return out;
   }
 
+  const NOT_CONFIRMED = "EMAIL_NOT_CONFIRMED";
+
   function seenAt() { return new Date(store("alpha_seen") || "2000-01-01T00:00:00Z"); }
 
   // ---------------- data on the phone ----------------
@@ -73,7 +76,9 @@
     };
     const rows = (t) => store("alpha_rows_" + t.name) || [];
     B.signIn = async () => {};
-    B.signUp = async (name) => store("alpha_name", name);
+    B.signUp = async (name) => { store("alpha_name", name); return false; };
+    B.verifyCode = async () => {};
+    B.resendCode = async () => {};
     B.signOut = async () => {};
     B.list = async (t) => rows(t).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
     B.insert = async (t, v) => {
@@ -109,7 +114,7 @@
       if (m.includes("invalid login")) return "البريد أو كلمة المرور غير صحيحة.";
       if (m.includes("already registered") || m.includes("already been registered")) return "هذا البريد مسجّل من قبل، سجّل الدخول.";
       if (m.includes("password should be")) return "كلمة المرور قصيرة (6 أحرف على الأقل).";
-      if (m.includes("email not confirmed")) return "أكّد بريدك أولاً من الرسالة التي وصلتك.";
+      if (m.includes("email not confirmed")) return NOT_CONFIRMED;
       if (m.includes("row-level security") || status === 403) return "ليست لديك صلاحية لهذه العملية.";
       return "خطأ من السيرفر (" + status + "): " + msg;
     }
@@ -168,15 +173,34 @@
       if (session) await profile();
     };
     B.signIn = async (email, password) => {
-      save(await call("/auth/v1/token?grant_type=password", { method: "POST", body: { email: email.trim(), password }, noRefresh: true }));
+      try {
+        save(await call("/auth/v1/token?grant_type=password", { method: "POST", body: { email: email.trim(), password }, noRefresh: true }));
+      } catch (e) {
+        if (e.message === NOT_CONFIRMED) { const n = new Error("أكّد بريدك أولاً بالرمز الذي وصلك."); n.needsCode = true; throw n; }
+        throw e;
+      }
       await profile();
     };
-    B.signUp = async (name, email, password) => {
-      const s = await call("/auth/v1/signup", { method: "POST", body: { email: email.trim(), password, data: { full_name: name.trim() } }, noRefresh: true });
-      if (!s.access_token) return B.signIn(email, password);
+    // Returns true when the email must be confirmed with the 6-digit code first.
+    B.signUp = async (name, phone, email, password) => {
+      const s = await call("/auth/v1/signup", { method: "POST", body: { email: email.trim(), password, data: { full_name: name.trim(), phone: (phone || "").trim() } }, noRefresh: true });
+      if (!s.access_token) {
+        if (emailCode) return true;
+        await B.signIn(email, password);
+        return false;
+      }
       save(s);
       await profile();
+      return false;
     };
+    B.verifyCode = async (email, code, password) => {
+      let s;
+      try {
+        s = await call("/auth/v1/verify", { method: "POST", body: { type: "signup", email: email.trim(), token: String(code).trim() }, noRefresh: true });
+      } catch (e) { throw new Error("الرمز غير صحيح أو انتهت صلاحيته. اطلب رمزاً جديداً."); }
+      if (s && s.access_token) { save(s); await profile(); } else await B.signIn(email, password);
+    };
+    B.resendCode = (email) => call("/auth/v1/resend", { method: "POST", body: { type: "signup", email: email.trim() }, noRefresh: true });
     B.signOut = async () => {
       try { await call("/auth/v1/logout", { method: "POST", body: {} }); } catch (e) {}
       session = null; store("alpha_session", null);
@@ -234,7 +258,7 @@
 
     function sync() {
       const u = auth.currentUser;
-      B.signedIn = !!u; B.userId = u ? u.uid : null; B.email = (u && u.email) || null;
+      B.signedIn = !!u && (!emailCode || u.isAnonymous || u.emailVerified); B.userId = u ? u.uid : null; B.email = (u && u.email) || null;
     }
 
     async function profile() {
@@ -281,13 +305,27 @@
       sync();
       if (auth.currentUser) await profile();
     });
-    B.signIn = wrap(async (email, pass) => { await auth.signInWithEmailAndPassword(email.trim(), pass); sync(); await profile(); });
-    B.signUp = wrap(async (name, email, pass) => {
+    B.confirmsWithLink = true;
+    B.signIn = async (email, pass) => {
+      await wrap(() => auth.signInWithEmailAndPassword(email.trim(), pass))();
+      if (emailCode && !auth.currentUser.emailVerified) { const n = new Error("أكّد بريدك أولاً من الرابط الذي وصلك."); n.needsCode = true; throw n; }
+      sync(); await profile();
+    };
+    B.signUp = wrap(async (name, phone, email, pass) => {
       const cred = await auth.createUserWithEmailAndPassword(email.trim(), pass);
       await cred.user.updateProfile({ displayName: name.trim() });
-      await col("profiles").doc(cred.user.uid).set({ email: email.trim().toLowerCase(), full_name: name.trim(), role: "customer", created_at: new Date().toISOString() });
+      await col("profiles").doc(cred.user.uid).set({ email: email.trim().toLowerCase(), full_name: name.trim(), phone: (phone || "").trim(), role: "customer", created_at: new Date().toISOString() });
+      if (emailCode) { await cred.user.sendEmailVerification(); return true; }
       sync(); await profile();
+      return false;
     });
+    B.verifyCode = async (email, code, pass) => {
+      if (!auth.currentUser) await wrap(() => auth.signInWithEmailAndPassword(email.trim(), pass))();
+      await auth.currentUser.reload();
+      if (!auth.currentUser.emailVerified) throw new Error("لم يتم التأكيد بعد: افتح الرابط في بريدك ثم اضغط «تحقق».");
+      sync(); await profile();
+    };
+    B.resendCode = wrap(async () => { if (auth.currentUser) await auth.currentUser.sendEmailVerification(); });
     B.signOut = wrap(async () => {
       await auth.signOut(); B.isAdmin = false;
       if (!needsAccount) { await auth.signInAnonymously(); }

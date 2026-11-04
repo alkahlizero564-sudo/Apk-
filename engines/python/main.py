@@ -3,7 +3,7 @@ from datetime import datetime
 
 import flet as ft
 
-from alpha_backend import BackendError, create_backend
+from alpha_backend import BackendError, NeedsConfirmation, create_backend
 from alpha_config import CONFIG
 
 ICONS = {
@@ -124,37 +124,78 @@ def main(page: ft.Page):
     def show_login():
         page.navigation_bar = None
         page.floating_action_button = None
-        mode = {"signup": False}
+        mode = {"value": "login"}  # login | signup | code
         name = ft.TextField(label="الاسم", prefix_icon=ft.Icons.PERSON_ROUNDED, border_radius=radius)
+        phone = ft.TextField(label="رقم الهاتف", prefix_icon=ft.Icons.PHONE_ROUNDED, keyboard_type=ft.KeyboardType.PHONE,
+                             rtl=False, border_radius=radius)
         email = ft.TextField(label="البريد الإلكتروني", prefix_icon=ft.Icons.ALTERNATE_EMAIL_ROUNDED,
                              keyboard_type=ft.KeyboardType.EMAIL, rtl=False, border_radius=radius)
         password = ft.TextField(label="كلمة المرور", prefix_icon=ft.Icons.KEY_ROUNDED, password=True,
                                 can_reveal_password=True, rtl=False, border_radius=radius)
+        code = ft.TextField(label="رمز التأكيد (6 أرقام)", keyboard_type=ft.KeyboardType.NUMBER, max_length=6,
+                            text_align=ft.TextAlign.CENTER, rtl=False, border_radius=radius)
+        hint = ft.Text("", text_align=ft.TextAlign.CENTER)
         go = ft.FilledButton(content="دخول", height=52, expand=True)
-        switch = ft.TextButton(content="ما عندي حساب؟ أنشئ واحداً", visible=role != "admin")
+        switch = ft.TextButton(content="ما عندي حساب؟ أنشئ واحداً")
+        resend = ft.TextButton(content="أرسل الرمز مرة أخرى")
+        back = ft.TextButton(content="رجوع لتسجيل الدخول")
 
         def redraw():
-            name.visible = mode["signup"]
-            go.content = "إنشاء الحساب" if mode["signup"] else "دخول"
-            switch.content = "عندي حساب، سجّل دخولي" if mode["signup"] else "ما عندي حساب؟ أنشئ واحداً"
+            m = mode["value"]
+            name.visible = phone.visible = m == "signup"
+            email.visible = password.visible = m != "code"
+            code.visible = hint.visible = resend.visible = back.visible = m == "code"
+            switch.visible = m != "code"
+            hint.value = f"أدخل الرمز الذي أرسلناه إلى {(email.value or '').strip()}"
+            go.content = {"signup": "إنشاء الحساب", "code": "تأكيد"}.get(m, "دخول")
+            switch.content = "عندي حساب، سجّل دخولي" if m == "signup" else "ما عندي حساب؟ أنشئ واحداً"
             page.update()
 
         def toggle(_):
-            mode["signup"] = not mode["signup"]
+            mode["value"] = "login" if mode["value"] == "signup" else "signup"
             redraw()
 
+        def to_login(_):
+            mode["value"] = "login"
+            redraw()
+
+        def do_resend(_):
+            try:
+                b.resend_code(email.value or "")
+                toast("أُرسل الرمز من جديد")
+            except BackendError as e:
+                toast(str(e), True)
+
         def submit(_):
-            if "@" not in (email.value or "") or len(password.value or "") < 6:
+            m = mode["value"]
+            if m == "code":
+                if not (code.value or "").strip().isdigit() or len((code.value or "").strip()) != 6:
+                    toast("اكتب الرمز من 6 أرقام", True)
+                    return
+            elif "@" not in (email.value or "") or len(password.value or "") < 6:
                 toast("اكتب بريداً صحيحاً وكلمة مرور من 6 أحرف", True)
+                return
+            elif m == "signup" and (len((name.value or "").strip()) < 2 or len((phone.value or "").strip()) < 7):
+                toast("اكتب الاسم ورقم الهاتف", True)
                 return
             go.disabled = True
             page.update()
             try:
-                if mode["signup"]:
-                    b.sign_up(name.value or "", email.value, password.value)
+                if m == "signup":
+                    if b.sign_up(name.value or "", phone.value or "", email.value, password.value):
+                        mode["value"] = "code"
+                        redraw()
+                        toast("أرسلنا رمز التأكيد إلى بريدك")
+                        return
+                elif m == "code":
+                    b.verify_code(email.value, code.value, password.value)
                 else:
                     b.sign_in(email.value, password.value)
                 show_home()
+            except NeedsConfirmation:
+                mode["value"] = "code"
+                redraw()
+                toast("أكّد بريدك أولاً: أدخل الرمز الذي وصلك")
             except BackendError as e:
                 toast(str(e), True)
             finally:
@@ -163,12 +204,37 @@ def main(page: ft.Page):
 
         go.on_click = submit
         switch.on_click = toggle
-        name.visible = False
+        resend.on_click = do_resend
+        back.on_click = to_login
         body.content = ft.ListView([
             hero(app.get("title", ""), "لوحة الإدارة" if role == "admin" else "مرحباً بك"),
-            ft.Container(padding=18, content=card(ft.Column([name, email, password, ft.Row([go]), switch], spacing=12), padding=20)),
+            ft.Container(padding=18, content=card(ft.Column([hint, name, phone, email, password, code, ft.Row([go]), switch, resend, back],
+                                                            spacing=12), padding=20)),
         ], expand=True)
-        page.update()
+        redraw()
+
+    def check_update():
+        """In-app updates: the build publishes each version at a public link; the browser downloads it."""
+        u = CONFIG.get("update") or {}
+        if not u.get("url") or not u.get("version"):
+            return
+        try:
+            import requests
+            j = requests.get(u["url"], params={"t": int(datetime.now().timestamp())}, timeout=15).json()
+        except Exception:
+            return
+        if not (int(j.get("version") or 0) > int(u["version"])) or not j.get("apk"):
+            return
+
+        def update(_):
+            page.pop_dialog()
+            page.run_task(ft.UrlLauncher().launch_url, j["apk"], mode=ft.LaunchMode.EXTERNAL_APPLICATION)
+            toast("يتم التحميل… افتح الملف عند انتهائه واضغط «تثبيت»")
+
+        page.show_dialog(ft.AlertDialog(
+            title=ft.Text("تحديث جديد"),
+            content=ft.Text(f"النسخة {j.get('name') or j['version']} جاهزة." + (f"\n\n{j['notes']}" if j.get("notes") else "")),
+            actions=[ft.TextButton(content="لاحقاً", on_click=lambda _: page.pop_dialog()), ft.FilledButton(content="حدّث الآن", on_click=update)]))
 
     # ---------------- tabs ----------------
     def home_view():
@@ -531,6 +597,7 @@ def main(page: ft.Page):
             show_login()
         else:
             show_home()
+        page.run_thread(check_update)
 
     page.add(ft.SafeArea(body, expand=True))
     start()
