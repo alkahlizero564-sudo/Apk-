@@ -22,7 +22,9 @@
   "type": "supabase",
   "prefix": "app_8950",
   "auth": "none",
-  "push": false
+  "push": false,
+  "url": "https://jvjtgzewumfecjdpekna.supabase.co",
+  "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2anRnemV3dW1mZWNqZHBla25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDYzMzcsImV4cCI6MjEwNzIyMjMzN30.1gck73ek8ErBtcF7xAtFM1TdvNim_1NzFVNej_mptBE"
  },
  "tables": [
   {
