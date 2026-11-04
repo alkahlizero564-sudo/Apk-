@@ -127,7 +127,8 @@ jobs:
             set -e
             cat "$RUNNER_TEMP/build.log"
             if [ "$STATUS" -eq 0 ]; then OK=1; break; fi
-            (cd "$GITHUB_WORKSPACE" && python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log") || break
+            R=0; (cd "$GITHUB_WORKSPACE" && python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log") || R=$?
+            if [ "$R" -ne 0 ] && [ "$R" -ne 3 ]; then break; fi
           done
           [ "$OK" -eq 1 ] || { echo "::error::The app has JavaScript errors"; exit 1; }
           npx cap init "$LABEL" "$PKG" --web-dir www
@@ -175,7 +176,8 @@ jobs:
             fi
             cat "$RUNNER_TEMP/build.log"
             if [ "$BAD" -eq 0 ]; then OK=1; break; fi
-            python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log" || break
+            R=0; python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log" || R=$?
+            if [ "$R" -ne 0 ] && [ "$R" -ne 3 ]; then break; fi
           done
           [ "$OK" -eq 1 ] || { echo "::error::The PHP code has errors"; exit 1; }
           (cd "$S" && zip -qr "$GITHUB_WORKSPACE/$APP-server.zip" .)
@@ -216,7 +218,8 @@ jobs:
             STATUS=${PIPESTATUS[0]}
             set -e
             if [ "$STATUS" -eq 0 ]; then OK=1; break; fi
-            python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log" || break
+            R=0; python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log" || R=$?
+            if [ "$R" -ne 0 ] && [ "$R" -ne 3 ]; then break; fi
           done
           [ "$OK" -eq 1 ] || { echo "::error::Flutter build failed"; exit 1; }
           cp "$P/build/app/outputs/flutter-apk/app-release.apk" "$APP.apk"
@@ -243,18 +246,19 @@ jobs:
             set +e
             (python -m py_compile "$P"/*.py && cd "$P" && \
               flet build apk --yes --skip-flutter-doctor --project app --product "$LABEL" --org com.alpha --bundle-id "$PKG" \
-                --build-number "$VERSION" --build-version "1.0.$VERSION" -o "$P/out" \
+                --build-number "$VERSION" --build-version "1.0.$VERSION" -o "$P/out" --arch arm64-v8a armeabi-v7a \
                 --android-permissions android.permission.INTERNET=true android.permission.ACCESS_NETWORK_STATE=true) 2>&1 | tee "$RUNNER_TEMP/build.log"
             STATUS=${PIPESTATUS[0]}
             set -e
             if [ "$STATUS" -eq 0 ] && ls "$P"/out/*.apk > /dev/null 2>&1; then OK=1; break; fi
-            python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log" || break
+            R=0; python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log" || R=$?
+            if [ "$R" -ne 0 ] && [ "$R" -ne 3 ]; then break; fi
           done
           [ "$OK" -eq 1 ] || { echo "::error::Python build failed"; exit 1; }
           cp "$(ls "$P"/out/*.apk | head -1)" "$APP.apk"
           if [ "${{ inputs.store }}" = "true" ]; then
             (cd "$P" && flet build aab --yes --skip-flutter-doctor --project app --product "$LABEL" --org com.alpha --bundle-id "$PKG" \
-              --build-number "$VERSION" --build-version "1.0.$VERSION" -o "$P/out_aab")
+              --build-number "$VERSION" --build-version "1.0.$VERSION" -o "$P/out_aab" --arch arm64-v8a armeabi-v7a)
             cp "$(ls "$P"/out_aab/*.aab | head -1)" "$APP.aab"
           fi
 
@@ -273,7 +277,8 @@ jobs:
             STATUS=${PIPESTATUS[0]}
             set -e
             if [ "$STATUS" -eq 0 ]; then OK=1; break; fi
-            python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log" || break
+            R=0; python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log" || R=$?
+            if [ "$R" -ne 0 ] && [ "$R" -ne 3 ]; then break; fi
           done
           [ "$OK" -eq 1 ] || { echo "::error::Kotlin build failed"; exit 1; }
           cp "$P/app/build/outputs/apk/release/app-release.apk" "$APP.apk"

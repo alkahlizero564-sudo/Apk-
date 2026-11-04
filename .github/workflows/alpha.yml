@@ -72,8 +72,11 @@ jobs:
     needs: [check, database]
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    concurrency: signing-${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -95,7 +98,10 @@ jobs:
         env:
           ALPHA_KEYSTORE_B64: ${{ secrets.ALPHA_KEYSTORE_B64 }}
           ALPHA_KEYSTORE_PASSWORD: ${{ secrets.ALPHA_KEYSTORE_PASSWORD }}
-        run: python factory/sign.py alpha.apk
+        run: |
+          # The repository's one permanent key (it may have been made by another job a moment ago).
+          git pull -q --rebase || true
+          python factory/sign.py alpha.apk
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -104,7 +110,8 @@ jobs:
           git config user.name "alpha-bot"
           git config user.email "alpha-bot@users.noreply.github.com"
           if [ -n "$(git status --porcelain signing)" ]; then
-            git add signing && git commit -m "Permanent signing key" && git pull --rebase && git push
+            git add signing && git commit -m "Permanent signing key"
+            for i in 1 2 3; do git push && break; sleep 5; git pull --rebase -q || { git rebase --abort; echo "::warning::another job saved a key first"; break; }; done
           fi
       - uses: actions/upload-artifact@v4
         with:
