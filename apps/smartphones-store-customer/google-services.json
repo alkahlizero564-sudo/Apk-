@@ -1,0 +1,105 @@
+{
+  "project_info": {
+    "project_number": "894001333803",
+    "project_id": "apk-map-a7005",
+    "storage_bucket": "apk-map-a7005.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:894001333803:android:b967bf1f51ec4f17ed4c6e",
+        "android_client_info": {
+          "package_name": "com.alpha.smartphones_store_customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJiJvgjmgE1X17sIjrY71uvReEDZFV41M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:894001333803:android:935866557667a905ed4c6e",
+        "android_client_info": {
+          "package_name": "com.generated.app_almadrar_admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJiJvgjmgE1X17sIjrY71uvReEDZFV41M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:894001333803:android:d6cb8bb41eece0beed4c6e",
+        "android_client_info": {
+          "package_name": "com.generated.app_almadrar_customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJiJvgjmgE1X17sIjrY71uvReEDZFV41M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:894001333803:android:9bd14630106f3593ed4c6e",
+        "android_client_info": {
+          "package_name": "com.myapps.app_bakeryadmina0ovz"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJiJvgjmgE1X17sIjrY71uvReEDZFV41M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:894001333803:android:618d4104ed7b72afed4c6e",
+        "android_client_info": {
+          "package_name": "com.myapps.app_bakerycustom0ovz"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJiJvgjmgE1X17sIjrY71uvReEDZFV41M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
