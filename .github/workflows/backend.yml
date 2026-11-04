@@ -1,0 +1,65 @@
+name: backend
+run-name: Server of ${{ inputs.base }}
+
+# Sets up the server of one Alpha project (projects/<base>/): Supabase tables, roles, row level security,
+# sign-in and push, or Firebase rules, sign-in and push. Then connects its apps and (optionally) builds them.
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Project folder under projects/"
+        required: true
+      build:
+        description: "true: build every app of the project afterwards"
+        required: false
+        default: "true"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency: backend-${{ inputs.base }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASE: ${{ inputs.base }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Tools
+        run: pip install -q google-auth requests
+      - name: Set up the server
+        run: |
+          if ! [[ "$BASE" =~ ^[a-z][a-z0-9-]*$ ]]; then echo "::error::bad project name"; exit 1; fi
+          python factory/backend_setup.py "$BASE"
+      - name: Save the connection in the apps
+        run: |
+          git config user.name "alpha-bot"
+          git config user.email "alpha-bot@users.noreply.github.com"
+          git add apps projects
+          git commit -m "Server of $BASE is ready" || echo "nothing changed"
+          for i in 1 2 3 4 5; do git pull --rebase -X theirs && git push && break; sleep $((i * 5)); done
+      - name: Build the apps
+        if: inputs.build == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for app in $(python -c "import json;print(' '.join(a['slug'] for a in json.load(open('projects/$BASE/project.json'))['apps']))"); do
+            echo "Building $app"
+            gh workflow run build.yml --ref "${GITHUB_REF_NAME}" -f app="$app" -f notes="Server connected"
+          done

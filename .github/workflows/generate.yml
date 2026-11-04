@@ -1,0 +1,57 @@
+name: generate
+run-name: AI code for ${{ inputs.app }}
+
+# Writes custom code for one app with AI (Claude or Gemini) on top of Alpha's engine, then builds it.
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "App folder under apps/"
+        required: true
+      request:
+        description: "What to build or change (Arabic or English)"
+        required: true
+      build:
+        description: "true: build the app afterwards"
+        required: false
+        default: "true"
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP: ${{ inputs.app }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
+      GEMINI_API_KEY_3: ${{ secrets.GEMINI_API_KEY_3 }}
+      AI_PROVIDER: ${{ vars.AI_PROVIDER }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Write the code
+        env:
+          REQUEST: ${{ inputs.request }}
+        run: |
+          if ! [[ "$APP" =~ ^[a-z][a-z0-9-]*$ ]]; then echo "::error::bad app name"; exit 1; fi
+          printf '%s' "$REQUEST" > "$RUNNER_TEMP/request.txt"
+          python factory/ai_code.py generate "$APP" "$RUNNER_TEMP/request.txt"
+      - name: Save
+        run: |
+          git config user.name "alpha-bot"
+          git config user.email "alpha-bot@users.noreply.github.com"
+          git add "apps/$APP/custom"
+          git commit -m "AI code for $APP" || echo "nothing changed"
+          for i in 1 2 3 4 5; do git pull --rebase -X theirs && git push && break; sleep $((i * 5)); done
+      - name: Build
+        if: inputs.build == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run build.yml --ref "${GITHUB_REF_NAME}" -f app="$APP" -f notes="AI: ${{ inputs.request }}"

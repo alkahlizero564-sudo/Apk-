@@ -1,0 +1,13 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  # The engines are the generated apps' code: each is analyzed in its own project by the build (and factory/selftest.py).
+  exclude:
+    - engines/**
+    - build/**
+    - android/**
+
+linter:
+  rules:
+    unnecessary_brace_in_string_interps: false
+    unintended_html_in_doc_comment: false

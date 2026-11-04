@@ -1,0 +1,25 @@
+# Alpha Flutter engine. factory/prepare.py adds the packages an app needs (Firebase only when it uses it).
+name: app
+description: "Made with Alpha"
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  http: ^1.6.0
+  shared_preferences: ^2.5.3
+  intl: any
+  url_launcher: ^6.3.1
+  #ALPHA_DEPS
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

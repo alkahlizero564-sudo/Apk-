@@ -1,0 +1,111 @@
+{
+  "_about": "Every library an Alpha app can use, per language, with versions checked to build together. The build workflow installs them, the AI is told to use only these, and the Alpha app shows them. One file: factory/libraries.json.",
+  "html": {
+    "runtime": "Capacitor 8 (Android SDK 36) + WebView",
+    "files": "vendor/<file> next to index.html (no internet needed)",
+    "packages": [
+      {"name": "chart.js", "version": "4.6.1", "files": {"chart.umd.js": "dist/chart.umd.js"}, "use": "رسوم بيانية", "tag": "<script src=\"vendor/chart.umd.js\"></script>"},
+      {"name": "alpinejs", "version": "3.17.5", "files": {"alpine.min.js": "dist/cdn.min.js"}, "use": "تفاعل خفيف داخل HTML", "tag": "<script defer src=\"vendor/alpine.min.js\"></script>"},
+      {"name": "@tailwindcss/browser", "version": "4.3.4", "files": {"tailwind.js": "dist/index.global.js"}, "use": "Tailwind CSS بدون بناء", "tag": "<script src=\"vendor/tailwind.js\"></script>"},
+      {"name": "bootstrap", "version": "5.3.8", "files": {"bootstrap.rtl.min.css": "dist/css/bootstrap.rtl.min.css", "bootstrap.bundle.min.js": "dist/js/bootstrap.bundle.min.js"}, "use": "واجهات جاهزة RTL", "tag": "<link rel=\"stylesheet\" href=\"vendor/bootstrap.rtl.min.css\"><script src=\"vendor/bootstrap.bundle.min.js\"></script>"},
+      {"name": "dayjs", "version": "1.11.23", "files": {"dayjs.min.js": "dayjs.min.js"}, "use": "تواريخ وأوقات", "tag": "<script src=\"vendor/dayjs.min.js\"></script>"},
+      {"name": "sweetalert2", "version": "11.26.25", "files": {"sweetalert2.all.min.js": "dist/sweetalert2.all.min.js"}, "use": "نوافذ تنبيه جميلة", "tag": "<script src=\"vendor/sweetalert2.all.min.js\"></script>"},
+      {"name": "swiper", "version": "14.4.0", "files": {"swiper-bundle.min.js": "swiper-bundle.min.js", "swiper-bundle.min.css": "swiper-bundle.min.css"}, "use": "سلايدر وصور متحركة", "tag": "<link rel=\"stylesheet\" href=\"vendor/swiper-bundle.min.css\"><script src=\"vendor/swiper-bundle.min.js\"></script>"},
+      {"name": "animate.css", "version": "4.1.1", "files": {"animate.min.css": "animate.min.css"}, "use": "حركات CSS", "tag": "<link rel=\"stylesheet\" href=\"vendor/animate.min.css\">"},
+      {"name": "leaflet", "version": "1.9.4", "files": {"leaflet.js": "dist/leaflet.js", "leaflet.css": "dist/leaflet.css"}, "use": "خرائط", "tag": "<link rel=\"stylesheet\" href=\"vendor/leaflet.css\"><script src=\"vendor/leaflet.js\"></script>"},
+      {"name": "lucide", "version": "1.68.0", "files": {"lucide.min.js": "dist/umd/lucide.min.js"}, "use": "أيقونات خطية", "tag": "<script src=\"vendor/lucide.min.js\"></script>"},
+      {"name": "html5-qrcode", "version": "2.3.8", "files": {"html5-qrcode.min.js": "html5-qrcode.min.js"}, "use": "قارئ QR بالكاميرا", "tag": "<script src=\"vendor/html5-qrcode.min.js\"></script>"},
+      {"name": "qrcodejs", "version": "1.0.0", "files": {"qrcode.min.js": "qrcode.min.js"}, "use": "توليد رمز QR", "tag": "<script src=\"vendor/qrcode.min.js\"></script>"},
+      {"name": "marked", "version": "18.1.3", "files": {"marked.js": "lib/marked.umd.js"}, "use": "عرض Markdown", "tag": "<script src=\"vendor/marked.js\"></script>"},
+      {"name": "jquery", "version": "4.0.0", "files": {"jquery.min.js": "dist/jquery.min.js"}, "use": "jQuery", "tag": "<script src=\"vendor/jquery.min.js\"></script>"},
+      {"name": "@supabase/supabase-js", "version": "2.119.0", "files": {"supabase.js": "dist/umd/supabase.js"}, "use": "Supabase الرسمي (Realtime)", "tag": "<script src=\"vendor/supabase.js\"></script>"},
+      {"name": "firebase", "version": "13.2.0", "files": {"firebase/firebase-app-compat.js": "firebase-app-compat.js", "firebase/firebase-auth-compat.js": "firebase-auth-compat.js", "firebase/firebase-firestore-compat.js": "firebase-firestore-compat.js", "firebase/firebase-messaging-compat.js": "firebase-messaging-compat.js"}, "use": "Firebase (Auth, Firestore)", "tag": "<script src=\"vendor/firebase/firebase-app-compat.js\"></script>"}
+    ]
+  },
+  "flutter": {
+    "runtime": "Flutter stable (3.47) · Dart 3.13 · Android SDK 36",
+    "files": "lib/*.dart; extra packages listed one per line in packages.txt",
+    "packages": [
+      {"name": "provider", "version": "^6.1.5+1", "use": "إدارة الحالة"},
+      {"name": "go_router", "version": "^18.1.2", "use": "التنقل بين الشاشات"},
+      {"name": "http", "version": "^1.6.0", "use": "طلبات الإنترنت"},
+      {"name": "dio", "version": "^5.11.1", "use": "طلبات إنترنت متقدمة"},
+      {"name": "shared_preferences", "version": "^2.5.6", "use": "حفظ إعدادات"},
+      {"name": "sqflite", "version": "^2.4.5", "use": "قاعدة SQLite على الجهاز"},
+      {"name": "hive", "version": "^2.2.3", "use": "تخزين سريع"},
+      {"name": "hive_flutter", "version": "^1.1.0", "use": "Hive مع Flutter"},
+      {"name": "path_provider", "version": "^2.1.6", "use": "مسارات الملفات"},
+      {"name": "intl", "version": "^0.20.3", "use": "تنسيق تواريخ وأرقام"},
+      {"name": "uuid", "version": "^4.6.0", "use": "معرّفات فريدة"},
+      {"name": "fl_chart", "version": "^1.3.0", "use": "رسوم بيانية"},
+      {"name": "flutter_animate", "version": "^4.5.2", "use": "حركات"},
+      {"name": "animations", "version": "^3.0.0", "use": "انتقالات Material"},
+      {"name": "lottie", "version": "^3.8.2", "use": "رسوم Lottie"},
+      {"name": "shimmer", "version": "^4.0.0", "use": "تأثير التحميل"},
+      {"name": "cached_network_image", "version": "^4.0.6", "use": "صور من الإنترنت مع كاش"},
+      {"name": "flutter_svg", "version": "^2.3.2", "use": "صور SVG"},
+      {"name": "carousel_slider", "version": "^5.1.2", "use": "سلايدر"},
+      {"name": "smooth_page_indicator", "version": "^3.0.0", "use": "مؤشر الصفحات"},
+      {"name": "percent_indicator", "version": "^4.2.5", "use": "مؤشرات نسبة"},
+      {"name": "flutter_rating_bar", "version": "^4.0.1", "use": "تقييم بالنجوم"},
+      {"name": "badges", "version": "^4.0.1", "use": "شارات"},
+      {"name": "table_calendar", "version": "^3.3.0", "use": "تقويم"},
+      {"name": "url_launcher", "version": "^6.3.3", "use": "فتح روابط واتصال وواتساب"},
+      {"name": "share_plus", "version": "^13.3.1", "use": "مشاركة"},
+      {"name": "connectivity_plus", "version": "^7.3.2", "use": "حالة الإنترنت"},
+      {"name": "image_picker", "version": "^1.2.4", "use": "الكاميرا والمعرض"},
+      {"name": "file_picker", "version": "^13.3.2", "use": "اختيار ملفات"},
+      {"name": "geolocator", "version": "^14.0.1", "use": "الموقع"},
+      {"name": "permission_handler", "version": "^13.0.2", "use": "الأذونات"},
+      {"name": "qr_flutter", "version": "^4.1.0", "use": "توليد QR"},
+      {"name": "mobile_scanner", "version": "^7.5.0", "use": "قارئ QR وباركود"},
+      {"name": "firebase_core", "version": "^5.1.0", "use": "Firebase"},
+      {"name": "firebase_messaging", "version": "^17.0.1", "use": "إشعارات FCM"},
+      {"name": "firebase_auth", "version": "^7.0.1", "use": "تسجيل دخول Firebase"},
+      {"name": "cloud_firestore", "version": "^7.1.0", "use": "قاعدة Firestore"}
+    ]
+  },
+  "python": {
+    "runtime": "Python 3.12 · Flet 1.0.5 (Flutter تحت الغطاء)",
+    "files": "main.py (+ other .py files); extra packages in requirements.txt",
+    "packages": [
+      {"name": "flet", "version": "1.0.5", "use": "الواجهات (Material 3)"},
+      {"name": "requests", "version": "2.32.5", "use": "طلبات الإنترنت"},
+      {"name": "python-dateutil", "version": "2.9.0.post0", "use": "تواريخ"},
+      {"name": "pytz", "version": "2025.2", "use": "مناطق زمنية"},
+      {"name": "arrow", "version": "1.3.0", "use": "تواريخ سهلة"},
+      {"name": "humanize", "version": "4.13.0", "use": "أرقام وأوقات مقروءة"},
+      {"name": "markdown", "version": "3.9", "use": "Markdown"}
+    ]
+  },
+  "kotlin": {
+    "runtime": "Kotlin 2.0 · Jetpack Compose (BOM 2024.12) · Gradle 8.14 · Android SDK 36",
+    "files": "*.kt in package app.main (MainActivity.kt + any other files)",
+    "packages": [
+      {"name": "androidx.compose.material3", "version": "BOM 2024.12.01", "use": "Material 3"},
+      {"name": "material-icons-extended", "version": "BOM", "use": "كل أيقونات Material"},
+      {"name": "androidx.navigation:navigation-compose", "version": "2.8.5", "use": "التنقل"},
+      {"name": "androidx.lifecycle (viewmodel/runtime compose)", "version": "2.8.7", "use": "ViewModel"},
+      {"name": "kotlinx-coroutines-android", "version": "1.9.0", "use": "مهام في الخلفية"},
+      {"name": "okhttp", "version": "4.12.0", "use": "طلبات الإنترنت"},
+      {"name": "org.json", "version": "Android", "use": "JSON"},
+      {"name": "coil-compose", "version": "2.7.0", "use": "صور من الإنترنت"},
+      {"name": "firebase-messaging", "version": "24.1.0", "use": "إشعارات FCM (عند تفعيلها)"}
+    ]
+  },
+  "php": {
+    "runtime": "PHP 8.3 (Apache) · PDO SQLite/MySQL/PostgreSQL · cURL · mbstring",
+    "files": "index.php, lib/*.php, assets/*; composer.json for the packages below",
+    "packages": [
+      {"name": "PDO (sqlite, mysql, pgsql)", "version": "built-in", "use": "قواعد البيانات"},
+      {"name": "curl", "version": "built-in", "use": "طلبات الإنترنت"},
+      {"name": "mbstring / intl", "version": "built-in", "use": "نصوص عربية"},
+      {"name": "guzzlehttp/guzzle", "version": "^7.10", "use": "HTTP client", "composer": true},
+      {"name": "phpmailer/phpmailer", "version": "^6.11", "use": "إرسال بريد", "composer": true},
+      {"name": "firebase/php-jwt", "version": "^6.11", "use": "JWT", "composer": true},
+      {"name": "nesbot/carbon", "version": "^3.10", "use": "تواريخ", "composer": true},
+      {"name": "ramsey/uuid", "version": "^4.9", "use": "معرّفات", "composer": true},
+      {"name": "vlucas/phpdotenv", "version": "^5.6", "use": "متغيرات البيئة", "composer": true}
+    ]
+  }
+}
