@@ -50,6 +50,7 @@ jobs:
       GEMINI_API_KEY_3: ${{ secrets.GEMINI_API_KEY_3 }}
       GEMINI_API_KEY_4: ${{ secrets.GEMINI_API_KEY_4 }}
       AI_PROVIDER: ${{ vars.AI_PROVIDER }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
       MAX_ATTEMPTS: "3"
       STORE: ${{ inputs.store }}
       UPDATES_REPO: ${{ vars.UPDATES_REPO }}

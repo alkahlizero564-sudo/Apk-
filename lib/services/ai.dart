@@ -8,9 +8,45 @@ import '../models/schema.dart';
 /// AI on the phone (Claude or Gemini, with the user's own keys): designs a database from a description.
 /// Writing app code with AI runs in GitHub Actions (generate.yml), where the build can fix it.
 class AiDesigner {
-  AiDesigner({required this.claudeKey, required this.geminiKeys});
+  AiDesigner({required this.claudeKey, required this.geminiKeys, this.geminiModel = defaultGeminiModel, this.geminiFirst = false});
+
+  static const defaultGeminiModel = 'gemini-3.8-flash';
   final String claudeKey;
   final List<String> geminiKeys;
+  final String geminiModel;
+
+  /// The owner chose Gemini as the main model (otherwise Claude is tried first when it has a key).
+  final bool geminiFirst;
+
+  /// Every Gemini model the key can use to write text (the picker in the settings).
+  static Future<List<({String id, String name, String description})>> listGeminiModels(String key) async {
+    final out = <({String id, String name, String description})>[];
+    var pageToken = '';
+    do {
+      final res = await http.get(
+          Uri.parse('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000${pageToken.isEmpty ? '' : '&pageToken=$pageToken'}'),
+          headers: {'x-goog-api-key': key}).timeout(const Duration(seconds: 30));
+      if (res.statusCode >= 300) {
+        throw Exception(res.statusCode == 400 || res.statusCode == 403 ? 'مفتاح Gemini غير صحيح' : 'Gemini (${res.statusCode})');
+      }
+      final j = (jsonDecode(utf8.decode(res.bodyBytes)) as Map).cast<String, dynamic>();
+      for (final m in (j['models'] as List? ?? const [])) {
+        final methods = ((m['supportedGenerationMethods'] as List?) ?? const []).map((e) => '$e');
+        if (!methods.contains('generateContent')) continue;
+        final id = '${m['name']}'.replaceFirst('models/', '');
+        if (id.contains('embedding') || id.contains('aqa') || id.contains('imagen') || id.contains('tts')) continue;
+        out.add((id: id, name: '${m['displayName'] ?? id}', description: '${m['description'] ?? ''}'));
+      }
+      pageToken = '${j['nextPageToken'] ?? ''}';
+    } while (pageToken.isNotEmpty);
+    // Newest and "pro" first, then by name.
+    int rank(String id) => (id.contains('pro') ? 0 : id.contains('flash-lite') ? 2 : 1);
+    out.sort((a, b) {
+      final r = rank(a.id).compareTo(rank(b.id));
+      return r != 0 ? r : b.id.compareTo(a.id);
+    });
+    return out;
+  }
 
   bool get available => claudeKey.isNotEmpty || geminiKeys.isNotEmpty;
 
@@ -33,7 +69,7 @@ class AiDesigner {
 
   Future<String> _gemini(String prompt, String geminiKey) async {
     final res = await http
-        .post(Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent'),
+        .post(Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$geminiModel:generateContent'),
             headers: {'x-goog-api-key': geminiKey, 'content-type': 'application/json'},
             body: jsonEncode({
               'contents': [
@@ -53,23 +89,36 @@ class AiDesigner {
 
   Future<String> ask(String prompt) async {
     Object? last;
-    if (claudeKey.isNotEmpty) {
+    Future<String?> tryClaude() async {
+      if (claudeKey.isEmpty) return null;
       try {
         return await _claude(prompt);
       } catch (e) {
         last = e;
+        return null;
       }
     }
-    // Each Gemini key in turn: a key out of quota does not stop the work.
-    for (final key in geminiKeys) {
-      try {
-        return await _gemini(prompt, key);
-      } catch (e) {
-        last = e;
+
+    Future<String?> tryGemini() async {
+      // Each Gemini key in turn: a key out of quota does not stop the work.
+      for (final key in geminiKeys) {
+        try {
+          return await _gemini(prompt, key);
+        } catch (e) {
+          last = e;
+        }
       }
+      return null;
+    }
+
+    final order = geminiFirst ? [tryGemini, tryClaude] : [tryClaude, tryGemini];
+    for (final attempt in order) {
+      final text = await attempt();
+      if (text != null) return text;
     }
     throw Exception(last == null ? 'أضف مفتاح Claude أو Gemini في الإعدادات.' : '$last');
   }
+
 
   Map<String, dynamic> _json(String text) {
     final start = text.indexOf('{');
