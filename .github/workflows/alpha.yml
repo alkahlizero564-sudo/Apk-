@@ -1,0 +1,119 @@
+name: alpha
+run-name: Alpha app ${{ github.event_name == 'push' && github.sha || 'manual' }}
+
+# Checks the Alpha app and the factory (engines, SQL, scripts), then builds Alpha's own APK.
+on:
+  push:
+    paths: ["lib/**", "test/**", "pubspec.yaml", "android/**", "assets/**", "engines/**", "factory/**", ".github/workflows/alpha.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Alpha app
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos
+          flutter test
+      - name: Engines and factory
+        run: |
+          pip install -q pillow "flet==1.0.5" requests
+          python -m py_compile factory/*.py engines/python/*.py
+          node --check engines/html/app.js && node --check engines/html/backend.js && node --check factory/check_html.js
+          for f in $(find engines/php -name '*.php'); do php -l "$f"; done
+          python factory/selftest.py
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Every preset's SQL runs twice on PostgreSQL, then the permissions test
+        run: |
+          flutter pub get > /dev/null
+          psql -v ON_ERROR_STOP=1 -q -f factory/test/supabase_stub.sql
+          for preset in store restaurant clinic booking school delivery expenses notes; do
+            dart tool/gen_sql.dart $preset demo_$preset owner@example.com > /tmp/$preset.sql
+            psql -v ON_ERROR_STOP=1 -q -f /tmp/$preset.sql
+            psql -v ON_ERROR_STOP=1 -q -f /tmp/$preset.sql
+            echo "$preset: OK"
+          done
+          psql -v ON_ERROR_STOP=1 -q -f factory/test/rls_test.sql
+
+  apk:
+    needs: [check, database]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    concurrency: signing-${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build Alpha
+        run: |
+          V=$(( ( $(date +%s) - 1704067200 ) / 60 ))
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+          flutter build apk --release --build-number "$V" --build-name "1.0.$V"
+          cp build/app/outputs/flutter-apk/app-release.apk alpha.apk
+      - name: Sign
+        env:
+          ALPHA_KEYSTORE_B64: ${{ secrets.ALPHA_KEYSTORE_B64 }}
+          ALPHA_KEYSTORE_PASSWORD: ${{ secrets.ALPHA_KEYSTORE_PASSWORD }}
+        run: |
+          # The repository's one permanent key (it may have been made by another job a moment ago).
+          git pull -q --rebase || true
+          python factory/sign.py alpha.apk
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "alpha-v$VERSION" alpha.apk --title "Alpha 1.0.$VERSION" --notes "Alpha app built from ${GITHUB_SHA::7}" --target "$GITHUB_SHA"
+          git config user.name "alpha-bot"
+          git config user.email "alpha-bot@users.noreply.github.com"
+          if [ -n "$(git status --porcelain signing)" ]; then
+            git add signing && git commit -m "Permanent signing key"
+            for i in 1 2 3; do git push && break; sleep 5; git pull --rebase -q || { git rebase --abort; echo "::warning::another job saved a key first"; break; }; done
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alpha-apk
+          path: alpha.apk

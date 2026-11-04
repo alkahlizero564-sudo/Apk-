@@ -1,0 +1,30 @@
+import 'package:flutter/material.dart';
+
+/// Table icons chosen in Alpha (same names in every language engine).
+IconData iconFor(String name) => switch (name) {
+      'shopping_bag' => Icons.shopping_bag_rounded,
+      'receipt' => Icons.receipt_long_rounded,
+      'star' => Icons.star_rounded,
+      'restaurant' => Icons.restaurant_rounded,
+      'delivery' => Icons.delivery_dining_rounded,
+      'medical' => Icons.medical_services_rounded,
+      'calendar' => Icons.calendar_month_rounded,
+      'event' => Icons.event_available_rounded,
+      'place' => Icons.place_rounded,
+      'school' => Icons.school_rounded,
+      'campaign' => Icons.campaign_rounded,
+      'book' => Icons.menu_book_rounded,
+      'chat' => Icons.chat_bubble_rounded,
+      'person' => Icons.person_rounded,
+      'wallet' => Icons.account_balance_wallet_rounded,
+      'checklist' => Icons.checklist_rounded,
+      'home' => Icons.home_rounded,
+      'settings' => Icons.settings_rounded,
+      'car' => Icons.directions_car_rounded,
+      'phone' => Icons.phone_rounded,
+      'photo' => Icons.photo_rounded,
+      'store' => Icons.storefront_rounded,
+      'work' => Icons.work_rounded,
+      'payments' => Icons.payments_rounded,
+      _ => Icons.view_list_rounded,
+    };

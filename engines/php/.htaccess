@@ -1,0 +1,5 @@
+Options -Indexes
+<FilesMatch "\.(sqlite|json|md)$">
+  Require all denied
+</FilesMatch>
+RedirectMatch 404 ^/(lib|data)/

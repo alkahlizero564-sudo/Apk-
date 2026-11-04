@@ -1,0 +1,151 @@
+{
+ "alpha": 1,
+ "project": "demo-flutter",
+ "lang": "flutter",
+ "app": {
+  "title": "متجر FLUTTER",
+  "slug": "demo-flutter",
+  "role": "single",
+  "rtl": true,
+  "package": "com.alpha.demo_flutter",
+  "headline": "متجر Alpha",
+  "subtitle": "تطبيق تجريبي بلغة flutter"
+ },
+ "theme": {
+  "preset": "custom",
+  "seed": "#6E4BFF",
+  "accent": "#2DD4BF",
+  "mode": "dark",
+  "style": "glass",
+  "radius": 18,
+  "layout": "tabs"
+ },
+ "backend": {
+  "type": "none",
+  "prefix": "demo_flutter",
+  "auth": "none",
+  "push": false
+ },
+ "tables": [
+  {
+   "name": "products",
+   "label": "المنتجات",
+   "icon": "shopping_bag",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "title",
+     "label": "اسم المنتج",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "price",
+     "label": "السعر",
+     "type": "decimal",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "image",
+     "label": "صورة",
+     "type": "image",
+     "show": true
+    },
+    {
+     "name": "category",
+     "label": "القسم",
+     "type": "choice",
+     "options": [
+      "عام",
+      "عروض",
+      "جديد"
+     ],
+     "default": "عام",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "customer",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "orders",
+   "label": "الطلبات",
+   "icon": "receipt",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "items",
+     "label": "المطلوب",
+     "type": "longtext",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "phone",
+     "label": "رقم الهاتف",
+     "type": "phone",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "day",
+     "label": "التاريخ",
+     "type": "date",
+     "default": "today",
+     "show": true
+    },
+    {
+     "name": "status",
+     "label": "الحالة",
+     "type": "choice",
+     "options": [
+      "جديد",
+      "قيد التجهيز",
+      "تم التسليم",
+      "ملغي"
+     ],
+     "default": "جديد",
+     "adminOnly": true,
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "admin",
+    "onUpdate": "owner"
+   },
+   "realtime": true
+  },
+  {
+   "name": "tasks",
+   "label": "المهام",
+   "icon": "checklist",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "title",
+     "label": "المهمة",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "done",
+     "label": "تمت",
+     "type": "bool",
+     "default": "false",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  }
+ ]
+}

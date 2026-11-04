@@ -1,0 +1,337 @@
+name: build
+run-name: Build ${{ inputs.app }}
+
+# Builds one app of apps/<app> (made in Alpha) in its language, checks it, lets the AI fix custom code,
+# signs it with the repository's permanent key and publishes the APK as a GitHub Release.
+on:
+  workflow_call:
+    inputs:
+      app:
+        type: string
+        required: true
+      store:
+        type: string
+        required: false
+        default: "false"
+      notes:
+        type: string
+        required: false
+        default: ""
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "App folder under apps/"
+        required: true
+      store:
+        description: "true: also build the Google Play file (.aab)"
+        required: false
+        default: "false"
+      notes:
+        description: "What changed (release notes)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ inputs.app }}-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      APP: ${{ inputs.app }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
+      GEMINI_API_KEY_3: ${{ secrets.GEMINI_API_KEY_3 }}
+      AI_PROVIDER: ${{ vars.AI_PROVIDER }}
+      MAX_ATTEMPTS: "3"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: App details
+        id: meta
+        run: |
+          if ! [[ "$APP" =~ ^[a-z][a-z0-9-]*$ ]]; then echo "::error::bad app name"; exit 1; fi
+          pip install -q pillow
+          python factory/prepare.py check "$APP"
+          for f in lang label package push server backend role; do
+            echo "$f=$(python factory/prepare.py meta "$APP" $f)" >> "$GITHUB_OUTPUT"
+          done
+          # Version code: minutes since 2024, always higher than the previous build.
+          V=$(( ( $(date +%s) - 1704067200 ) / 60 ))
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "### $APP: $(python factory/prepare.py meta "$APP" lang) app, version 1.0.$V" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ (steps.meta.outputs.lang == 'html' || steps.meta.outputs.lang == 'php') && '21' || '17' }}
+
+      - uses: actions/setup-node@v4
+        if: steps.meta.outputs.lang == 'html' || steps.meta.outputs.lang == 'php'
+        with:
+          node-version: 22
+
+      - uses: subosito/flutter-action@v2
+        if: steps.meta.outputs.lang == 'flutter'
+        with:
+          channel: stable
+          cache: true
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.meta.outputs.lang == 'kotlin'
+        with:
+          gradle-version: "8.14.3"
+
+      - uses: shivammathur/setup-php@v2
+        if: steps.meta.outputs.lang == 'php'
+        with:
+          php-version: "8.3"
+          extensions: pdo_sqlite, curl, mbstring, intl
+          tools: composer
+
+      # ---------------- HTML ----------------
+      - name: Build HTML app (Capacitor)
+        if: steps.meta.outputs.lang == 'html'
+        env:
+          LABEL: ${{ steps.meta.outputs.label }}
+          PKG: ${{ steps.meta.outputs.package }}
+          PUSH: ${{ steps.meta.outputs.push }}
+        run: |
+          set -e
+          W="$RUNNER_TEMP/wrap"; mkdir -p "$W" && cd "$W"
+          npm init -y > /dev/null
+          npm i --silent @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8 playwright-core@1.48.2 $(python "$GITHUB_WORKSPACE/factory/prepare.py" npm-list x)
+          python "$GITHUB_WORKSPACE/factory/prepare.py" vendor node_modules "$RUNNER_TEMP/vendor"
+          export ALPHA_VENDOR_DIR="$RUNNER_TEMP/vendor"
+          export NODE_PATH="$W/node_modules"
+          OK=0
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "=== Check attempt $i ==="
+            rm -rf www && python "$GITHUB_WORKSPACE/factory/prepare.py" project html "$APP" www
+            set +e
+            node "$GITHUB_WORKSPACE/factory/check_html.js" www > "$RUNNER_TEMP/build.log" 2>&1
+            STATUS=$?
+            set -e
+            cat "$RUNNER_TEMP/build.log"
+            if [ "$STATUS" -eq 0 ]; then OK=1; break; fi
+            R=0; (cd "$GITHUB_WORKSPACE" && python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log") || R=$?
+            if [ "$R" -ne 0 ] && [ "$R" -ne 3 ]; then break; fi
+          done
+          [ "$OK" -eq 1 ] || { echo "::error::The app has JavaScript errors"; exit 1; }
+          npx cap init "$LABEL" "$PKG" --web-dir www
+          if [ "$PUSH" = "true" ]; then npm i --silent @capacitor/push-notifications@8; fi
+          npx cap add android
+          if [ "$PUSH" = "true" ] && [ -f "$GITHUB_WORKSPACE/apps/$APP/google-services.json" ]; then
+            cp "$GITHUB_WORKSPACE/apps/$APP/google-services.json" android/app/google-services.json
+          fi
+          python "$GITHUB_WORKSPACE/factory/prepare.py" android "$APP" android/app/src/main android/app/build.gradle
+          npx cap sync android
+          (cd android && chmod +x gradlew && ./gradlew assembleRelease --no-daemon)
+          cp "$(ls android/app/build/outputs/apk/release/*.apk | head -1)" "$GITHUB_WORKSPACE/$APP.apk"
+          if [ "${{ inputs.store }}" = "true" ]; then
+            (cd android && ./gradlew bundleRelease --no-daemon)
+            cp android/app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/$APP.aab"
+          fi
+
+      # ---------------- PHP ----------------
+      - name: Build PHP app (server + Android app that opens it)
+        if: steps.meta.outputs.lang == 'php'
+        env:
+          LABEL: ${{ steps.meta.outputs.label }}
+          PKG: ${{ steps.meta.outputs.package }}
+          SERVER: ${{ steps.meta.outputs.server }}
+        run: |
+          set -e
+          S="$RUNNER_TEMP/server"
+          OK=0
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "=== Check attempt $i ==="
+            rm -rf "$S" && python factory/prepare.py project php "$APP" "$S"
+            : > "$RUNNER_TEMP/build.log"
+            BAD=0
+            while IFS= read -r f; do php -l "$f" >> "$RUNNER_TEMP/build.log" 2>&1 || BAD=1; done < <(find "$S" -name '*.php')
+            if [ -f "$S/composer.json" ]; then (cd "$S" && composer install --no-dev --no-interaction --quiet) || BAD=1; fi
+            if [ "$BAD" -eq 0 ]; then
+              (cd "$S" && ALPHA_DATA_DIR="$RUNNER_TEMP/phpdata" php -S 127.0.0.1:8090 > "$RUNNER_TEMP/php.log" 2>&1 &)
+              sleep 1
+              for page in "" "?p=me" "?p=notes"; do
+                CODE=$(curl -s -o "$RUNNER_TEMP/page.html" -w "%{http_code}" -c "$RUNNER_TEMP/cj" -b "$RUNNER_TEMP/cj" "http://127.0.0.1:8090/$page")
+                if [ "$CODE" -ge 500 ] || grep -qiE "Fatal error|Parse error|Uncaught" "$RUNNER_TEMP/page.html"; then BAD=1; cat "$RUNNER_TEMP/page.html" >> "$RUNNER_TEMP/build.log"; fi
+              done
+              pkill -f "php -S 127.0.0.1:8090" || true
+              cat "$RUNNER_TEMP/php.log" >> "$RUNNER_TEMP/build.log"
+            fi
+            cat "$RUNNER_TEMP/build.log"
+            if [ "$BAD" -eq 0 ]; then OK=1; break; fi
+            R=0; python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log" || R=$?
+            if [ "$R" -ne 0 ] && [ "$R" -ne 3 ]; then break; fi
+          done
+          [ "$OK" -eq 1 ] || { echo "::error::The PHP code has errors"; exit 1; }
+          (cd "$S" && zip -qr "$GITHUB_WORKSPACE/$APP-server.zip" .)
+          echo "Server files: $APP-server.zip (upload to any PHP host, or use the Dockerfile)"
+
+          W="$RUNNER_TEMP/wrap"; mkdir -p "$W/www" && cd "$W"
+          npm init -y > /dev/null
+          npm i --silent @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8
+          if [ -n "$SERVER" ]; then
+            printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=%s">' "$SERVER" > www/index.html
+            npx cap init "$LABEL" "$PKG" --web-dir www
+            node -e 'const f="capacitor.config.json";const c=JSON.parse(require("fs").readFileSync(f));c.server={url:process.argv[1],cleartext:process.argv[1].startsWith("http:")};require("fs").writeFileSync(f,JSON.stringify(c,null,2))' "$SERVER"
+          else
+            echo "::warning::No server address yet: the Android app shows how to set it. Put the address in Alpha > the project > الإعدادات and build again."
+            printf '<!doctype html><html dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;background:#0B0D16;color:#eee;padding:30px;text-align:center"><h2>%s</h2><p>ارفع ملفات السيرفر (%s-server.zip) على استضافة PHP، ثم ضع العنوان في Alpha وابنِ التطبيق مرة أخرى.</p></body></html>' "$LABEL" "$APP" > www/index.html
+            npx cap init "$LABEL" "$PKG" --web-dir www
+          fi
+          npx cap add android
+          python "$GITHUB_WORKSPACE/factory/prepare.py" android "$APP" android/app/src/main android/app/build.gradle
+          npx cap sync android
+          (cd android && chmod +x gradlew && ./gradlew assembleRelease --no-daemon)
+          cp "$(ls android/app/build/outputs/apk/release/*.apk | head -1)" "$GITHUB_WORKSPACE/$APP.apk"
+
+      # ---------------- Flutter ----------------
+      - name: Build Flutter app
+        if: steps.meta.outputs.lang == 'flutter'
+        run: |
+          set -e
+          P="$RUNNER_TEMP/flutter_app"
+          flutter create --platforms=android --org com.alpha --project-name app "$P" > /dev/null
+          OK=0
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "=== Build attempt $i ==="
+            python factory/prepare.py project flutter "$APP" "$P"
+            set +e
+            (cd "$P" && flutter pub get && flutter analyze --no-fatal-infos --no-fatal-warnings && \
+              flutter build apk --release --build-number "$VERSION" --build-name "1.0.$VERSION") 2>&1 | tee "$RUNNER_TEMP/build.log"
+            STATUS=${PIPESTATUS[0]}
+            set -e
+            if [ "$STATUS" -eq 0 ]; then OK=1; break; fi
+            R=0; python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log" || R=$?
+            if [ "$R" -ne 0 ] && [ "$R" -ne 3 ]; then break; fi
+          done
+          [ "$OK" -eq 1 ] || { echo "::error::Flutter build failed"; exit 1; }
+          cp "$P/build/app/outputs/flutter-apk/app-release.apk" "$APP.apk"
+          if [ "${{ inputs.store }}" = "true" ]; then
+            (cd "$P" && flutter build appbundle --release --build-number "$VERSION" --build-name "1.0.$VERSION")
+            cp "$P/build/app/outputs/bundle/release/app-release.aab" "$APP.aab"
+          fi
+
+      # ---------------- Python ----------------
+      - name: Build Python app (Flet)
+        if: steps.meta.outputs.lang == 'python'
+        env:
+          LABEL: ${{ steps.meta.outputs.label }}
+          PKG: ${{ steps.meta.outputs.package }}
+          FLET_CLI_NO_RICH_OUTPUT: "1"
+        run: |
+          set -e
+          pip install -q "flet==1.0.5" "flet-cli==1.0.5"
+          P="$RUNNER_TEMP/py_app"
+          OK=0
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "=== Build attempt $i ==="
+            rm -rf "$P" && python factory/prepare.py project python "$APP" "$P"
+            set +e
+            (python -m py_compile "$P"/*.py && cd "$P" && \
+              flet build apk --yes --skip-flutter-doctor --project app --product "$LABEL" --org com.alpha --bundle-id "$PKG" \
+                --build-number "$VERSION" --build-version "1.0.$VERSION" -o "$P/out" --arch arm64-v8a armeabi-v7a \
+                --android-permissions android.permission.INTERNET=true android.permission.ACCESS_NETWORK_STATE=true) 2>&1 | tee "$RUNNER_TEMP/build.log"
+            STATUS=${PIPESTATUS[0]}
+            set -e
+            if [ "$STATUS" -eq 0 ] && ls "$P"/out/*.apk > /dev/null 2>&1; then OK=1; break; fi
+            R=0; python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log" || R=$?
+            if [ "$R" -ne 0 ] && [ "$R" -ne 3 ]; then break; fi
+          done
+          [ "$OK" -eq 1 ] || { echo "::error::Python build failed"; exit 1; }
+          cp "$(ls "$P"/out/*.apk | head -1)" "$APP.apk"
+          if [ "${{ inputs.store }}" = "true" ]; then
+            (cd "$P" && flet build aab --yes --skip-flutter-doctor --project app --product "$LABEL" --org com.alpha --bundle-id "$PKG" \
+              --build-number "$VERSION" --build-version "1.0.$VERSION" -o "$P/out_aab" --arch arm64-v8a armeabi-v7a)
+            cp "$(ls "$P"/out_aab/*.aab | head -1)" "$APP.aab"
+          fi
+
+      # ---------------- Kotlin ----------------
+      - name: Build Kotlin app (Jetpack Compose)
+        if: steps.meta.outputs.lang == 'kotlin'
+        run: |
+          set -e
+          P="$RUNNER_TEMP/kotlin_app"
+          OK=0
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "=== Build attempt $i ==="
+            python factory/prepare.py project kotlin "$APP" "$P"
+            set +e
+            gradle -p "$P" :app:assembleRelease --console=plain 2>&1 | tee "$RUNNER_TEMP/build.log"
+            STATUS=${PIPESTATUS[0]}
+            set -e
+            if [ "$STATUS" -eq 0 ]; then OK=1; break; fi
+            R=0; python factory/ai_code.py fix "$APP" "$RUNNER_TEMP/build.log" || R=$?
+            if [ "$R" -ne 0 ] && [ "$R" -ne 3 ]; then break; fi
+          done
+          [ "$OK" -eq 1 ] || { echo "::error::Kotlin build failed"; exit 1; }
+          cp "$P/app/build/outputs/apk/release/app-release.apk" "$APP.apk"
+          if [ "${{ inputs.store }}" = "true" ]; then
+            gradle -p "$P" :app:bundleRelease --console=plain
+            cp "$P/app/build/outputs/bundle/release/app-release.aab" "$APP.aab"
+          fi
+
+      # ---------------- every language ----------------
+      - name: Sign with the permanent key
+        env:
+          ALPHA_KEYSTORE_B64: ${{ secrets.ALPHA_KEYSTORE_B64 }}
+          ALPHA_KEYSTORE_PASSWORD: ${{ secrets.ALPHA_KEYSTORE_PASSWORD }}
+        run: python factory/sign.py "$APP.apk" $( [ -f "$APP.aab" ] && echo "$APP.aab" )
+
+      - name: Save (fixed code, signing key, build info)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          TAG="$APP-v$VERSION"
+          FILES=("$APP.apk"); [ -f "$APP.aab" ] && FILES+=("$APP.aab"); [ -f "$APP-server.zip" ] && FILES+=("$APP-server.zip")
+          for i in 1 2 3 4 5; do
+            gh release create "$TAG" "${FILES[@]}" --title "$APP 1.0.$VERSION" --notes "${NOTES:-Built by Alpha}" && break
+            gh release view "$TAG" > /dev/null 2>&1 && gh release upload "$TAG" "${FILES[@]}" --clobber && break
+            sleep $((i * 5))
+          done
+          URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$APP.apk"
+          python - "$APP" "$VERSION" "$URL" "$TAG" <<'PY'
+          import json, sys, time
+          app, version, url, tag = sys.argv[1:5]
+          path = f"apps/{app}/build.json"
+          json.dump({"version": int(version), "name": f"1.0.{version}", "apk": url, "tag": tag,
+                     "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, open(path, "w"), indent=1)
+          PY
+          echo "APK: $URL" >> "$GITHUB_STEP_SUMMARY"
+          git config user.name "alpha-bot"
+          git config user.email "alpha-bot@users.noreply.github.com"
+          git add "apps/$APP" signing 2>/dev/null || true
+          git commit -m "Build $APP 1.0.$VERSION" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase -X theirs && git push && exit 0
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 5))
+          done
+          exit 1
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ inputs.app }}-build
+          path: |
+            ${{ inputs.app }}.apk
+            ${{ inputs.app }}.aab
+            ${{ inputs.app }}-server.zip
+          if-no-files-found: ignore
