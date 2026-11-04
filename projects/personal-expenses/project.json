@@ -1,0 +1,17 @@
+{
+ "base": "personal-expenses",
+ "prefix": "personal_expenses",
+ "lang": "html",
+ "backend": "none",
+ "auth": "none",
+ "push": false,
+ "admins": [],
+ "apps": [
+  {
+   "slug": "personal-expenses",
+   "role": "single",
+   "title": "مصروفاتي الشخصية",
+   "package": "com.alpha.personal_expenses"
+  }
+ ]
+}
