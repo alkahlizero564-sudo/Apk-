@@ -72,6 +72,9 @@ if __name__ == "__main__":
         print(__doc__)
         raise SystemExit(2)
     ks, pw, alias = keystore()
+    if sys.argv[1] == "--ensure":
+        print(f"Signing key ready: {ks}")
+        raise SystemExit(0)
     for f in sys.argv[1:]:
         if f.endswith(".apk"):
             sign_apk(f, ks, pw, alias)
