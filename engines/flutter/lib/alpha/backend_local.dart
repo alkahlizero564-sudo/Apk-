@@ -47,7 +47,10 @@ class LocalBackend extends Backend {
   @override
   Future<void> signIn(String email, String password) async {}
   @override
-  Future<void> signUp(String name, String email, String password) async => _prefs.setString('alpha_name', name);
+  Future<bool> signUp(String name, String phone, String email, String password) async {
+    await _prefs.setString('alpha_name', name);
+    return false;
+  }
   @override
   Future<void> signOut() async {}
 

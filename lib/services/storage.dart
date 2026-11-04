@@ -12,6 +12,17 @@ class Storage {
   static const githubToken = 'github_token';
   static const claudeKey = 'claude_key';
   static const geminiKey = 'gemini_key';
+
+  /// Up to four Gemini keys (phone storage name, repository secret name): when one runs out, the next is used.
+  static const geminiKeys = [
+    (local: 'gemini_key', secret: 'GEMINI_API_KEY'),
+    (local: 'gemini_key_2', secret: 'GEMINI_API_KEY_2'),
+    (local: 'gemini_key_3', secret: 'GEMINI_API_KEY_3'),
+    (local: 'gemini_key_4', secret: 'GEMINI_API_KEY_4'),
+  ];
+
+  static Future<List<String>> geminiKeyValues() async =>
+      [for (final k in geminiKeys) await secret(k.local)].where((v) => v.isNotEmpty).toList();
   static const supabaseToken = 'supabase_token';
   static const firebaseServiceAccount = 'firebase_sa';
 

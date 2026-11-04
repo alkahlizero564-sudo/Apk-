@@ -48,8 +48,11 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
       GEMINI_API_KEY_3: ${{ secrets.GEMINI_API_KEY_3 }}
+      GEMINI_API_KEY_4: ${{ secrets.GEMINI_API_KEY_4 }}
       AI_PROVIDER: ${{ vars.AI_PROVIDER }}
       MAX_ATTEMPTS: "3"
+      STORE: ${{ inputs.store }}
+      UPDATES_REPO: ${{ vars.UPDATES_REPO }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -298,6 +301,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           NOTES: ${{ inputs.notes }}
+          UPDATES_TOKEN: ${{ secrets.UPDATES_TOKEN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           TAG="$APP-v$VERSION"
           FILES=("$APP.apk"); [ -f "$APP.aab" ] && FILES+=("$APP.aab"); [ -f "$APP-server.zip" ] && FILES+=("$APP-server.zip")
@@ -307,6 +312,9 @@ jobs:
             sleep $((i * 5))
           done
           URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$APP.apk"
+          # Installed copies update from a public link (no GitHub account) and get an "update ready" push.
+          PUBLIC=$(python factory/publish_update.py "$APP" "$VERSION" "$APP.apk" "$NOTES" || true)
+          if [ -n "$PUBLIC" ]; then URL="$PUBLIC"; fi
           python - "$APP" "$VERSION" "$URL" "$TAG" <<'PY'
           import json, sys, time
           app, version, url, tag = sys.argv[1:5]

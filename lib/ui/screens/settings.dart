@@ -57,6 +57,24 @@ class SettingsScreen extends StatelessWidget {
             ok: s.hasFirebase,
             onTap: () => _sheet(context, const _FirebaseForm()),
           ),
+          _Item(
+            icon: Icons.mark_email_unread_rounded,
+            color: AlphaColors.pink,
+            title: 'البريد (رموز التأكيد)',
+            subtitle: 'خادم بريد SMTP لإرسال رمز تأكيد الحساب للعملاء (Gmail يعمل)',
+            ok: false,
+            onTap: () => _sheet(context, const _SmtpForm()),
+          ),
+          _Item(
+            icon: Icons.system_update_rounded,
+            color: AlphaColors.blue,
+            title: 'التحديثات والتثبيت',
+            subtitle: s.updatesRepo.isNotEmpty
+                ? 'التطبيقات المثبتة تتحدّث من ${s.updatesRepo}'
+                : 'لتصل التحديثات للتطبيقات المثبتة بدون حساب GitHub',
+            ok: s.updatesRepo.isNotEmpty,
+            onTap: () => _sheet(context, const _UpdatesForm()),
+          ),
           const SectionTitle('عن Alpha'),
           const GlassCard(
             child: Text(
@@ -199,27 +217,35 @@ class _AiForm extends StatefulWidget {
 
 class _AiFormState extends _FormState<_AiForm> {
   final _claude = TextEditingController();
-  final _gemini = TextEditingController();
+  final _gemini = List.generate(Storage.geminiKeys.length, (_) => TextEditingController());
 
   @override
   void initState() {
     super.initState();
     Storage.secret(Storage.claudeKey).then((t) => _claude.text = t);
-    Storage.secret(Storage.geminiKey).then((t) => _gemini.text = t);
+    for (var i = 0; i < Storage.geminiKeys.length; i++) {
+      Storage.secret(Storage.geminiKeys[i].local).then((t) => _gemini[i].text = t);
+    }
   }
 
   @override
   Widget build(BuildContext context) => frame(
         'الذكاء الاصطناعي',
-        'Claude (الأفضل للكود) أو Gemini (مجاني بحدود) أو الاثنين: إن نفد أحدهما يُستخدم الآخر تلقائياً.',
+        'Claude (الأفضل للكود) أو Gemini (مجاني بحدود) أو الاثنين. حتى 4 مفاتيح Gemini: إذا نفد مفتاح يُستخدم التالي، ثم Claude تلقائياً.',
         link: 'https://console.anthropic.com/settings/keys',
         linkLabel: 'مفتاح Claude',
         [
           TextField(controller: _claude, obscureText: true, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'Claude API key (sk-ant-…)')),
-          TextField(controller: _gemini, obscureText: true, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'Gemini API key (AIza…)')),
+          for (var i = 0; i < _gemini.length; i++)
+            TextField(
+              controller: _gemini[i],
+              obscureText: true,
+              textDirection: TextDirection.ltr,
+              decoration: InputDecoration(labelText: i == 0 ? 'Gemini API key (AIza…)' : 'Gemini API key ${i + 1} (اختياري)'),
+            ),
         ],
         onSave: () => run(() async {
-          final done = await context.read<AppState>().saveKeys(claude: _claude.text, gemini: _gemini.text);
+          final done = await context.read<AppState>().saveKeys(claude: _claude.text, gemini: [for (final c in _gemini) c.text]);
           return done.isEmpty ? 'حُفظ في الهاتف' : 'حُفظ في الهاتف وفي المستودع: ${done.join('، ')}';
         }),
       );
@@ -315,4 +341,74 @@ class _FirebaseFormState extends _FormState<_FirebaseForm> {
           return done.isEmpty ? 'حُفظ في الهاتف' : 'حُفظ: ${done.join('، ')}';
         }),
       );
+}
+
+class _SmtpForm extends StatefulWidget {
+  const _SmtpForm();
+  @override
+  State<_SmtpForm> createState() => _SmtpFormState();
+}
+
+class _SmtpFormState extends _FormState<_SmtpForm> {
+  final _host = TextEditingController(text: 'smtp.gmail.com');
+  final _port = TextEditingController(text: '587');
+  final _user = TextEditingController();
+  final _pass = TextEditingController();
+  final _name = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) => frame(
+        'البريد (رموز التأكيد)',
+        'عند اختيار «بريد + رمز تأكيد» يرسل Supabase رمزاً من 6 أرقام إلى بريد العميل عبر هذا الخادم. '
+            'مع Gmail: فعّل التحقق بخطوتين ثم أنشئ «كلمة مرور تطبيق» وضعها هنا (ليست كلمة مرور حسابك). '
+            'يُحفظ مشفّراً في المستودع ويُطبَّق عند «تجهيز السيرفر».',
+        link: 'https://myaccount.google.com/apppasswords',
+        linkLabel: 'كلمة مرور تطبيق Gmail',
+        [
+          TextField(controller: _host, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'SMTP host')),
+          TextField(controller: _port, textDirection: TextDirection.ltr, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Port (587 أو 465)')),
+          TextField(controller: _user, textDirection: TextDirection.ltr, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'البريد المرسِل')),
+          TextField(controller: _pass, obscureText: true, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'كلمة مرور التطبيق')),
+          TextField(controller: _name, decoration: const InputDecoration(labelText: 'اسم المرسِل (يظهر للعميل)')),
+        ],
+        onSave: () => run(() async {
+          if (_user.text.trim().isEmpty || _pass.text.trim().isEmpty) throw Exception('اكتب البريد وكلمة مرور التطبيق');
+          await context.read<AppState>().saveSmtp({
+            'host': _host.text.trim(),
+            'port': _port.text.trim(),
+            'user': _user.text.trim(),
+            'pass': _pass.text.trim(),
+            'from': _user.text.trim(),
+            'name': _name.text.trim().isEmpty ? 'Alpha' : _name.text.trim(),
+          });
+          return 'حُفظ. اضغط «تجهيز السيرفر» في المشروع ليُطبَّق';
+        }),
+      );
+}
+
+class _UpdatesForm extends StatefulWidget {
+  const _UpdatesForm();
+  @override
+  State<_UpdatesForm> createState() => _UpdatesFormState();
+}
+
+class _UpdatesFormState extends _FormState<_UpdatesForm> {
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+    return frame(
+      'التحديثات والتثبيت',
+      'مستودعك خاص (للحماية)، لذلك ينشئ Alpha مستودعاً عاماً صغيراً لا يحتوي أي كود، فقط ملفات APK وأرقام النسخ. '
+          'منه تتحدّث التطبيقات المثبتة على هواتف عملائك: عند كل بناء جديد يظهر لهم «تحديث جديد» ويُثبَّت من داخل التطبيق بدون GitHub، '
+          'ومع Supabase يصلهم إشعار Push حتى والتطبيق مغلق. '
+          'أنت تثبّت تطبيقاتك من داخل Alpha بزر «تثبيت» مباشرة.\n\nالتوكن يحتاج صلاحية إنشاء مستودعات (repo).',
+      [
+        if (s.updatesRepo.isNotEmpty) GlassCard(child: Text('مفعّل: ${s.updatesRepo}', style: const TextStyle(fontWeight: FontWeight.w700))),
+      ],
+      onSave: () => run(() async {
+        final repo = await context.read<AppState>().createUpdatesRepo();
+        return 'جاهز: $repo. التطبيقات التي تُبنى من الآن تتحدّث تلقائياً';
+      }),
+    );
+  }
 }

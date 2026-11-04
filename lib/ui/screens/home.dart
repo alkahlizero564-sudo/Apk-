@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../app/state.dart';
 import '../../app/theme.dart';
 import '../../models/project.dart';
+import '../install_sheet.dart';
 import '../widgets.dart';
 import 'project.dart';
 import 'wizard.dart';
@@ -44,6 +45,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             if (!s.hasGitHub) _SetupCard(onOpenSettings: onOpenSettings),
+            if (s.alphaUpdate != null) AlphaUpdateCard(version: s.alphaUpdate!),
             GlassCard(
               gradient: LinearGradient(colors: [AlphaColors.violet.withValues(alpha: 0.35), AlphaColors.teal.withValues(alpha: 0.18)]),
               padding: const EdgeInsets.all(20),

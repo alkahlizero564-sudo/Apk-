@@ -16,6 +16,8 @@ dependencies:
   shared_preferences: ^2.5.3
   intl: any
   url_launcher: ^6.3.1
+  open_filex: ^5.0.0
+  path_provider: ^2.1.6
   #ALPHA_DEPS
 
 dev_dependencies:

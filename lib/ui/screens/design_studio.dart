@@ -7,6 +7,7 @@ import '../../generator/presets.dart';
 import '../../models/project.dart';
 import '../../models/schema.dart';
 import '../widgets.dart';
+import 'preview.dart';
 
 const _swatches = [
   '#6E4BFF', '#7C3AED', '#4F46E5', '#2563EB', '#0EA5E9', '#06B6D4', '#14B8A6', '#10B981', '#22C55E', '#84CC16',
@@ -180,6 +181,18 @@ class _DesignStudioScreenState extends State<DesignStudioScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
             children: [
+              OutlinedButton.icon(
+                onPressed: () {
+                  final draft = Project.fromJson(p.toJson())
+                    ..theme = _theme
+                    ..headline = _headline.text.trim()
+                    ..subtitle = _subtitle.text.trim();
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => PreviewScreen(project: draft)));
+                },
+                icon: const Icon(Icons.play_circle_rounded, color: AlphaColors.teal),
+                label: const Text('معاينة فورية للتصميم'),
+              ),
+              const SizedBox(height: 12),
               DesignEditor(theme: _theme, title: p.title, schema: p.schema, pair: p.isPair, onChanged: (t) => setState(() => _theme = t)),
               const SectionTitle('نصوص الواجهة الرئيسية'),
               TextField(controller: _headline, decoration: const InputDecoration(labelText: 'العنوان الكبير (اختياري)')),

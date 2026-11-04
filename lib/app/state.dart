@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../generator/app_files.dart';
+import '../generator/custom_code.dart';
 import '../models/project.dart';
 import '../services/ai.dart';
 import '../services/github.dart';
+import '../services/installer.dart';
 import '../services/storage.dart';
 import '../services/supabase_admin.dart';
 
@@ -39,15 +42,22 @@ class AppState extends ChangeNotifier {
   bool loading = true;
   String? error;
 
+  /// This Alpha's version code (set by the build with --dart-define) and a newer one found in the releases.
+  static const alphaVersion = int.fromEnvironment('ALPHA_VERSION');
+  String? alphaUpdate;
+  String updatesRepo = '';
+
   Future<void> load() async {
     projects = await Storage.projects();
     repo = await Storage.get('repo', defaultRepo);
     branch = await Storage.get('branch');
     supabaseRef = await Storage.get('supabase_ref');
+    updatesRepo = await Storage.get('updates_repo');
     await _refreshFlags();
     loading = false;
     notifyListeners();
     if (hasGitHub) {
+      checkAlphaUpdate();
       try {
         await refreshRemote();
       } catch (e) {
@@ -59,7 +69,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> _refreshFlags() async {
     hasGitHub = (await Storage.secret(Storage.githubToken)).isNotEmpty;
-    hasAi = (await Storage.secret(Storage.claudeKey)).isNotEmpty || (await Storage.secret(Storage.geminiKey)).isNotEmpty;
+    hasAi = (await Storage.secret(Storage.claudeKey)).isNotEmpty || (await Storage.geminiKeyValues()).isNotEmpty;
     hasSupabase = (await Storage.secret(Storage.supabaseToken)).isNotEmpty;
     hasFirebase = (await Storage.secret(Storage.firebaseServiceAccount)).isNotEmpty;
   }
@@ -78,8 +88,58 @@ class AppState extends ChangeNotifier {
     return branch;
   }
 
+  Future<Installer> installer() async {
+    final token = await Storage.secret(Storage.githubToken);
+    if (token.isEmpty) throw GitHubError('أضف توكن GitHub في الإعدادات أولاً.');
+    return Installer(token, repo);
+  }
+
+  /// Is a newer Alpha published? Shows the update card on the home screen.
+  Future<void> checkAlphaUpdate() async {
+    try {
+      final rel = await (await installer()).latest('alpha-v');
+      final v = int.tryParse('${rel?['tag_name'] ?? ''}'.replaceFirst('alpha-v', '')) ?? 0;
+      alphaUpdate = alphaVersion > 0 && v > alphaVersion ? '1.0.$v' : null;
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Saves the picked picture as the icon of an app (apps/<slug>/icon.png); the next build uses it.
+  Future<void> setIcon(Project p, AppUnit app, List<int> png) async {
+    final gh = await github();
+    await gh.commit(await _branch(gh), 'Alpha: icon of ${app.title}', {'apps/${app.slug}/icon.png': 'base64:${base64.encode(png)}'});
+  }
+
+  /// The icon saved for an app, if any.
+  Future<List<int>?> icon(AppUnit app) async {
+    final gh = await github();
+    return gh.fileBytes('apps/${app.slug}/icon.png', ref: await _branch(gh));
+  }
+
+  /// A public repository that only holds the built apps, so installed apps download their updates without a
+  /// GitHub account (this repository stays private). The build publishes every new version there.
+  Future<String> createUpdatesRepo() async {
+    final gh = await github();
+    final token = await Storage.secret(Storage.githubToken);
+    final name = '${repo.split('/').last}-updates';
+    final full = await gh.createPublicRepo(name, 'Built apps and their updates (made by Alpha). No source code.');
+    await gh.setVariable('UPDATES_REPO', full);
+    await gh.setSecret('UPDATES_TOKEN', token);
+    updatesRepo = full;
+    await Storage.set('updates_repo', full);
+    notifyListeners();
+    return full;
+  }
+
+  /// Mail server for the sign-up confirmation codes (Supabase sends them through it).
+  Future<void> saveSmtp(Map<String, String> smtp) async {
+    final gh = await github();
+    await gh.setSecret('SUPABASE_SMTP', jsonEncode(smtp));
+    await Storage.set('smtp_host', smtp['host'] ?? '');
+  }
+
   Future<AiDesigner> ai() async =>
-      AiDesigner(claudeKey: await Storage.secret(Storage.claudeKey), geminiKey: await Storage.secret(Storage.geminiKey));
+      AiDesigner(claudeKey: await Storage.secret(Storage.claudeKey), geminiKeys: await Storage.geminiKeyValues());
 
   // ---------------- settings ----------------
 
@@ -101,7 +161,7 @@ class AppState extends ChangeNotifier {
   /// Saves the keys on the phone and as repository secrets (encrypted), where the workflows read them.
   Future<List<String>> saveKeys({
     String? claude,
-    String? gemini,
+    List<String>? gemini,
     String? supabaseToken,
     String? supabaseProjectRef,
     String? firebaseJson,
@@ -124,7 +184,17 @@ class AppState extends ChangeNotifier {
       }
     }
     await put(Storage.claudeKey, claude, 'ANTHROPIC_API_KEY');
-    await put(Storage.geminiKey, gemini, 'GEMINI_API_KEY');
+    if (gemini != null) {
+      for (var i = 0; i < Storage.geminiKeys.length; i++) {
+        final k = Storage.geminiKeys[i];
+        final value = i < gemini.length ? gemini[i] : '';
+        if (value.trim().isEmpty && gh != null && (await Storage.secret(k.local)).isNotEmpty) {
+          // A field that was emptied: remove the old key from the repository too.
+          await gh.deleteSecret(k.secret);
+        }
+        await put(k.local, value, k.secret);
+      }
+    }
     await put(Storage.supabaseToken, supabaseToken, 'SUPABASE_ACCESS_TOKEN');
     await put(Storage.firebaseServiceAccount, firebaseJson, 'FIREBASE_SERVICE_ACCOUNT');
     if (supabaseProjectRef != null) {
@@ -176,7 +246,13 @@ class AppState extends ChangeNotifier {
         }
       } catch (_) {}
     }
-    await gh.commit(b, message.isEmpty ? 'Alpha: ${p.title}' : message, projectFiles(p, connections: connections));
+    final files = projectFiles(p, connections: connections);
+    if (p.customCode.trim().isNotEmpty && p.apps.isNotEmpty) {
+      // Pasted code is the app's own code (the customer app of a pair); the build checks and fixes it.
+      final libs = parseLibraries(await rootBundle.loadString('factory/libraries.json'));
+      files.addAll(customFiles(p.apps.first.slug, p.lang, p.customCode, libs));
+    }
+    await gh.commit(b, message.isEmpty ? 'Alpha: ${p.title}' : message, files);
   }
 
   Future<void> remove(Project p, {bool fromRepo = false}) async {
@@ -248,7 +324,7 @@ class AppState extends ChangeNotifier {
     if (token.isEmpty || ref.isEmpty) throw Exception('أضف توكن Supabase ومعرّف المشروع في الإعدادات.');
     final admin = SupabaseAdmin(token);
     await admin.sql(ref, projectSql(p));
-    await admin.configureAuth(ref, anonymous: p.auth == AuthMode.none);
+    await admin.configureAuth(ref, mode: p.auth.id);
     final key = await admin.anonKey(ref);
     p.supabaseUrl = 'https://$ref.supabase.co';
     if (key != null) p.supabaseAnonKey = key;

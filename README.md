@@ -63,7 +63,7 @@ Alpha (على هاتفك)                    هذا المستودع (GitHub)   
 
 1. ثبّت Alpha (من الإصدارات: `alpha-v…`).
 2. **الإعدادات > GitHub**: توكن بصلاحيات repo و workflow، والمستودع (هذا المستودع).
-3. اختياري: **الذكاء الاصطناعي** (Claude / Gemini)، **Supabase** (Access Token + اختيار المشروع)،
+3. اختياري: **الذكاء الاصطناعي** (Claude، وحتى 4 مفاتيح Gemini تُستخدم بالتناوب)، **Supabase** (Access Token + اختيار المشروع)،
    **Firebase** (Service Account JSON). Alpha يحفظها مشفّرة كـ Secrets في المستودع.
 
 ## هيكل المستودع

@@ -1,5 +1,5 @@
 """One client for the AI models Alpha uses in GitHub Actions: Claude (ANTHROPIC_API_KEY) and Gemini
-(GEMINI_API_KEY, _2, _3). Tries the chosen provider first, then the other one, rotating keys and models on
+(GEMINI_API_KEY, _2, _3, _4). Tries the chosen provider first, then the other one, rotating keys and models on
 quota errors, so a build keeps going when one key runs out.
 
     from ai import ask
@@ -53,7 +53,7 @@ def _gemini(model, key, prompt, system, max_tokens):
 def providers():
     out = []
     claude_keys = [k for k in [os.environ.get("ANTHROPIC_API_KEY")] if k]
-    gemini_keys = [os.environ.get(n) for n in ("GEMINI_API_KEY", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3")]
+    gemini_keys = [os.environ.get(n) for n in ("GEMINI_API_KEY", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3", "GEMINI_API_KEY_4")]
     gemini_keys = [k for k in gemini_keys if k]
     if claude_keys:
         out.append(("claude", _claude, CLAUDE_MODELS, claude_keys))

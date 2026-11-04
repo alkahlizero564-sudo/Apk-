@@ -92,7 +92,7 @@ jobs:
         run: |
           V=$(( ( $(date +%s) - 1704067200 ) / 60 ))
           echo "VERSION=$V" >> "$GITHUB_ENV"
-          flutter build apk --release --build-number "$V" --build-name "1.0.$V"
+          flutter build apk --release --build-number "$V" --build-name "1.0.$V" --dart-define=ALPHA_VERSION=$V
           cp build/app/outputs/flutter-apk/app-release.apk alpha.apk
       - name: Sign
         env:

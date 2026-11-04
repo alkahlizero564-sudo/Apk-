@@ -123,19 +123,31 @@ function render_error(array $C, string $message): void
         '<br><br><a class="btn sm" href="?">إعادة المحاولة</a></div></div></body></html>';
 }
 
-function render_login(array $C, Backend $B, bool $signup): void
+function render_login(array $C, Backend $B, string $mode): void
 {
     $role = $B->role;
+    $signup = $mode === 'signup';
+    $code = $mode === 'code' && !empty($_SESSION['pending']);
+    $sub = $code ? 'تأكيد البريد الإلكتروني' : ($signup ? 'أنشئ حسابك' : ($role === 'admin' ? 'لوحة الإدارة' : 'مرحباً بعودتك'));
+    $hidden = fn(string $action, string $back) => '<input type="hidden" name="csrf" value="' . e(csrf()) . '"><input type="hidden" name="action" value="' . $action . '"><input type="hidden" name="back" value="' . $back . '">';
     echo head($C) . '<div class="login"><div class="hero"><div class="avatar" style="margin:0 auto 12px;background:rgba(255,255,255,.2)">' . icon($role === 'admin' ? 'lock' : 'person', 30) .
-        '</div><h1>' . e($C['app']['title'] ?? '') . '</h1><p>' . ($role === 'admin' ? 'لوحة الإدارة' : ($signup ? 'أنشئ حسابك' : 'مرحباً بعودتك')) . '</p></div>' .
-        '<form class="card" method="post"><input type="hidden" name="csrf" value="' . e(csrf()) . '"><input type="hidden" name="action" value="' . ($signup ? 'signup' : 'login') . '">' .
-        '<input type="hidden" name="back" value="?' . ($signup ? 'mode=signup' : '') . '">' .
-        ($signup ? '<label class="lbl">الاسم</label><input class="input" name="name" required minlength="2">' : '') .
-        '<label class="lbl">البريد الإلكتروني</label><input class="input ltr" type="email" name="email" required>' .
-        '<label class="lbl">كلمة المرور</label><input class="input ltr" type="password" name="password" required minlength="6">' .
-        '<button class="btn">' . ($signup ? 'إنشاء الحساب' : 'دخول') . '</button>' .
-        ($role !== 'admin' ? '<a class="linkbtn" style="display:block;text-align:center" href="?' . ($signup ? '' : 'mode=signup') . '">' . ($signup ? 'عندي حساب، سجّل دخولي' : 'ما عندي حساب؟ أنشئ واحداً') . '</a>' : '') .
-        '</form></div>' . flash() . '</body></html>';
+        '</div><h1>' . e($C['app']['title'] ?? '') . '</h1><p>' . $sub . '</p></div>';
+    if ($code) {
+        echo '<form class="card" method="post">' . $hidden('verify', '?mode=code') .
+            '<p style="text-align:center;line-height:1.8">أدخل الرمز المكوّن من 6 أرقام الذي أرسلناه إلى <b>' . e($_SESSION['pending']['email']) . '</b></p>' .
+            '<input class="input ltr" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="••••••" style="text-align:center;font-size:26px;letter-spacing:10px;font-weight:800">' .
+            '<button class="btn">تأكيد</button></form><form method="post" style="margin:0 18px">' . $hidden('resend', '?mode=code') .
+            '<button class="linkbtn">أرسل الرمز مرة أخرى</button></form><a class="linkbtn" style="display:block;text-align:center" href="?">رجوع لتسجيل الدخول</a>';
+    } else {
+        echo '<form class="card" method="post">' . $hidden($signup ? 'signup' : 'login', '?' . ($signup ? 'mode=signup' : '')) .
+            ($signup ? '<label class="lbl">الاسم</label><input class="input" name="name" required minlength="2">' .
+                '<label class="lbl">رقم الهاتف</label><input class="input ltr" type="tel" name="phone" required pattern="[+0-9 ()-]{7,20}">' : '') .
+            '<label class="lbl">البريد الإلكتروني</label><input class="input ltr" type="email" name="email" required>' .
+            '<label class="lbl">كلمة المرور</label><input class="input ltr" type="password" name="password" required minlength="6">' .
+            '<button class="btn">' . ($signup ? 'إنشاء الحساب' : 'دخول') . '</button>' .
+            '<a class="linkbtn" style="display:block;text-align:center" href="?' . ($signup ? '' : 'mode=signup') . '">' . ($signup ? 'عندي حساب، سجّل دخولي' : 'ما عندي حساب؟ أنشئ واحداً') . '</a></form>';
+    }
+    echo '</div>' . flash() . '</body></html>';
 }
 
 function render_layout(array $C, Backend $B, string $current, string $title, string $body, bool $nav = true): void

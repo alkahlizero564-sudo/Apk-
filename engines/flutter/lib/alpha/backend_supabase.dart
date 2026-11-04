@@ -130,29 +130,59 @@ class SupabaseBackend extends Backend {
     final res = await http.post(Uri.parse('$_url/auth/v1/token?grant_type=password'),
         headers: {'apikey': _key, 'Content-Type': 'application/json'},
         body: jsonEncode({'email': email.trim(), 'password': password}));
-    if (res.statusCode >= 300) throw BackendError(_explain(res));
+    if (res.statusCode >= 300) {
+      if (res.body.toLowerCase().contains('email not confirmed')) throw NeedsConfirmation(email.trim());
+      throw BackendError(_explain(res));
+    }
     await _saveSession(jsonDecode(res.body) as Map<String, dynamic>);
     await _loadProfile();
   }
 
   @override
-  Future<void> signUp(String name, String email, String password) async {
+  Future<bool> signUp(String name, String phone, String email, String password) async {
     final res = await http.post(Uri.parse('$_url/auth/v1/signup'),
         headers: {'apikey': _key, 'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email.trim(),
           'password': password,
-          'data': {'full_name': name.trim()},
+          'data': {'full_name': name.trim(), 'phone': phone.trim()},
         }));
     if (res.statusCode >= 300) throw BackendError(_explain(res));
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     if (body['access_token'] == null) {
-      // Email confirmation is on in this project: sign in after confirming.
+      // Email confirmation is on: the 6-digit code was sent.
+      if (config.emailCode) return true;
       await signIn(email, password);
-      return;
+      return false;
     }
     await _saveSession(body);
     await _loadProfile();
+    return false;
+  }
+
+  @override
+  Future<void> verifyCode(String email, String code, String password) async {
+    final res = await http.post(Uri.parse('$_url/auth/v1/verify'),
+        headers: {'apikey': _key, 'Content-Type': 'application/json'},
+        body: jsonEncode({'type': 'signup', 'email': email.trim(), 'token': code.trim()}));
+    if (res.statusCode >= 300) {
+      final m = res.body.toLowerCase();
+      throw BackendError(m.contains('expired') || m.contains('invalid') ? 'الرمز غير صحيح أو انتهت صلاحيته. اطلب رمزاً جديداً.' : _explain(res));
+    }
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    if (body['access_token'] != null) {
+      await _saveSession(body);
+      await _loadProfile();
+    } else {
+      await signIn(email, password);
+    }
+  }
+
+  @override
+  Future<void> resendCode(String email) async {
+    final res = await http.post(Uri.parse('$_url/auth/v1/resend'),
+        headers: {'apikey': _key, 'Content-Type': 'application/json'}, body: jsonEncode({'type': 'signup', 'email': email.trim()}));
+    if (res.statusCode >= 300) throw BackendError(_explain(res));
   }
 
   @override

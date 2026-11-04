@@ -149,28 +149,82 @@
   }
 
   function renderLogin(app) {
-    let signup = false;
+    // login | signup | code (the email confirmation code, or link with Firebase)
+    let mode = "login";
+    const form = { name: "", phone: "", email: "", pass: "" };
+    function keep() {
+      ["name", "phone", "email", "pass"].forEach((k) => { const el = $("#l_" + k); if (el) form[k] = el.value; });
+    }
     function draw() {
+      const link = !!B.confirmsWithLink;
+      const sub = mode === "code" ? "تأكيد البريد الإلكتروني" : mode === "signup" ? "أنشئ حسابك" : role === "admin" ? "لوحة الإدارة" : "مرحباً بعودتك";
+      let fields;
+      if (mode === "code") {
+        fields = '<p style="text-align:center;line-height:1.8">' + (link ? "افتح الرابط الذي أرسلناه إلى " : "أدخل الرمز المكوّن من 6 أرقام الذي أرسلناه إلى ") + "<b>" + esc(form.email) + "</b></p>" +
+          (link ? "" : '<input class="input ltr" id="l_code" inputmode="numeric" maxlength="6" placeholder="••••••" style="text-align:center;font-size:26px;letter-spacing:10px;font-weight:800">');
+      } else {
+        fields = (mode === "signup" ? '<label class="lbl">الاسم</label><input class="input" id="l_name" autocomplete="name" value="' + esc(form.name) + '">' +
+          '<label class="lbl">رقم الهاتف</label><input class="input ltr" id="l_phone" type="tel" autocomplete="tel" value="' + esc(form.phone) + '">' : "") +
+          '<label class="lbl">البريد الإلكتروني</label><input class="input ltr" id="l_email" type="email" autocomplete="email" value="' + esc(form.email) + '">' +
+          '<label class="lbl">كلمة المرور</label><input class="input ltr" id="l_pass" type="password" autocomplete="current-password" value="' + esc(form.pass) + '">';
+      }
+      const label = mode === "code" ? (link ? "تحقق" : "تأكيد") : mode === "signup" ? "إنشاء الحساب" : "دخول";
+      const links = mode === "code"
+        ? '<button class="linkbtn" id="l_resend">أرسل الرمز مرة أخرى</button><button class="linkbtn" id="l_back">رجوع لتسجيل الدخول</button>'
+        : '<button class="linkbtn" id="l_switch">' + (mode === "signup" ? "عندي حساب، سجّل دخولي" : "ما عندي حساب؟ أنشئ واحداً") + "</button>";
       app.innerHTML = '<div class="login"><div class="hero"><div class="avatar" style="margin:0 auto 12px;background:rgba(255,255,255,.2)">' + ic(role === "admin" ? "lock" : "person", 30) +
-        '</div><h1>' + esc(C.app.title) + "</h1><p>" + (role === "admin" ? "لوحة الإدارة" : signup ? "أنشئ حسابك" : "مرحباً بعودتك") + '</p></div><div class="card">' +
-        (signup ? '<label class="lbl">الاسم</label><input class="input" id="ln" autocomplete="name">' : "") +
-        '<label class="lbl">البريد الإلكتروني</label><input class="input ltr" id="le" type="email" autocomplete="email">' +
-        '<label class="lbl">كلمة المرور</label><input class="input ltr" id="lp" type="password" autocomplete="current-password">' +
-        '<button class="btn" id="lgo">' + (signup ? "إنشاء الحساب" : "دخول") + "</button>" +
-        (role !== "admin" ? '<button class="linkbtn" id="lsw">' + (signup ? "عندي حساب، سجّل دخولي" : "ما عندي حساب؟ أنشئ واحداً") + "</button>" : "") +
-        "</div></div>";
-      const sw = $("#lsw"); if (sw) sw.onclick = () => { signup = !signup; draw(); };
-      $("#lgo").onclick = async (e) => {
-        const email = $("#le").value.trim(), pass = $("#lp").value, name = signup ? $("#ln").value.trim() : "";
+        '</div><h1>' + esc(C.app.title) + "</h1><p>" + sub + '</p></div><div class="card">' + fields + '<button class="btn" id="l_go">' + label + "</button>" + links + "</div></div>";
+      const sw = $("#l_switch"); if (sw) sw.onclick = () => { keep(); mode = mode === "signup" ? "login" : "signup"; draw(); };
+      const back = $("#l_back"); if (back) back.onclick = () => { mode = "login"; draw(); };
+      const resend = $("#l_resend"); if (resend) resend.onclick = async () => {
+        try { await B.resendCode(form.email); toast("أُرسل من جديد إلى " + form.email); } catch (err) { toast(err.message, true); }
+      };
+      $("#l_go").onclick = async (e) => {
+        keep();
+        const email = form.email.trim(), pass = form.pass;
+        if (mode === "code") {
+          const code = ($("#l_code") || { value: "" }).value.trim();
+          if (!link && !/^\d{6}$/.test(code)) return toast("اكتب الرمز من 6 أرقام", true);
+          e.target.disabled = true;
+          try { await B.verifyCode(email, code, pass); afterSignIn(); go("home"); }
+          catch (err) { toast(err.message, true); e.target.disabled = false; }
+          return;
+        }
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast("بريد غير صحيح", true);
         if (pass.length < 6) return toast("كلمة المرور 6 أحرف على الأقل", true);
-        if (signup && name.length < 2) return toast("اكتب اسمك", true);
+        if (mode === "signup" && form.name.trim().length < 2) return toast("اكتب اسمك", true);
+        if (mode === "signup" && !/^[+0-9 ()-]{7,20}$/.test(form.phone.trim())) return toast("رقم الهاتف غير صحيح", true);
         e.target.disabled = true;
-        try { signup ? await B.signUp(name, email, pass) : await B.signIn(email, pass); afterSignIn(); go("home"); }
-        catch (err) { toast(err.message, true); e.target.disabled = false; }
+        try {
+          if (mode === "signup") {
+            if (await B.signUp(form.name, form.phone, email, pass)) {
+              mode = "code"; draw();
+              return toast(B.confirmsWithLink ? "أرسلنا رابط التأكيد إلى بريدك" : "أرسلنا رمز التأكيد إلى بريدك");
+            }
+          } else await B.signIn(email, pass);
+          afterSignIn(); go("home");
+        } catch (err) {
+          if (err.needsCode) { mode = "code"; draw(); return toast("أكّد بريدك أولاً: أدخل الرمز الذي وصلك، أو اطلب رمزاً جديداً"); }
+          toast(err.message, true); e.target.disabled = false;
+        }
       };
     }
     draw();
+  }
+
+  // In-app updates: the build publishes each version at a public link; the phone's browser downloads it.
+  async function checkUpdate() {
+    const u = C.update || {};
+    if (!u.url || !u.version) return;
+    try {
+      const res = await fetch(u.url + "?t=" + Date.now());
+      if (!res.ok) return;
+      const j = await res.json();
+      if (!(j.version > u.version) || !j.apk) return;
+      openSheet("<h3>تحديث جديد</h3><p>النسخة " + esc(j.name || "1.0." + j.version) + " جاهزة." + (j.notes ? "<br><br>" + esc(j.notes) : "") + '</p><button class="btn" id="upd">حدّث الآن</button><button class="linkbtn" id="later">لاحقاً</button>');
+      $("#later").onclick = closeSheet;
+      $("#upd").onclick = () => { closeSheet(); toast("يتم التحميل… افتح الملف عند انتهائه واضغط «تثبيت»"); window.location.href = j.apk; };
+    } catch (e) { /* offline: try next time */ }
   }
 
   function homeView(tables) {
@@ -379,6 +433,7 @@
       await B.init();
       if (B.signedIn) afterSignIn();
       go("home");
+      setTimeout(checkUpdate, 1500);
     } catch (e) {
       $("#app").innerHTML = '<div class="wrap"><div class="empty"><span class="big">' + ic("cloud", 46) + "</span>" + esc(e.message) + '<br><br><button class="btn sm" onclick="location.reload()">إعادة المحاولة</button></div></div>';
     }

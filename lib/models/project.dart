@@ -44,7 +44,10 @@ enum BackendType {
 
 enum AuthMode {
   none('none', 'بدون تسجيل دخول', 'حساب مخفي لكل جهاز'),
-  emailPassword('email_password', 'بريد + كلمة مرور', 'إنشاء حساب ودخول');
+  emailPassword('email_password', 'بريد + كلمة مرور', 'حساب بالاسم والهاتف والبريد وكلمة مرور'),
+  emailCode('email_code', 'بريد + رمز تأكيد', 'حساب بالاسم والهاتف والبريد، ورمز من 6 أرقام يصل للبريد قبل الدخول');
+
+  bool get needsAccount => this != AuthMode.none;
 
   const AuthMode(this.id, this.label, this.hint);
   final String id;
@@ -137,6 +140,8 @@ class Project {
     this.supabaseUrl = '',
     this.supabaseAnonKey = '',
     this.supabaseRef = '',
+    this.brief = '',
+    this.customCode = '',
   })  : theme = theme ?? ThemeSpec(),
         schema = schema ?? DbSchema(),
         apps = apps ?? [],
@@ -166,6 +171,12 @@ class Project {
   String supabaseAnonKey;
   String supabaseRef;
 
+  /// The approved understanding (step "الفهم"): every later step and the AI code work from it.
+  String brief;
+
+  /// Code the owner pasted: it becomes the app's own code (custom/), the build fixes it if needed.
+  String customCode;
+
   /// Prefix of every table of this project, so many projects can share one Supabase / Firebase project.
   String get prefix => slugIdent(base, fallback: 'app');
 
@@ -193,6 +204,8 @@ class Project {
         'supabaseUrl': supabaseUrl,
         'supabaseAnonKey': supabaseAnonKey,
         'supabaseRef': supabaseRef,
+        if (brief.isNotEmpty) 'brief': brief,
+        if (customCode.isNotEmpty) 'customCode': customCode,
       };
 
   factory Project.fromJson(Map<String, dynamic> j) => Project(
@@ -217,6 +230,8 @@ class Project {
         supabaseUrl: '${j['supabaseUrl'] ?? ''}',
         supabaseAnonKey: '${j['supabaseAnonKey'] ?? ''}',
         supabaseRef: '${j['supabaseRef'] ?? ''}',
+        brief: '${j['brief'] ?? ''}',
+        customCode: '${j['customCode'] ?? ''}',
       );
 
   String encode() => jsonEncode(toJson());

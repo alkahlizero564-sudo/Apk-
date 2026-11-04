@@ -135,7 +135,35 @@ def runtime_config(cfg):
     be["push"] = push_on(cfg)
     be.pop("serviceAccount", None)
     out["backend"] = be
+    upd = update_info(cfg)
+    if upd:
+        out["update"] = upd
     return out
+
+
+def update_url(app):
+    """Public address of an app's newest-version file: the public updates repo when there is one (the main
+    repository can stay private), else this repository (only reachable when it is public)."""
+    updates = os.environ.get("UPDATES_REPO", "").strip()
+    if updates:
+        return f"https://raw.githubusercontent.com/{updates}/main/{app}.json"
+    repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    branch = os.environ.get("GITHUB_REF_NAME", "main").strip() or "main"
+    return f"https://raw.githubusercontent.com/{repo}/{branch}/apps/{app}/build.json" if repo else ""
+
+
+def update_info(cfg):
+    """What the app needs to find its own updates: where to look and which version it is."""
+    if store_build():
+        return None
+    version = int(os.environ.get("VERSION") or 0)
+    url = update_url(cfg["app"]["slug"])
+    return {"url": url, "version": version} if version and url else None
+
+
+def store_build():
+    """Google Play files must not ask to install other APKs (Play installs the updates itself)."""
+    return os.environ.get("STORE", "").lower() == "true"
 
 
 def copy_tree(src, dst):
@@ -233,11 +261,14 @@ def write_mipmaps(cfg, app, res_dir):
 
 # ---------------- per language ----------------
 
-def manifest_fix(path, cfg, push):
+def manifest_fix(path, cfg, push, install=False):
     text = Path(path).read_text(encoding="utf-8")
     perms = ["android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE"]
     if push:
         perms.append("android.permission.POST_NOTIFICATIONS")
+    if install:
+        # In-app updates open Android's installer for the downloaded APK.
+        perms.append("android.permission.REQUEST_INSTALL_PACKAGES")
     for p in perms:
         if p not in text:
             text = text.replace("<application", f'<uses-permission android:name="{p}" />\n    <application', 1)
@@ -339,7 +370,7 @@ def prepare_flutter(cfg, app, out, version):
     shutil.rmtree(out / "test", ignore_errors=True)
 
     res = out / "android" / "app" / "src" / "main" / "res"
-    manifest_fix(out / "android" / "app" / "src" / "main" / "AndroidManifest.xml", cfg, push)
+    manifest_fix(out / "android" / "app" / "src" / "main" / "AndroidManifest.xml", cfg, push, install=not store_build())
     write_strings(res, cfg)
     write_mipmaps(cfg, app, res)
     gradle = next((out / "android" / "app").glob("build.gradle*"))
@@ -408,6 +439,8 @@ def prepare_kotlin(cfg, app, out, version):
         m = m.replace("<!--ALPHA_PUSH_SERVICE-->", '<service android:name=".PushService" android:exported="false">\n'
                       '            <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>\n'
                       "        </service>")
+    if not store_build():
+        m = m.replace("<!--ALPHA_INSTALL_PERMISSION-->", '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />')
     manifest.write_text(m, encoding="utf-8")
     res = out / "app" / "src" / "main" / "res"
     (res / "raw").mkdir(parents=True, exist_ok=True)

@@ -10,6 +10,14 @@ class BackendError implements Exception {
   String toString() => message;
 }
 
+/// Sign-in refused because the email is not confirmed yet: the app shows the code screen.
+class NeedsConfirmation implements Exception {
+  NeedsConfirmation(this.email);
+  final String email;
+  @override
+  String toString() => 'أكّد بريدك أولاً بالرمز الذي وصلك.';
+}
+
 class AppNotification {
   AppNotification({
     required this.id,
@@ -43,7 +51,17 @@ abstract class Backend {
   bool get isAdmin;
 
   Future<void> signIn(String email, String password);
-  Future<void> signUp(String name, String email, String password);
+  /// Makes the account; returns true when the email must be confirmed first (code, or link with Firebase).
+  Future<bool> signUp(String name, String phone, String email, String password);
+
+  /// Confirms the email with the 6-digit code (Firebase: checks that the link was opened) and signs in.
+  Future<void> verifyCode(String email, String code, String password) async {}
+
+  /// Sends the confirmation code (or link) again.
+  Future<void> resendCode(String email) async {}
+
+  /// Firebase confirms with a link in the email instead of a code.
+  bool get confirmsWithLink => false;
   Future<void> signOut();
 
   /// Rows of a table, newest first. Customers only get their own rows of "customer" tables.

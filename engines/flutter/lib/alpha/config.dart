@@ -119,7 +119,10 @@ class AlphaConfig {
   String get prefix => '${backend['prefix'] ?? slug.replaceAll('-', '_')}';
   String get auth => '${backend['auth'] ?? 'none'}';
   bool get push => backend['push'] == true;
-  bool get needsAccount => auth == 'email_password';
+  bool get needsAccount => auth == 'email_password' || auth == 'email_code';
+
+  /// Sign-up is confirmed with a 6-digit code sent to the email (a link with Firebase).
+  bool get emailCode => auth == 'email_code';
   Map<String, dynamic> get firebase => ((backend['firebase'] as Map?) ?? const {}).cast<String, dynamic>();
 
   /// Tables this app shows: the customer app hides admin-only tables.

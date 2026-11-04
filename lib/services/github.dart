@@ -97,6 +97,23 @@ class GitHub {
     return utf8.decode(base64.decode('${j['content']}'.replaceAll('\n', '')));
   }
 
+  /// A binary file of the repository (e.g. an icon), or null.
+  Future<List<int>?> fileBytes(String path, {String? ref}) async {
+    final j = await _req('GET', '/repos/$repo/contents/$path${ref == null ? '' : '?ref=$ref'}', allow404: true);
+    if (j == null || j is! Map || j['content'] == null) return null;
+    return base64.decode('${j['content']}'.replaceAll('\n', ''));
+  }
+
+  /// Creates a public repository under the token's account (or returns it when it exists); "owner/name".
+  Future<String> createPublicRepo(String name, String description) async {
+    final me = await user();
+    final full = '${me['login']}/$name';
+    final existing = await _req('GET', '/repos/$full', allow404: true);
+    if (existing != null) return full;
+    await _req('POST', '/user/repos', body: {'name': name, 'description': description, 'private': false, 'auto_init': true});
+    return full;
+  }
+
   /// Names in a folder ([] when it does not exist).
   Future<List<({String name, String type})>> list(String path, {String? ref}) async {
     final j = await _req('GET', '/repos/$repo/contents/$path${ref == null ? '' : '?ref=$ref'}', allow404: true);
@@ -175,6 +192,14 @@ class GitHub {
     final sealed = SealedBox(pub).encrypt(Uint8List.fromList(utf8.encode(value)));
     await _req('PUT', '/repos/$repo/actions/secrets/$name',
         body: {'encrypted_value': base64.encode(sealed), 'key_id': '${key['key_id']}'});
+  }
+
+  Future<void> deleteSecret(String name) async {
+    try {
+      await _req('DELETE', '/repos/$repo/actions/secrets/$name');
+    } on GitHubError catch (e) {
+      if (e.status != 404) rethrow;
+    }
   }
 
   Future<Set<String>> secretNames() async {
