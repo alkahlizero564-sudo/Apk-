@@ -46,6 +46,8 @@ class AppState extends ChangeNotifier {
   static const alphaVersion = int.fromEnvironment('ALPHA_VERSION');
   String? alphaUpdate;
   String updatesRepo = '';
+  String geminiModel = AiDesigner.defaultGeminiModel;
+  bool geminiFirst = false;
 
   Future<void> load() async {
     projects = await Storage.projects();
@@ -53,6 +55,8 @@ class AppState extends ChangeNotifier {
     branch = await Storage.get('branch');
     supabaseRef = await Storage.get('supabase_ref');
     updatesRepo = await Storage.get('updates_repo');
+    geminiModel = await Storage.get('gemini_model', AiDesigner.defaultGeminiModel);
+    geminiFirst = await Storage.get('gemini_first') == 'true';
     await _refreshFlags();
     loading = false;
     notifyListeners();
@@ -131,6 +135,20 @@ class AppState extends ChangeNotifier {
     return full;
   }
 
+  /// The Gemini model used on the phone and in the workflows (repository variable GEMINI_MODEL).
+  Future<void> setGeminiModel(String model, {required bool first}) async {
+    geminiModel = model;
+    geminiFirst = first;
+    await Storage.set('gemini_model', model);
+    await Storage.set('gemini_first', '$first');
+    if (hasGitHub) {
+      final gh = await github();
+      await gh.setVariable('GEMINI_MODEL', model);
+      await gh.setVariable('AI_PROVIDER', first ? 'gemini' : 'claude');
+    }
+    notifyListeners();
+  }
+
   /// Mail server for the sign-up confirmation codes (Supabase sends them through it).
   Future<void> saveSmtp(Map<String, String> smtp) async {
     final gh = await github();
@@ -139,7 +157,12 @@ class AppState extends ChangeNotifier {
   }
 
   Future<AiDesigner> ai() async =>
-      AiDesigner(claudeKey: await Storage.secret(Storage.claudeKey), geminiKeys: await Storage.geminiKeyValues());
+      AiDesigner(
+        claudeKey: await Storage.secret(Storage.claudeKey),
+        geminiKeys: await Storage.geminiKeyValues(),
+        geminiModel: geminiModel,
+        geminiFirst: geminiFirst,
+      );
 
   // ---------------- settings ----------------
 

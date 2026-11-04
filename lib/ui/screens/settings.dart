@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/state.dart';
 import '../../app/theme.dart';
+import '../../services/ai.dart';
 import '../../services/storage.dart';
 import '../../services/supabase_admin.dart';
 import '../widgets.dart';
@@ -236,6 +237,7 @@ class _AiFormState extends _FormState<_AiForm> {
         linkLabel: 'مفتاح Claude',
         [
           TextField(controller: _claude, obscureText: true, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'Claude API key (sk-ant-…)')),
+          _GeminiModelTile(keyOf: () => _gemini.map((c) => c.text.trim()).firstWhere((k) => k.isNotEmpty, orElse: () => '')),
           for (var i = 0; i < _gemini.length; i++)
             TextField(
               controller: _gemini[i],
@@ -409,6 +411,155 @@ class _UpdatesFormState extends _FormState<_UpdatesForm> {
         final repo = await context.read<AppState>().createUpdatesRepo();
         return 'جاهز: $repo. التطبيقات التي تُبنى من الآن تتحدّث تلقائياً';
       }),
+    );
+  }
+}
+
+/// The Gemini model in use, and a button that lists every model the key can use.
+class _GeminiModelTile extends StatelessWidget {
+  const _GeminiModelTile({required this.keyOf});
+  final String Function() keyOf;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+    return GlassCard(
+      onTap: () => _pick(context),
+      child: Row(
+        children: [
+          const Icon(Icons.model_training_rounded, color: AlphaColors.amber),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('نموذج Gemini', style: TextStyle(fontWeight: FontWeight.w800)),
+                Text(s.geminiModel + (s.geminiFirst ? ' · الأساسي' : ''),
+                    textDirection: TextDirection.ltr, style: const TextStyle(color: AlphaColors.muted, fontSize: 12)),
+              ],
+            ),
+          ),
+          const Text('اختر', style: TextStyle(color: AlphaColors.violet, fontWeight: FontWeight.w800)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pick(BuildContext context) async {
+    var key = keyOf();
+    if (key.isEmpty) {
+      final saved = await Storage.geminiKeyValues();
+      key = saved.isEmpty ? '' : saved.first;
+    }
+    if (!context.mounted) return;
+    if (key.isEmpty) {
+      showMessage(context, 'اكتب مفتاح Gemini أولاً', error: true);
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _GeminiModelSheet(apiKey: key),
+    );
+  }
+}
+
+class _GeminiModelSheet extends StatefulWidget {
+  const _GeminiModelSheet({required this.apiKey});
+  final String apiKey;
+
+  @override
+  State<_GeminiModelSheet> createState() => _GeminiModelSheetState();
+}
+
+class _GeminiModelSheetState extends State<_GeminiModelSheet> {
+  List<({String id, String name, String description})>? _models;
+  String? _error;
+  String _query = '';
+  late String _selected = context.read<AppState>().geminiModel;
+  late bool _first = context.read<AppState>().geminiFirst;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    AiDesigner.listGeminiModels(widget.apiKey).then((m) {
+      if (mounted) setState(() => _models = m);
+    }).catchError((Object e) {
+      if (mounted) setState(() => _error = '$e');
+    });
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await context.read<AppState>().setGeminiModel(_selected, first: _first);
+      if (mounted) {
+        Navigator.pop(context);
+        showMessage(context, 'النموذج: $_selected');
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, '$e', error: true);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = _query.trim().toLowerCase();
+    final shown = (_models ?? const []).where((m) => q.isEmpty || m.id.toLowerCase().contains(q) || m.name.toLowerCase().contains(q)).toList();
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 0, 18, 18 + MediaQuery.viewInsetsOf(context).bottom),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('اختر نموذج Gemini', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          const Text('يُستخدم في الفهم والتصميم والبيانات على الهاتف، وفي كتابة الكود وإصلاحه في GitHub Actions. إذا لم ينجح يُجرَّب غيره تلقائياً.',
+              style: TextStyle(color: AlphaColors.muted, fontSize: 12, height: 1.5)),
+          const SizedBox(height: 10),
+          TextField(
+            textDirection: TextDirection.ltr,
+            decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'بحث: pro، flash…'),
+            onChanged: (v) => setState(() => _query = v),
+          ),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            value: _first,
+            onChanged: (v) => setState(() => _first = v),
+            title: const Text('Gemini هو النموذج الأساسي', style: TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: const Text('إذا أطفأته يُجرَّب Claude أولاً (عند وجود مفتاحه)', style: TextStyle(color: AlphaColors.muted, fontSize: 12)),
+          ),
+          const SizedBox(height: 6),
+          Flexible(
+            child: _error != null
+                ? Text(_error!, style: const TextStyle(color: AlphaColors.bad))
+                : _models == null
+                    ? const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+                    : RadioGroup<String>(
+                        groupValue: _selected,
+                        onChanged: (v) => setState(() => _selected = v!),
+                        child: ListView(
+                          shrinkWrap: true,
+                          children: [
+                            for (final m in shown)
+                              RadioListTile<String>(
+                                contentPadding: EdgeInsets.zero,
+                                value: m.id,
+                                title: Text(m.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                subtitle: Text(m.id, textDirection: TextDirection.ltr, style: const TextStyle(color: AlphaColors.muted, fontSize: 12)),
+                              ),
+                            if (shown.isEmpty) const Padding(padding: EdgeInsets.all(16), child: Text('لا نتائج', textAlign: TextAlign.center)),
+                          ],
+                        ),
+                      ),
+          ),
+          const SizedBox(height: 10),
+          GradientButton(label: 'استخدم هذا النموذج', icon: Icons.check_rounded, busy: _saving, onPressed: _models == null ? null : _save),
+        ],
+      ),
     );
   }
 }
