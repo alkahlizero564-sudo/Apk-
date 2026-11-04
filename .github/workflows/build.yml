@@ -4,6 +4,19 @@ run-name: Build ${{ inputs.app }}
 # Builds one app of apps/<app> (made in Alpha) in its language, checks it, lets the AI fix custom code,
 # signs it with the repository's permanent key and publishes the APK as a GitHub Release.
 on:
+  workflow_call:
+    inputs:
+      app:
+        type: string
+        required: true
+      store:
+        type: string
+        required: false
+        default: "false"
+      notes:
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
     inputs:
       app:
@@ -22,7 +35,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: build-${{ inputs.app }}
+  group: build-${{ inputs.app }}-${{ github.workflow }}
   cancel-in-progress: false
 
 jobs:

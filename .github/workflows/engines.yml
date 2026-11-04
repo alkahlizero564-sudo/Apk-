@@ -1,0 +1,21 @@
+name: engines
+# Builds a real APK of the demo app of every language whenever an engine, the factory or the build changes.
+on:
+  push:
+    paths: ["engines/**", "factory/**", ".github/workflows/build.yml", ".github/workflows/engines.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  demo:
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [demo-html, demo-php, demo-flutter, demo-python, demo-kotlin]
+    uses: ./.github/workflows/build.yml
+    with:
+      app: ${{ matrix.app }}
+      notes: "Engine check"
+    secrets: inherit
