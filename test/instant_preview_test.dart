@@ -11,7 +11,7 @@ class _FakeAi extends AiDesigner {
   _FakeAi() : super(claudeKey: 'x', geminiKeys: const []);
   final prompts = <String>[];
   @override
-  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000}) async {
+  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 1024}) async {
     prompts.add(prompt);
     return '```html\n<!doctype html><html dir="rtl"><body>${List.filled(200, '<p>شاشة</p>').join()}</body></html>\n```';
   }

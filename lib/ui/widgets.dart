@@ -672,3 +672,36 @@ class KindPicker extends StatelessWidget {
         ],
       );
 }
+
+/// «منذ 12 ث»: seconds since it appeared, so long AI work visibly moves.
+class ElapsedText extends StatefulWidget {
+  const ElapsedText({super.key});
+
+  @override
+  State<ElapsedText> createState() => _ElapsedTextState();
+}
+
+class _ElapsedTextState extends State<ElapsedText> {
+  final _watch = Stopwatch()..start();
+  late final _timer = Stream.periodic(const Duration(seconds: 1)).listen((_) {
+    if (mounted) setState(() {});
+  });
+
+  @override
+  void initState() {
+    super.initState();
+    _timer;
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = _watch.elapsed.inSeconds;
+    return Text(s < 60 ? 'منذ $s ث' : 'منذ ${s ~/ 60} د ${s % 60} ث', style: const TextStyle(color: AlphaColors.muted, fontSize: 12));
+  }
+}

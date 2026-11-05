@@ -97,7 +97,7 @@ class _WizardScreenState extends State<WizardScreen> {
   String _understandError = '';
 
   /// Step "الفهم": the AI only understands the description (and the pasted code).
-  Future<void> _understand() async {
+  Future<void> _understand({bool fresh = false}) async {
     final s = context.read<AppState>();
     final ai = await s.ai();
     if (!ai.available) {
@@ -109,7 +109,7 @@ class _WizardScreenState extends State<WizardScreen> {
       _understandError = '';
     });
     try {
-      final u = await ai.understand(_desc.text.trim(), code: _hasCode ? _code.text : '', kind: _kind, lang: _lang);
+      final u = await ai.understand(_desc.text.trim(), code: _hasCode ? _code.text : '', kind: _kind, lang: _lang, fresh: fresh);
       setState(() {
         _understood = u;
         _answers.clear();
@@ -214,7 +214,15 @@ class _WizardScreenState extends State<WizardScreen> {
       showMessage(context, err, error: true);
       return;
     }
-    if (_step == 2) _applyUnderstanding();
+    if (_step == 2) {
+      _applyUnderstanding();
+      // The data starts right away, in the background, while the owner names the app.
+      if (!_schemaTouched && !_aiBusy) {
+        context.read<AppState>().ai().then((ai) {
+          if (mounted && ai.available && !_schemaTouched && !_aiBusy) _designWithAi();
+        });
+      }
+    }
     if (_step < _steps.length - 1) setState(() => _step++);
     // Entering "الفهم" starts the understanding by itself the first time.
     if (_step == 2 && _understood == null && _brief.text.isEmpty) _understand();
@@ -299,6 +307,34 @@ class _WizardScreenState extends State<WizardScreen> {
     }
   }
 
+  /// The interface is drawn in the background as soon as the data is ready (an assembly line): by the time the
+  /// owner reaches «التصميم» it is ready or nearly ready.
+  String _designStatus = '';
+  Future<void> _prefetchDesign() async {
+    if (_design.hasPrototype || _designStatus.isNotEmpty || _hasCode) return;
+    final ai = await context.read<AppState>().ai();
+    if (!ai.available || !mounted) return;
+    var p = _build();
+    final d = AiDesign.fromJson(_design.toJson());
+    var brand = '';
+    try {
+      for (final a in p.apps) {
+        setState(() => _designStatus = p.apps.length > 1 ? 'يصمّم ${a.roleLabel} في الخلفية…' : 'يصمّم الشاشات في الخلفية…');
+        final html = await ai.designPrototype(p, a, brandFrom: brand);
+        d.screens[a.slug] = html;
+        brand = brand.isEmpty ? html : brand;
+        if (!mounted) return;
+        if (_design.hasPrototype) return; // the owner already designed it meanwhile
+        setState(() => _design = AiDesign.fromJson(d.toJson()));
+        p = _build();
+      }
+    } catch (_) {
+      // The design step starts it again with a visible error.
+    } finally {
+      if (mounted) setState(() => _designStatus = '');
+    }
+  }
+
   Future<void> _designWithAi() async {
     final s = context.read<AppState>();
     final ai = await s.ai();
@@ -320,6 +356,7 @@ class _WizardScreenState extends State<WizardScreen> {
         _schemaPreset = 'ai';
         _schemaTouched = true;
       });
+      _prefetchDesign();
     } catch (e) {
       if (mounted) showMessage(context, '$e', error: true);
     } finally {
@@ -518,7 +555,7 @@ class _WizardScreenState extends State<WizardScreen> {
         if (_understandBusy)
           const GlassCard(
             padding: EdgeInsets.all(26),
-            child: Column(children: [CircularProgressIndicator(), SizedBox(height: 14), Text('يقرأ فكرتك ويفهمها…')]),
+            child: Column(children: [CircularProgressIndicator(), SizedBox(height: 14), Text('يقرأ فكرتك ويفهمها…'), SizedBox(height: 4), ElapsedText()]),
           ),
         if (u == null && !_understandBusy)
           GlassCard(
@@ -622,7 +659,7 @@ class _WizardScreenState extends State<WizardScreen> {
           ),
           const SizedBox(width: 8),
           OutlinedButton.icon(
-            onPressed: _understandBusy ? null : _understand,
+            onPressed: _understandBusy ? null : () => _understand(fresh: true),
             icon: const Icon(Icons.refresh_rounded, color: AlphaColors.amber),
             label: const Text('أعد الفهم'),
           ),
@@ -713,7 +750,8 @@ class _WizardScreenState extends State<WizardScreen> {
           const SectionTitle('التصميم', subtitle: 'هذه الخطوة للشكل فقط: الذكاء الاصطناعي يصمّم الواجهات، أو اختر مدرسة جاهزة'),
           AiDesignCard(
             draft: _build,
-            autoStart: true,
+            autoStart: _designStatus.isEmpty,
+            busyElsewhere: _designStatus,
             onDesigned: (d) => setState(() => _design = d),
           ),
           if (!_design.hasPrototype) ...[
