@@ -39,9 +39,13 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   Future<void> _load() async {
+    // The approved design of this app (a clickable prototype of every screen) is its instant preview.
+    final proto = widget.project.design.screens[_app.slug] ?? '';
     final html = widget.customCode.trim().isNotEmpty
         ? widget.customCode
-        : await buildPreviewHtml(widget.project, _app, admin: _admin, seed: _reload);
+        : proto.trim().isNotEmpty
+            ? proto
+            : await buildPreviewHtml(widget.project, _app, admin: _admin, seed: _reload);
     await _web.loadHtmlString(html, baseUrl: 'https://preview.alpha.app/${_app.slug}/');
   }
 
@@ -146,7 +150,7 @@ Future<String> buildPreviewHtml(Project p, AppUnit app, {required bool admin, in
   String safe(String code) => code.replaceAll('</script', '<\\/script');
   // The AI-designed interface: its CSS after the engine's, its JS (and the libraries it names) before app.js.
   var designCss = '', designJs = '';
-  if (!p.design.isEmpty) {
+  if (p.design.hasSkin) {
     designCss = '<style>${p.design.css.replaceAll('</style', '<\\/style')}</style>';
     final js = p.design.js;
     if (js.trim().isNotEmpty) {

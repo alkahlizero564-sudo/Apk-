@@ -25,6 +25,10 @@ class BuildInfo {
 }
 
 /// Everything Alpha knows: settings, projects, builds. Screens listen to it.
+/// What the AI code step is asked when an app is built from its approved design (apps/<app>/design/design.html).
+const buildFromDesignRequest = 'ابنِ التطبيق الحقيقي من التصميم المعتمد (design/design.html) ليطابقه تماماً: نفس الشاشات والتنقل '
+    'والألوان والخطوط والمسافات والمكوّنات والنصوص، وكل شاشة تعمل فعلاً ببيانات حقيقية عبر محرّك Alpha (البيانات والدخول والإشعارات).';
+
 class AppState extends ChangeNotifier {
   static const defaultRepo = 'alkahlizero564-sudo/Apk-';
 

@@ -198,20 +198,34 @@ class AppUnit {
   String get roleLabel => switch (role) { 'customer' => 'تطبيق العميل', 'admin' => 'تطبيق الإدارة', _ => 'التطبيق' };
 }
 
-/// The interface the AI designed for this app from its description: a visual layer (CSS + motion JS with the design
-/// libraries) on top of the tested engine, and a written spec the native languages are coded from.
+/// The interface the AI designed for this project from its description.
+/// - [screens]: the approved clickable prototype of each app (slug → one HTML file with every screen), made like APK Fact:
+///   the real app is then written by the AI to look exactly like it, in any language (factory/ai_code.py).
+/// - [css] / [js] / [spec]: an older, lighter kind of design: a visual layer over the engine's own screens.
 class AiDesign {
-  AiDesign({this.css = '', this.js = '', this.spec = '', this.summary = ''});
-  String css; // design.css: restyles every screen of the engine (HTML, PHP, and the instant preview)
-  String js; // design.js: motion and effects (GSAP, AOS, Typed, VanillaTilt, confetti, rough), hooked to each render
-  String spec; // design spec in words + numbers: Flutter / Python / Kotlin code is written to match it
-  String summary; // one line for the owner
+  AiDesign({this.css = '', this.js = '', this.spec = '', this.summary = '', Map<String, String>? screens}) : screens = screens ?? {};
+  String css;
+  String js;
+  String spec;
+  String summary;
+  Map<String, String> screens;
 
-  bool get isEmpty => css.trim().isEmpty;
+  bool get hasSkin => css.trim().isNotEmpty;
+  bool get hasPrototype => screens.values.any((h) => h.trim().isNotEmpty);
+  bool get isEmpty => !hasSkin && !hasPrototype;
 
-  Map<String, dynamic> toJson() => {'css': css, 'js': js, 'spec': spec, 'summary': summary};
-  factory AiDesign.fromJson(Map<String, dynamic>? j) =>
-      AiDesign(css: '${j?['css'] ?? ''}', js: '${j?['js'] ?? ''}', spec: '${j?['spec'] ?? ''}', summary: '${j?['summary'] ?? ''}');
+  Map<String, dynamic> toJson() => {
+        if (hasSkin) ...{'css': css, 'js': js, 'spec': spec},
+        'summary': summary,
+        if (hasPrototype) 'screens': screens,
+      };
+  factory AiDesign.fromJson(Map<String, dynamic>? j) => AiDesign(
+        css: '${j?['css'] ?? ''}',
+        js: '${j?['js'] ?? ''}',
+        spec: '${j?['spec'] ?? ''}',
+        summary: '${j?['summary'] ?? ''}',
+        screens: ((j?['screens'] as Map?) ?? const {}).map((k, v) => MapEntry('$k', '$v')),
+      );
 }
 
 class Project {
