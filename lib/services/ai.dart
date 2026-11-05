@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/project.dart';
@@ -191,6 +192,81 @@ Then pick colors that fit (premium, modern, good contrast). Reply with JSON only
       onboarding: j['onboarding'] == true,
     );
     return (theme: theme, headline: '${j['headline'] ?? ''}', subtitle: '${j['subtitle'] ?? ''}', reason: '${j['reason'] ?? ''}');
+  }
+
+  // ---------- design first (like APK Fact) ----------
+
+  static String? _brief;
+  static Future<String> designBrief() async => _brief ??= (await rootBundle.loadString('factory/design_brief.md'))
+      .replaceFirst(RegExp(r'^<!--.*?-->\s*', dotAll: true), '');
+
+  static const _platform = {
+    Lang.html: 'a modern mobile web app (it ships as a WebView app)',
+    Lang.php: 'a mobile-first PHP web app (server-made pages, opened inside an Android app)',
+    Lang.flutter: 'a Flutter Material 3 app: use Material 3 shapes, components, elevation and motion so the design maps 1:1 to Flutter widgets',
+    Lang.python: 'a Python Flet (Material 3) app: use Material 3 components only, so every element maps to a Flet control',
+    Lang.kotlin: 'a native Android app in Kotlin with Jetpack Compose Material 3: use Material 3 components, shapes and motion so every element maps 1:1 to a Compose composable',
+  };
+
+  static const _designer = '''You are a world-class mobile product designer and senior front-end engineer.
+This is the DESIGN STAGE only: focus entirely on the user interface, visual design and user experience.
+No real backend: use realistic sample data inside the page.
+
+Deliver ONE self-contained HTML file (inline CSS and JS, no external files, fonts or images) that is a
+high-fidelity, clickable prototype of the WHOLE app:
+- Every main screen of the app, each as its own view, connected with working navigation (bottom bar, tabs,
+  buttons, back arrows, sheets and dialogs open and close).
+- A slim, elegant "screens" switcher fixed at the very top (element with id="alpha-screens"): a horizontally
+  scrollable row of small pills with each screen's name, so the reviewer can jump to any screen. Keep it
+  visually separate from the app (dark translucent bar). Everything else is the app itself.
+- Show key states too: at least one empty state and one loading skeleton (reachable from the switcher).
+- Phone-first layout (360-430px wide, full height), right-to-left with Arabic text when the description is
+  in Arabic.
+''';
+
+  String _role(AppUnit a) => switch (a.role) {
+        'admin' => 'This is the ADMIN / management app of the business: dashboard with KPI cards and charts, managing every record, statuses, reports, customers list, notifications inbox, settings.',
+        'customer' => 'This is the CUSTOMER app of the business: browse, create and follow their own records, notifications inbox, profile.',
+        _ => 'One app that does everything for its owner.',
+      };
+
+  String _appFacts(Project p) {
+    final tables = p.schema.tables.map((t) => '- ${t.label} (${t.name}): ${t.columns.map((c) => '${c.label} [${c.type.id}${c.options.isEmpty ? '' : ': ${c.options.join('/')}'}]').join('، ')}').join('\n');
+    final auth = switch (p.auth) {
+      AuthMode.none => 'No sign-in: the app opens straight to its main screen.',
+      AuthMode.emailPassword => 'Sign-in and sign-up screens: name, phone, email, password.',
+      AuthMode.emailCode => 'Sign-up with name, phone and email, then a 6-digit email code (6 separate boxes, resend timer), then sign-in.',
+    };
+    return 'The real data of the app (use these sections and fields, with realistic Arabic sample values):\n$tables\n$auth'
+        '${p.backend != BackendType.none ? '\nIt has a notifications inbox (new orders, status changes...).' : ''}';
+  }
+
+  String _extractHtml(String text) {
+    final m = RegExp(r'```html\s*\n([\s\S]*?)```').firstMatch(text);
+    var html = (m?.group(1) ?? text).trim();
+    final i = html.toLowerCase().indexOf('<!doctype');
+    if (i > 0) html = html.substring(i);
+    if (!html.toLowerCase().contains('<html') || html.length < 1500) throw Exception('لم يكتمل التصميم من الذكاء الاصطناعي، جرّب مرة أخرى');
+    return html;
+  }
+
+  /// The whole app as a clickable high-fidelity prototype (one HTML file), from its approved understanding.
+  /// [brandFrom]: the other app's approved design (pair): same brand. [current] + [change]: revise a design.
+  Future<String> designPrototype(Project p, AppUnit app, {String brandFrom = '', String current = '', String change = ''}) async {
+    final standard = await designBrief();
+    final system = '$_designer\n$standard\nReply with ONLY the file inside a single ```html code block.';
+    final base = 'App name: ${app.title}\nDesign it as ${_platform[p.lang]}.\n${_role(app)}\n';
+    String prompt;
+    if (current.isNotEmpty) {
+      prompt = '$system\n\n$base\nCurrent design:\n```html\n$current\n```\n\nChange requested by the owner (apply it fully and precisely; '
+          'keep everything else as it is unless the change needs it; keep the screens switcher):\n$change\n';
+    } else {
+      prompt = '$system\n\n$base\nWhat the app is and does (approved by the owner):\n${p.brief.isEmpty ? p.description : p.brief}\n\n${_appFacts(p)}\n'
+          '${p.isPair ? '\nDesign ONLY the ${app.role == 'admin' ? 'ADMIN' : 'CUSTOMER'} app; the other app of the pair is designed separately.\n' : ''}'
+          '${brandFrom.isEmpty ? '' : '\nThis app belongs to the same business as the design below. Use the SAME brand: palette, fonts, corner radius, icon style and component look, so the two apps feel like one product:\n```html\n${brandFrom.length > 40000 ? brandFrom.substring(0, 40000) : brandFrom}\n```\n'}'
+          '${change.isEmpty ? '' : '\nThe owner also wants: $change\n'}';
+    }
+    return _extractHtml(await ask(prompt, json: false, temperature: current.isEmpty ? 0.7 : 0.5, maxTokens: 32000));
   }
 
   /// Step "التصميم": the AI itself designs the whole interface of the app from its description, as a senior UI designer:

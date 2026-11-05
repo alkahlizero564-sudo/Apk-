@@ -70,6 +70,7 @@ flutter:
   uses-material-design: true
   assets:
     - factory/libraries.json
+    - factory/design_brief.md
     # The HTML engine runs inside Alpha as the instant preview of any app.
     - engines/html/app.js
     - engines/html/backend.js

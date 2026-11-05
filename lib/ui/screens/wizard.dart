@@ -214,18 +214,18 @@ class _WizardScreenState extends State<WizardScreen> {
     try {
       await s.save(p, message: 'Alpha: new project ${p.title}');
       var note = 'تم إنشاء المشروع';
-      final nativeDesign = !p.design.isEmpty && (p.lang == Lang.flutter || p.lang == Lang.python || p.lang == Lang.kotlin);
-      if (s.hasGitHub && nativeDesign) {
-        // The interface the AI designed becomes ${p.lang.label} code (written and built in GitHub Actions, errors fixed by itself).
+      final fromDesign = p.design.hasPrototype;
+      if (s.hasGitHub && fromDesign) {
+        // The approved design becomes the real ${p.lang.label} app (written and built in GitHub Actions, errors fixed by itself).
         final server = p.forClient && p.supabaseRef.isNotEmpty ||
             (p.backend == BackendType.supabase && s.hasSupabase && s.supabaseRef.isNotEmpty) ||
             (p.backend == BackendType.firebase && s.hasFirebase);
         if (server) await s.setupServer(p, buildAfter: false);
         for (final a in p.apps) {
-          await s.generateWithAi(a, 'ابنِ كل واجهات هذا التطبيق بنفس التصميم المعتمد (design/spec.md) بدقة، مع كل الشاشات والجداول.');
+          await s.generateWithAi(a, buildFromDesignRequest);
         }
         note = server || p.backend == BackendType.none
-            ? 'تم الإنشاء: الذكاء الاصطناعي يكتب كود ${p.lang.label} بالتصميم المعتمد ثم يبنيه'
+            ? 'تم الإنشاء: الذكاء الاصطناعي يكتب كود ${p.lang.label} مطابقاً للتصميم المعتمد ثم يبنيه'
             : 'تم الإنشاء ويُكتب الكود. أضف مفاتيح ${p.backend.label} في الإعدادات ثم اضغط «تجهيز السيرفر»';
       } else if (s.hasGitHub) {
         if (p.backend == BackendType.none) {
@@ -543,17 +543,10 @@ class _WizardScreenState extends State<WizardScreen> {
           const SectionTitle('التصميم', subtitle: 'هذه الخطوة للشكل فقط: الذكاء الاصطناعي يصمّم الواجهات، أو اختر مدرسة جاهزة'),
           AiDesignCard(
             draft: _build,
-            brief: _briefText,
             autoStart: true,
-            onDesigned: (d, t, h, sub) => setState(() {
-              _design = d;
-              _theme = t;
-              if (h.isNotEmpty) _headline = h;
-              if (sub.isNotEmpty) _subtitle = sub;
-            }),
-            onClear: () => setState(() => _design = AiDesign()),
+            onDesigned: (d) => setState(() => _design = d),
           ),
-          if (_design.isEmpty) ...[
+          if (!_design.hasPrototype) ...[
             const SectionTitle('أو اختر مدرسة تصميم جاهزة'),
             Row(
               children: [

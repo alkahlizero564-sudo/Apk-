@@ -199,12 +199,11 @@ class _DesignStudioScreenState extends State<DesignStudioScreen> {
     setState(() => _busy = true);
     try {
       await s.save(p, message: 'Alpha: design of ${p.title}');
-      final native = p.lang == Lang.flutter || p.lang == Lang.python || p.lang == Lang.kotlin;
       if (build && s.hasGitHub) {
-        if (native && !_design.isEmpty) {
-          // The native code is rewritten by the AI to match the new design, then built.
+        if (_design.hasPrototype) {
+          // The code is rewritten by the AI to match the approved design, then built.
           for (final a in p.apps) {
-            await s.generateWithAi(a, 'غيّر واجهات التطبيق لتطابق التصميم المعتمد الجديد (design/spec.md) بدقة، مع إبقاء كل الوظائف.');
+            await s.generateWithAi(a, buildFromDesignRequest);
           }
         } else {
           await s.buildAll(p);
@@ -230,19 +229,9 @@ class _DesignStudioScreenState extends State<DesignStudioScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
             children: [
-              AiDesignCard(
-                draft: _draft,
-                brief: p.brief,
-                onDesigned: (d, t, h, sub) => setState(() {
-                  _design = d;
-                  _theme = t;
-                  if (h.isNotEmpty) _headline.text = h;
-                  if (sub.isNotEmpty) _subtitle.text = sub;
-                }),
-                onClear: () => setState(() => _design = AiDesign()),
-              ),
+              AiDesignCard(draft: _draft, onDesigned: (d) => setState(() => _design = d)),
               const SizedBox(height: 12),
-              if (_design.isEmpty) ...[
+              if (!_design.hasPrototype) ...[
                 OutlinedButton.icon(
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PreviewScreen(project: _draft()))),
                   icon: const Icon(Icons.play_circle_rounded, color: AlphaColors.teal),
