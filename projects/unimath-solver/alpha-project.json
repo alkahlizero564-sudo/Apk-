@@ -1,0 +1,234 @@
+{
+ "id": "1793860850696605",
+ "base": "unimath-solver",
+ "title": "حاسبة المعادلات الجامعية",
+ "lang": "html",
+ "kind": "single",
+ "description": "اله حاسبه المعادلات الرياضية لطلاب الجامعه",
+ "theme": {
+  "preset": "ai",
+  "seed": "#3B82F6",
+  "accent": "#8B5CF6",
+  "mode": "dark",
+  "style": "glass",
+  "radius": 34.0,
+  "layout": "tabs",
+  "look": "spatial",
+  "hero": "card",
+  "list": "cards",
+  "nav": "floating",
+  "deco": "glow",
+  "type": "heavy",
+  "school": "spatial",
+  "home": "bento",
+  "sheet": "sheet",
+  "font": "plex",
+  "onboarding": true
+ },
+ "schema": [
+  {
+   "name": "math_formulas",
+   "label": "مكتبة القوانين الرياضية",
+   "icon": "book",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "title",
+     "label": "عنوان القانون",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "category",
+     "label": "التصنيف الرياضي",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "Calculus",
+      "Linear Algebra",
+      "Algebra",
+      "Differential Equations",
+      "Statistics"
+     ],
+     "show": true
+    },
+    {
+     "name": "formula_latex",
+     "label": "صيغة المعادلة",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "description",
+     "label": "الشرح والتوضيح",
+     "type": "longtext",
+     "show": false
+    },
+    {
+     "name": "is_featured",
+     "label": "قانون رئيسي",
+     "type": "bool",
+     "default": "false",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "customer",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "equation_records",
+   "label": "سجل المعادلات والمحفوظات",
+   "icon": "checklist",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "input_expression",
+     "label": "المعادلة المدخلة",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "input_type",
+     "label": "طريقة الإدخال",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "لوحة المفاتيح",
+      "صورة كاميرا"
+     ],
+     "show": true
+    },
+    {
+     "name": "equation_image",
+     "label": "صورة المعادلة",
+     "type": "image",
+     "show": false
+    },
+    {
+     "name": "solution_steps",
+     "label": "خطوات الحل التفصيلية",
+     "type": "longtext",
+     "required": true,
+     "show": false
+    },
+    {
+     "name": "math_category",
+     "label": "الفرع الرياضي",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "Calculus",
+      "Linear Algebra",
+      "Algebra",
+      "Differential Equations"
+     ],
+     "show": true
+    },
+    {
+     "name": "is_bookmarked",
+     "label": "محفوظ بالمفضلة",
+     "type": "bool",
+     "default": "false",
+     "show": true
+    },
+    {
+     "name": "folder_name",
+     "label": "اسم المجلد",
+     "type": "text",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "student_profiles",
+   "label": "ملفات الطلاب",
+   "icon": "person",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "full_name",
+     "label": "اسم الطالب",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "email_address",
+     "label": "البريد الإلكتروني",
+     "type": "email",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "university_level",
+     "label": "المستوى الجامعي",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "السنة الأولى",
+      "السنة الثانية",
+      "السنة الثالثة",
+      "السنة الرابعة",
+      "دراسات عليا"
+     ],
+     "show": true
+    },
+    {
+     "name": "major",
+     "label": "التخصص الجامعي",
+     "type": "text",
+     "show": true
+    },
+    {
+     "name": "daily_reminder_enabled",
+     "label": "تفعيل التذكير اليومي للمراجعة",
+     "type": "bool",
+     "default": "true",
+     "show": false
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  }
+ ],
+ "backend": "none",
+ "auth": "email_password",
+ "push": false,
+ "codeMode": "engine",
+ "admins": [],
+ "serverUrl": "",
+ "headline": "حل المعادلات الجامعية المعقدة بذكاء ودقة",
+ "subtitle": "خطوات مفصلة، رسوم بيانية، ومكتبة قوانين شاملة لطلاب الجامعة",
+ "apps": [
+  {
+   "slug": "unimath-solver",
+   "role": "single",
+   "title": "حاسبة المعادلات الجامعية"
+  }
+ ],
+ "createdAt": "2026-11-05T08:40:50.696805",
+ "supabaseUrl": "",
+ "supabaseAnonKey": "",
+ "supabaseRef": "",
+ "brief": "التطبيق: حاسبة المعادلات الجامعية\nتطبيق موجه لطلاب الجامعة لحل المعادلات الرياضية المعقدة بمختلف أنواعها مثل Calculus و Linear Algebra. يتيح للمستخدم إدخال المعادلة إما عن طريق لوحة مفاتيح رياضية متقدمة أو التقاط صورة لها، ثم يعرض الحل خطوة بخطوة مع إمكانية حفظ الحلول والمناقشات في سجل خاص.\nالنوع: تطبيق واحد (تطبيق واحد يدير كل شيء)\nشاشات العميل:\n- الصفحة الرئيسية (Home Screen): اختيار فرع الرياضيات مثل Calculus أو Linear Algebra والوصول المباشر للحاسبة\n- شاشة إدخال المعادلة (Equation Input Screen): لوحة مفاتيح رموز رياضية متقدمة مع خيار خيار التقاط صورة للمعادلة عبر Camera\n- شاشة عرض الحل (Solution Step-by-Step Screen): عرض الحل النهائي مع الخطوات التفصيلية الرسم البياني (Graphing) إذا لزم الأمر\n- سجل المحفوظات (History & Bookmarks Screen): استعراض المعادلات التي تم حلها سابقاً وإمكانية تنظيمها في مجلدات\n- مكتبة القوانين (Formula Reference Screen): مرجع شامل للقوانين والمعادلات الرياضية الأساسية للطلاب\n\nالبيانات:\n- User: id, name, email, university_level, created_at\n- EquationRecord: id, user_id, input_expression, solution_steps, math_category, graph_data, is_bookmarked, created_at\n- MathFormula: id, title, category, formula_latex, description\n\nالإشعارات:\n- تذكير يومي بمراجعة القوانين الرياضية ← تنبيه للمستخدم\n- عند إضافة قوانين رياضية جديدة للمكتبة ← تنبيه لجميع المستخدمين\n\nتسجيل الدخول: بريد + كلمة مرور",
+ "design": {
+  "css": "/* ==========================================================================\n   حاسبة المعادلات الجامعية — Math Solver Spatial Design System (RTL)\n   ========================================================================== */\n\n:root.ai {\n  --seed: #3B82F6;\n  --accent: #8B5CF6;\n  --cyan: #06B6D4;\n  --grad: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 50%, #06B6D4 100%);\n  --grad-surface: linear-gradient(145deg, rgba(21, 30, 49, 0.85) 0%, rgba(13, 19, 33, 0.92) 100%);\n  --grad-glow: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.25) 0%, rgba(139, 92, 246, 0.1) 50%, transparent 80%);\n  \n  --bg: #070A12;\n  --surface: rgba(18, 26, 43, 0.75);\n  --surface2: rgba(30, 42, 68, 0.85);\n  --line: rgba(255, 255, 255, 0.08);\n  --line2: rgba(59, 130, 246, 0.3);\n  \n  --tx: #F8FAFC;\n  --mut: #94A3B8;\n  --on-seed: #FFFFFF;\n  --hero-tx: #FFFFFF;\n  \n  --ok: #10B981;\n  --bad: #EF4444;\n  --warn: #F59E0B;\n  \n  --r: 20px;\n  --btn-r: 14px;\n  --chip-r: 12px;\n  \n  --shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.45);\n  --shadow-lg: 0 20px 60px 0 rgba(0, 0, 0, 0.65), 0 0 20px rgba(59, 130, 246, 0.15);\n  \n  --font: 'A-plex', -apple-system, BlinkMacSystemFont, sans-serif;\n  --display: 'A-plex', sans-serif;\n}\n\n:root.ai.light {\n  --bg: #F0F4FA;\n  --surface: rgba(255, 255, 255, 0.82);\n  --surface2: rgba(235, 242, 253, 0.95);\n  --line: rgba(15, 23, 42, 0.08);\n  --line2: rgba(59, 130, 246, 0.25);\n  --tx: #0F172A;\n  --mut: #64748B;\n  --shadow: 0 10px 30px 0 rgba(15, 23, 42, 0.08);\n  --shadow-lg: 0 20px 40px 0 rgba(59, 130, 246, 0.12);\n}\n\n/* Background canvas background grid */\n:root.ai .deco {\n  background-color: var(--bg);\n  background-image: \n    radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.18) 0%, transparent 40%),\n    radial-gradient(circle at 85% 65%, rgba(139, 92, 246, 0.15) 0%, transparent 45%),\n    radial-gradient(circle at 50% 90%, rgba(6, 182, 212, 0.12) 0%, transparent 40%),\n    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),\n    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);\n  background-size: 100% 100%, 100% 100%, 100% 100%, 32px 32px, 32px 32px;\n  backdrop-filter: blur(20px);\n  z-index: 0;\n}\n\n/* Main App Wrapper */\n:root.ai #app {\n  font-family: var(--font);\n  color: var(--tx);\n  max-width: 440px;\n  margin: 0 auto;\n  position: relative;\n  min-height: 100vh;\n  padding-bottom: 96px;\n  box-sizing: border-box;\n}\n\n/* Base Glass Container */\n:root.ai .card, \n:root.ai .hero,\n:root.ai .topbar,\n:root.ai .sheet-card,\n:root.ai .login .card {\n  backdrop-filter: blur(16px);\n  -webkit-backdrop-filter: blur(16px);\n  border: 1px solid var(--line);\n  box-shadow: var(--shadow);\n}\n\n/* ==========================================================================\n   HERO SECTION\n   ========================================================================== */\n:root.ai .hero {\n  position: relative;\n  background: var(--grad-surface);\n  border-radius: var(--r);\n  padding: 28px 20px 22px;\n  margin: 14px 14px 20px;\n  overflow: hidden;\n  border: 1px solid rgba(255, 255, 255, 0.12);\n  box-shadow: var(--shadow-lg);\n}\n\n:root.ai .hero::before {\n  content: '';\n  position: absolute;\n  top: 0;\n  inset-inline-start: 0;\n  inset-inline-end: 0;\n  height: 2px;\n  background: var(--grad);\n}\n\n/* Mathematical Decorative Orbs */\n:root.ai .hero .o1, :root.ai .hero .o2 {\n  position: absolute;\n  border-radius: 50%;\n  pointer-events: none;\n}\n\n:root.ai .hero .o1 {\n  width: 160px;\n  height: 160px;\n  top: -40px;\n  inset-inline-end: -40px;\n  background: radial-gradient(circle, rgba(59, 130, 246, 0.35) 0%, transparent 70%);\n  filter: blur(20px);\n  animation: pulseOrb 6s infinite alternate ease-in-out;\n}\n\n:root.ai .hero .o2 {\n  width: 140px;\n  height: 140px;\n  bottom: -30px;\n  inset-inline-start: -30px;\n  background: radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%);\n  filter: blur(24px);\n  animation: pulseOrb 8s infinite alternate-reverse ease-in-out;\n}\n\n@keyframes pulseOrb {\n  0% { transform: scale(0.9) translate(0, 0); opacity: 0.6; }\n  100% { transform: scale(1.25) translate(10px, 10px); opacity: 0.9; }\n}\n\n:root.ai .hero .hb {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  padding: 6px 14px;\n  background: rgba(59, 130, 246, 0.15);\n  border: 1px solid rgba(59, 130, 246, 0.35);\n  border-radius: 30px;\n  font-size: 0.78rem;\n  font-weight: 700;\n  color: #60A5FA;\n  margin-bottom: 14px;\n  box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);\n}\n\n:root.ai .hero .hb svg {\n  width: 14px;\n  height: 14px;\n  fill: currentColor;\n}\n\n:root.ai .hero h1 {\n  font-family: var(--display);\n  font-size: 1.65rem;\n  font-weight: 800;\n  line-height: 1.3;\n  margin: 0 0 8px;\n  background: linear-gradient(180deg, #FFFFFF 0%, #CBD5E1 100%);\n  -webkit-background-clip: text;\n  -webkit-text-fill-color: transparent;\n}\n\n:root.ai .hero p {\n  font-size: 0.88rem;\n  color: var(--mut);\n  line-height: 1.5;\n  margin: 0 0 18px;\n}\n\n/* Admin / Counter stats in Hero */\n:root.ai .hero .hs {\n  display: flex;\n  gap: 12px;\n  margin-top: 14px;\n  padding-top: 14px;\n  border-top: 1px solid rgba(255, 255, 255, 0.08);\n}\n\n:root.ai .hero .hs > div {\n  flex: 1;\n  background: rgba(15, 23, 42, 0.5);\n  padding: 10px 12px;\n  border-radius: 12px;\n  border: 1px solid rgba(255, 255, 255, 0.05);\n  text-align: center;\n}\n\n:root.ai .hero .hs b {\n  display: block;\n  font-size: 1.25rem;\n  font-weight: 800;\n  color: #38BDF8;\n}\n\n:root.ai .hero .hs span {\n  font-size: 0.72rem;\n  color: var(--mut);\n}\n\n/* Ticker Strip Marquee */\n:root.ai .hero .marq {\n  display: flex;\n  margin-top: 14px;\n  padding: 6px 0;\n  background: rgba(0, 0, 0, 0.25);\n  border-radius: 8px;\n  font-size: 0.75rem;\n  color: #A7F3D0;\n  overflow: hidden;\n  white-space: nowrap;\n}\n\n/* ==========================================================================\n   BENTO GRID & HOME LAYOUT\n   ========================================================================== */\n:root.ai .wrap {\n  padding: 0 14px;\n}\n\n:root.ai .section {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  margin: 22px 4px 12px;\n}\n\n:root.ai .section h3 {\n  font-size: 1.05rem;\n  font-weight: 700;\n  margin: 0;\n  color: var(--tx);\n  letter-spacing: -0.01em;\n}\n\n:root.ai .section button {\n  background: transparent;\n  border: none;\n  color: #60A5FA;\n  font-size: 0.82rem;\n  font-weight: 600;\n  cursor: pointer;\n  padding: 4px 8px;\n  border-radius: 8px;\n  transition: all 0.2s;\n}\n\n:root.ai .section button:hover {\n  background: rgba(59, 130, 246, 0.1);\n}\n\n:root.ai .grid {\n  display: grid;\n  grid-template-columns: repeat(2, 1fr);\n  gap: 12px;\n}\n\n:root.ai .card.tile {\n  background: var(--grad-surface);\n  border-radius: var(--r);\n  padding: 16px;\n  position: relative;\n  overflow: hidden;\n  display: flex;\n  flex-direction: column;\n  justify-content: space-between;\n  min-height: 110px;\n  cursor: pointer;\n  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s, box-shadow 0.25s;\n}\n\n:root.ai .card.tile:active {\n  transform: scale(0.97);\n}\n\n:root.ai .card.tile.hl {\n  grid-column: span 2;\n  background: linear-gradient(135deg, rgba(30, 58, 138, 0.6) 0%, rgba(88, 28, 135, 0.5) 100%);\n  border: 1px solid rgba(96, 165, 250, 0.4);\n  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.25);\n}\n\n:root.ai .card.tile.wide {\n  grid-column: span 2;\n}\n\n:root.ai .card.tile .ic {\n  width: 44px;\n  height: 44px;\n  border-radius: 14px;\n  background: rgba(255, 255, 255, 0.06);\n  border: 1px solid rgba(255, 255, 255, 0.1);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  margin-bottom: 12px;\n  color: #60A5FA;\n}\n\n:root.ai .card.tile.hl .ic {\n  background: var(--grad);\n  color: #FFFFFF;\n  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);\n}\n\n:root.ai .card.tile .ic svg {\n  width: 22px;\n  height: 22px;\n  stroke-width: 2.2;\n}\n\n:root.ai .card.tile b {\n  font-size: 1.3rem;\n  font-weight: 800;\n  line-height: 1.1;\n  display: block;\n  margin-bottom: 4px;\n}\n\n:root.ai .card.tile span {\n  font-size: 0.85rem;\n  color: var(--mut);\n  font-weight: 500;\n}\n\n:root.ai .card.tile .spark {\n  position: absolute;\n  top: 12px;\n  inset-inline-end: 12px;\n  width: 18px;\n  height: 18px;\n  opacity: 0.4;\n  fill: #A7F3D0;\n}\n\n/* Horizontal Featured Rail */\n:root.ai .rail {\n  display: flex;\n  gap: 12px;\n  overflow-x: auto;\n  padding: 4px 0 12px;\n  scroll-snap-type: x mandatory;\n  -webkit-overflow-scrolling: touch;\n}\n\n:root.ai .rail::-webkit-scrollbar {\n  display: none;\n}\n\n:root.ai .card.feat {\n  min-width: 240px;\n  max-width: 260px;\n  scroll-snap-align: start;\n  background: var(--surface2);\n  border-radius: var(--r);\n  overflow: hidden;\n  border: 1px solid var(--line);\n  flex-shrink: 0;\n}\n\n:root.ai .card.feat .cv {\n  height: 100px;\n  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(124, 58, 237, 0.3));\n  position: relative;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n}\n\n:root.ai .card.feat .fb {\n  padding: 12px 14px;\n}\n\n:root.ai .card.feat .title {\n  font-weight: 700;\n  font-size: 0.95rem;\n  margin-bottom: 6px;\n}\n\n/* ==========================================================================\n   LIST SCREEN & CARDS (Step-by-Step & Formula Records)\n   ========================================================================== */\n:root.ai .topbar {\n  position: sticky;\n  top: 0;\n  z-index: 40;\n  background: rgba(7, 10, 18, 0.85);\n  backdrop-filter: blur(16px);\n  padding: 16px 20px;\n  border-bottom: 1px solid var(--line);\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n}\n\n:root.ai .topbar h2 {\n  font-size: 1.2rem;\n  font-weight: 800;\n  margin: 0;\n}\n\n:root.ai .search {\n  position: relative;\n  margin-bottom: 14px;\n}\n\n:root.ai .search input.input {\n  width: 100%;\n  height: 48px;\n  background: rgba(18, 26, 43, 0.8);\n  border: 1px solid rgba(255, 255, 255, 0.12);\n  border-radius: 14px;\n  padding: 0 44px 0 16px;\n  color: var(--tx);\n  font-size: 0.9rem;\n  outline: none;\n  box-sizing: border-box;\n  transition: border-color 0.2s, box-shadow 0.2s;\n}\n\n:root.ai .search input.input:focus {\n  border-color: #38BDF8;\n  box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);\n}\n\n:root.ai .search svg {\n  position: absolute;\n  inset-inline-start: 14px;\n  top: 50%;\n  transform: translateY(-50%);\n  width: 20px;\n  height: 20px;\n  color: var(--mut);\n  pointer-events: none;\n}\n\n:root.ai .chips {\n  display: flex;\n  gap: 8px;\n  overflow-x: auto;\n  padding-bottom: 12px;\n  margin-bottom: 8px;\n}\n\n:root.ai .chip {\n  padding: 8px 16px;\n  background: rgba(255, 255, 255, 0.05);\n  border: 1px solid var(--line);\n  border-radius: var(--chip-r);\n  font-size: 0.82rem;\n  font-weight: 600;\n  color: var(--mut);\n  white-space: nowrap;\n  cursor: pointer;\n  transition: all 0.2s;\n}\n\n:root.ai .chip.on {\n  background: rgba(59, 130, 246, 0.2);\n  border-color: #3B82F6;\n  color: #60A5FA;\n  box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);\n}\n\n:root.ai .card.row {\n  display: flex;\n  align-items: center;\n  gap: 14px;\n  padding: 14px 16px;\n  background: var(--surface);\n  border-radius: var(--r);\n  margin-bottom: 10px;\n  border: 1px solid var(--line);\n  transition: transform 0.2s, border-color 0.2s;\n}\n\n:root.ai .card.row:hover {\n  border-color: rgba(59, 130, 246, 0.35);\n  transform: translateY(-2px);\n}\n\n:root.ai .card.row .thumb {\n  width: 46px;\n  height: 46px;\n  border-radius: 12px;\n  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));\n  border: 1px solid rgba(255, 255, 255, 0.1);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  flex-shrink: 0;\n  color: #38BDF8;\n}\n\n:root.ai .card.row .grow {\n  flex: 1;\n  min-width: 0;\n}\n\n:root.ai .card.row .when {\n  font-size: 0.72rem;\n  color: var(--mut);\n  margin-bottom: 2px;\n}\n\n:root.ai .card.row .title {\n  font-size: 0.95rem;\n  font-weight: 700;\n  color: var(--tx);\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  direction: ltr;\n  text-align: right;\n  font-family: 'A-plex', monospace;\n}\n\n:root.ai .card.row .sub {\n  font-size: 0.8rem;\n  color: var(--mut);\n  margin-top: 4px;\n}\n\n:root.ai .pill {\n  display: inline-block;\n  padding: 3px 10px;\n  border-radius: 20px;\n  font-size: 0.72rem;\n  font-weight: 700;\n}\n\n:root.ai .pill.ok {\n  background: rgba(16, 185, 129, 0.15);\n  color: #34D399;\n  border: 1px solid rgba(16, 185, 129, 0.3);\n}\n\n:root.ai .pill.warn {\n  background: rgba(245, 158, 11, 0.15);\n  color: #FBBF24;\n  border: 1px solid rgba(245, 158, 11, 0.3);\n}\n\n:root.ai .pill.bad {\n  background: rgba(239, 68, 68, 0.15);\n  color: #F87171;\n  border: 1px solid rgba(239, 68, 68, 0.3);\n}\n\n/* ==========================================================================\n   FLOATING ACTION BUTTON (Camera / Keyboard Scanner)\n   ========================================================================== */\n:root.ai .fab {\n  position: fixed;\n  bottom: 84px;\n  inset-inline-end: 20px;\n  z-index: 50;\n  height: 52px;\n  padding: 0 22px;\n  border-radius: 30px;\n  background: var(--grad);\n  color: #FFFFFF;\n  border: none;\n  font-weight: 700;\n  font-size: 0.92rem;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);\n  cursor: pointer;\n  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);\n}\n\n:root.ai .fab:active {\n  transform: scale(0.92);\n}\n\n:root.ai .fab svg {\n  width: 20px;\n  height: 20px;\n}\n\n/* ==========================================================================\n   FLOATING NAVIGATION BAR\n   ========================================================================== */\n:root.ai .nav {\n  position: fixed;\n  bottom: 16px;\n  inset-inline-start: 50%;\n  transform: translateX(-50%);\n  width: min(92%, 410px);\n  height: 64px;\n  background: rgba(15, 22, 37, 0.88);\n  backdrop-filter: blur(20px);\n  -webkit-backdrop-filter: blur(20px);\n  border: 1px solid rgba(255, 255, 255, 0.12);\n  border-radius: 36px;\n  display: flex;\n  align-items: center;\n  justify-content: space-around;\n  padding: 0 8px;\n  box-shadow: var(--shadow-lg);\n  z-index: 90;\n}\n\n:root.ai .nav button, :root.ai .nav a {\n  background: transparent;\n  border: none;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  gap: 4px;\n  color: var(--mut);\n  font-size: 0.7rem;\n  font-weight: 600;\n  text-decoration: none;\n  cursor: pointer;\n  flex: 1;\n  height: 100%;\n  position: relative;\n  transition: color 0.2s;\n}\n\n:root.ai .nav button i, :root.ai .nav a i {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  width: 24px;\n  height: 24px;\n}\n\n:root.ai .nav button.on, :root.ai .nav a.on {\n  color: #38BDF8;\n}\n\n:root.ai .nav button.on::after, :root.ai .nav a.on::after {\n  content: '';\n  position: absolute;\n  top: 6px;\n  width: 24px;\n  height: 3px;\n  background: var(--grad);\n  border-radius: 2px;\n  box-shadow: 0 0 8px #38BDF8;\n}\n\n:root.ai .nav .badge {\n  position: absolute;\n  top: 8px;\n  inset-inline-end: 22%;\n  background: #EF4444;\n  color: #FFF;\n  font-size: 0.65rem;\n  font-weight: 800;\n  padding: 1px 6px;\n  border-radius: 10px;\n  border: 2px solid #0F1625;\n}\n\n/* ==========================================================================\n   SOLUTION & MATH INPUT SHEET / MODAL\n   ========================================================================== */\n:root.ai .sheet {\n  position: fixed;\n  inset: 0;\n  z-index: 100;\n  background: rgba(0, 0, 0, 0.65);\n  backdrop-filter: blur(8px);\n  display: flex;\n  align-items: flex-end;\n  opacity: 0;\n  pointer-events: none;\n  transition: opacity 0.3s ease;\n}\n\n:root.ai .sheet.open {\n  opacity: 1;\n  pointer-events: auto;\n}\n\n:root.ai .sheet-card {\n  width: 100%;\n  max-height: 90vh;\n  background: #0D1322;\n  border-top-left-radius: 28px;\n  border-top-right-radius: 28px;\n  border-top: 1px solid rgba(255, 255, 255, 0.15);\n  padding: 12px 20px 32px;\n  overflow-y: auto;\n  box-sizing: border-box;\n  transform: translateY(100%);\n  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);\n}\n\n:root.ai .sheet.open .sheet-card {\n  transform: translateY(0);\n}\n\n:root.ai .sheet-card .handle {\n  width: 40px;\n  height: 5px;\n  background: rgba(255, 255, 255, 0.2);\n  border-radius: 3px;\n  margin: 0 auto 16px;\n}\n\n:root.ai .sheet-card h3 {\n  font-size: 1.25rem;\n  font-weight: 800;\n  margin: 0 0 16px;\n  color: var(--tx);\n}\n\n:root.ai label.lbl {\n  display: block;\n  font-size: 0.82rem;\n  font-weight: 600;\n  color: var(--mut);\n  margin: 14px 0 6px;\n}\n\n:root.ai input.input, :root.ai select.input, :root.ai textarea.input {\n  width: 100%;\n  background: rgba(21, 30, 49, 0.9);\n  border: 1px solid rgba(255, 255, 255, 0.12);\n  border-radius: var(--btn-r);\n  padding: 12px 14px;\n  color: var(--tx);\n  font-family: var(--font);\n  font-size: 0.92rem;\n  box-sizing: border-box;\n  outline: none;\n}\n\n:root.ai input.input:focus, :root.ai textarea.input:focus {\n  border-color: #38BDF8;\n  box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);\n}\n\n/* Key Value display inside Sheet/Details (Step-by-Step Breakdown) */\n:root.ai .kv {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 12px 14px;\n  background: rgba(255, 255, 255, 0.03);\n  border-radius: 12px;\n  margin-bottom: 8px;\n  border: 1px solid var(--line);\n}\n\n:root.ai .kv span:first-child {\n  color: var(--mut);\n  font-size: 0.85rem;\n}\n\n:root.ai .kv span:last-child {\n  color: #38BDF8;\n  font-weight: 700;\n  font-family: 'A-plex', monospace;\n  direction: ltr;\n}\n\n/* ==========================================================================\n   BUTTONS & ACTIONS\n   ========================================================================== */\n:root.ai .btn {\n  width: 100%;\n  height: 50px;\n  background: var(--grad);\n  border: none;\n  border-radius: var(--btn-r);\n  color: #FFFFFF;\n  font-size: 0.95rem;\n  font-weight: 700;\n  cursor: pointer;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  gap: 8px;\n  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);\n  margin-top: 18px;\n  transition: opacity 0.2s, transform 0.15s;\n}\n\n:root.ai .btn:active {\n  transform: scale(0.98);\n}\n\n:root.ai .btn.ghost {\n  background: transparent;\n  border: 1px solid var(--line2);\n  color: #60A5FA;\n  box-shadow: none;\n}\n\n:root.ai .linkbtn {\n  background: transparent;\n  border: none;\n  color: var(--mut);\n  font-size: 0.85rem;\n  cursor: pointer;\n  display: block;\n  margin: 12px auto 0;\n  text-decoration: underline;\n}\n\n/* Empty State */\n:root.ai .empty {\n  text-align: center;\n  padding: 40px 20px;\n  color: var(--mut);\n}\n\n:root.ai .empty .big {\n  display: inline-flex;\n  width: 64px;\n  height: 64px;\n  border-radius: 50%;\n  background: rgba(255, 255, 255, 0.04);\n  align-items: center;\n  justify-content: center;\n  margin-bottom: 12px;\n  color: #38BDF8;\n}\n\n/* Toast Alerts */\n:root.ai .toast {\n  position: fixed;\n  top: 20px;\n  inset-inline-start: 50%;\n  transform: translateX(-50%);\n  background: rgba(15, 23, 42, 0.95);\n  border: 1px solid #3B82F6;\n  color: #FFF;\n  padding: 12px 20px;\n  border-radius: 30px;\n  font-size: 0.88rem;\n  font-weight: 600;\n  box-shadow: var(--shadow-lg);\n  z-index: 120;\n}\n\n:root.ai .toast.bad {\n  border-color: #EF4444;\n}\n\n/* Mobile responsive adjustments */\n@media (max-width: 360px) {\n  :root.ai .hero h1 { font-size: 1.4rem; }\n  :root.ai .grid { grid-template-columns: 1fr; }\n  :root.ai .card.tile.hl { grid-column: span 1; }\n}\n",
+  "js": "// Math Solver - Custom Spatial Motion Engine\n(function() {\n  window.AlphaDesign = {\n    onRender({ screen, root }) {\n      try {\n        if (!root) return;\n\n        // 1. Entrance Staggering Animation for Grid Tiles & Cards\n        const cards = root.querySelectorAll('.card, .tile, .row');\n        if (cards.length > 0 && typeof gsap !== 'undefined') {\n          gsap.fromTo(cards, \n            { opacity: 0, y: 16, scale: 0.98 },\n            { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: 0.05, ease: 'power2.out' }\n          );\n        }\n\n        // 2. Interactive Tilt effect on Bento tiles using VanillaTilt (if available)\n        if (typeof VanillaTilt !== 'undefined') {\n          const bentoTiles = root.querySelectorAll('.card.tile');\n          bentoTiles.forEach(tile => {\n            if (!tile.dataset.aiTilt) {\n              tile.dataset.aiTilt = '1';\n              VanillaTilt.init(tile, {\n                max: 8,\n                speed: 400,\n                glare: true,\n                \"max-glare\": 0.15\n              });\n            }\n          });\n        }\n\n        // 3. Confetti feedback on solving/saving equations\n        const saveBtns = root.querySelectorAll('.btn, #add, .fab');\n        saveBtns.forEach(btn => {\n          if (!btn.dataset.aiConfetti) {\n            btn.dataset.aiConfetti = '1';\n            btn.addEventListener('click', (e) => {\n              if (typeof confetti === 'function') {\n                confetti({\n                  particleCount: 35,\n                  spread: 60,\n                  origin: { y: 0.8 },\n                  colors: ['#3B82F6', '#8B5CF6', '#06B6D4', '#10B981']\n                });\n              }\n            });\n          }\n        });\n\n        // 4. Subtle Formula Typing Effect on Hero Title (if Typed is present)\n        const heroTitle = root.querySelector('.hero h1');\n        if (heroTitle && !heroTitle.dataset.aiTyped && typeof Typed !== 'undefined') {\n          heroTitle.dataset.aiTyped = '1';\n          const originalText = heroTitle.textContent;\n          heroTitle.textContent = '';\n          new Typed(heroTitle, {\n            strings: [originalText, 'حل المعادلات والتعويضات بخطوات مفصلة'],\n            typeSpeed: 40,\n            backSpeed: 25,\n            backDelay: 4000,\n            loop: true\n          });\n        }\n\n      } catch (err) {\n        console.warn('AlphaDesign render hook:', err);\n      }\n    }\n  };\n})();\n",
+  "spec": "# دليل تصميم حاسبة المعادلات الجامعية (University Math Solver App Spec)\n\n## 1. الهوية البصرية ونظام الألوان (Design Identity & Color Palette)\n\nالتطبيق يعتمد على نمط **Spatial Glassmorphism (التصميم الفضائي الزجاجي)** المصمم خصيصًا للتطبيقات التقنية والأكاديمية المتقدمة لطلاب الجامعة.\n\n### الألوان الرئيسية (Hex Values):\n- **الخلفية الأساسية (Deep Space Background):** `#070A12`\n- **الأسطح الزجاجية (Surface Glass):** `rgba(18, 26, 43, 0.75)` مع `backdrop-filter: blur(16px)`\n- **الأسطح الثانوية (Surface Light Glass):** `rgba(30, 42, 68, 0.85)`\n- **اللون الأساسي (Primary Seed - Radiant Blue):** `#3B82F6`\n- **اللون الثانوي (Accent Violet):** `#8B5CF6`\n- **اللون المميز (Cyan Glow):** `#06B6D4`\n- **التدرج الرئيسي (Primary Gradient):** `linear-gradient(135deg, #3B82F6 0%, #8B5CF6 50%, #06B6D4 100%)`\n- **النصوص الأساسية (Primary Text):** `#F8FAFC`\n- **النصوص الثانوية (Muted Text):** `#94A3B8`\n- **الحدود اللامعة (Borders):** `rgba(255, 255, 255, 0.08)` و `rgba(59, 130, 246, 0.3)`\n\n---\n\n## 2. الطبوغرافيا والخطوط (Typography System)\n\n- **الخط الأساسي (Font Family):** `IBM Plex Sans Arabic (A-plex)`\n- **الأوزان المستخدمة:**\n  - `400` للنصوص العادية والشروحات.\n  - `600` للأزرار والبطاقات.\n  - `700` و `800` للعناوين والمعادلات الرياضية.\n- **أحجام الخطوط (Font Sizes):**\n  - **عنوان الهيرو (Hero Title):** `1.65rem` (26px) مع وزن 800 وتدرج ناصع.\n  - **عناوين الأقسام (Section Titles):** `1.05rem` (17px) مع وزن 700.\n  - **نصوص المعادلات (Math Output):** `0.95rem` (15px) بنمط Monospace متناسق.\n  - **النصوص المساعدة (Subtitles):** `0.85rem` (13.5px).\n\n---\n\n## 3. الشاشات الهيكلية وتخطيط الواجهات (Screen Layouts)\n\n### 1. الصفحة الرئيسية (Home Screen - Bento Grid):\n- **الهيرو (Hero Header):**\n  - شريط علوي زجاجي متدرج يحتوى على علامة ترحيبية \"حاسبة الجامعات v2.0\".\n  - دوائر ضوئية متدرجة متحركة (`.o1` و `.o2`) بآلية البلس.\n  - إحصائيات سريعة للأنشطة والمسائل المحلولة.\n- **شبكة البينتو (Bento Grid):**\n  - بطاقة رئيسية مكبرة (`.hl`) لفرع الرياضيات الأكثر استخدامًا (مثل Calculus).\n  - بطاقات فرعية لـ (Linear Algebra, Differential Equations, Discrete Math).\n  - أيقونات عصرية داخل مربع زجاجي مع حواف دائرية (`14px`).\n\n### 2. شاشة إدخال المعادلة (Equation Input Screen & Camera Scanner):\n- لوحة مفاتيح رياضية متقدمة (رموز التكامل، المشتقات، المصفوفات، الأقواس المزدوجة).\n- زر عائم سفلي (`FAB`) لالتقاط صورة المعادلة عبر الكاميرا مع حلقة ضوئية متوهجة.\n\n### 3. شاشة عرض الحل خطوة بخطوة (Step-by-Step Solution Screen):\n- عرض المعادلة المدخلة في أعلى الشاشة بتنسيق لاتخ (LaTeX).\n- خطوات الحل مفصلة في بطاقات زجاجية قائمة (`.kv`) تحتوي على الشرح والنتيجة الجزئية.\n- إمكانية فتح الرسم البياني التفاعلي (Graphing) للمُعادلة.\n\n### 4. سجل المحفوظات (History & Bookmarks Screen):\n- عرض المسائل السابقة بتنسيق بطاقات أنيقة.\n- نظام تصنيف بحسب الأقسام والمجلدات (المفضلة، التفاضل، الجبر).\n\n### 5. مكتبة القوانين (Formula Reference Screen):\n- شريط بحث زجاجي متطور بشفافية عالية.\n- رقاقات فلترة (`Chips`) للتنقل السريع بين الفروع الرياضية.\n\n---\n\n## 4. مكونات الواجهة والإنفعالات الحركية (Components & Motion Specs)\n\n- **شريط التنقل السفلي العائم (Floating Bottom Nav):**\n  - عرض مخصص `width: min(92%, 410px)` يطفو فوق الشاشة بـ `16px`.\n  - انحناء الحواف `36px` مع ظلال عميقة (`--shadow-lg`).\n  - مؤشر نيون علوي يحدد التبويب النشط.\n- **الزر العائم (Floating Action Button - FAB):**\n  - ارتفاع `52px` مع زوايا دائرية `30px`.\n  - تدرج نيون خيالي مع استجابة سريعة عند اللمس (`scale(0.92)`).\n- **الحركة والانتقالات (Motion & Transitions):**\n  - ظهور العناصر بتتابع سليم (`Stagger delay: 0.05s`).\n  - تأثير الإمالة الثلاثية الأبعاد (`3D Tilt`) لبطاقات البينتو.\n  - احتفال ألوان النيون (`Confetti`) عند حصد الحلول أو حفظ القانون في المفضلة.\n",
+  "summary": "واجهة فضائية زجاجية فائقة العصرنة لطلاب الجامعة تحاكي المختبرات الرقمية للرياضيات مع إضاءة نيونية دقيقة ودعم كامل للخطوات الرياضية والرموز RTL"
+ }
+}

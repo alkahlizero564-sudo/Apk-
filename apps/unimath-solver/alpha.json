@@ -1,0 +1,222 @@
+{
+ "alpha": 1,
+ "project": "unimath-solver",
+ "lang": "html",
+ "app": {
+  "title": "حاسبة المعادلات الجامعية",
+  "slug": "unimath-solver",
+  "role": "single",
+  "rtl": true,
+  "package": "com.alpha.unimath_solver",
+  "headline": "حل المعادلات الجامعية المعقدة بذكاء ودقة",
+  "subtitle": "خطوات مفصلة، رسوم بيانية، ومكتبة قوانين شاملة لطلاب الجامعة",
+  "brief": "التطبيق: حاسبة المعادلات الجامعية\nتطبيق موجه لطلاب الجامعة لحل المعادلات الرياضية المعقدة بمختلف أنواعها مثل Calculus و Linear Algebra. يتيح للمستخدم إدخال المعادلة إما عن طريق لوحة مفاتيح رياضية متقدمة أو التقاط صورة لها، ثم يعرض الحل خطوة بخطوة مع إمكانية حفظ الحلول والمناقشات في سجل خاص.\nالنوع: تطبيق واحد (تطبيق واحد يدير كل شيء)\nشاشات العميل:\n- الصفحة الرئيسية (Home Screen): اختيار فرع الرياضيات مثل Calculus أو Linear Algebra والوصول المباشر للحاسبة\n- شاشة إدخال المعادلة (Equation Input Screen): لوحة مفاتيح رموز رياضية متقدمة مع خيار خيار التقاط صورة للمعادلة عبر Camera\n- شاشة عرض الحل (Solution Step-by-Step Screen): عرض الحل النهائي مع الخطوات التفصيلية الرسم البياني (Graphing) إذا لزم الأمر\n- سجل المحفوظات (History & Bookmarks Screen): استعراض المعادلات التي تم حلها سابقاً وإمكانية تنظيمها في مجلدات\n- مكتبة القوانين (Formula Reference Screen): مرجع شامل للقوانين والمعادلات الرياضية الأساسية للطلاب\n\nالبيانات:\n- User: id, name, email, university_level, created_at\n- EquationRecord: id, user_id, input_expression, solution_steps, math_category, graph_data, is_bookmarked, created_at\n- MathFormula: id, title, category, formula_latex, description\n\nالإشعارات:\n- تذكير يومي بمراجعة القوانين الرياضية ← تنبيه للمستخدم\n- عند إضافة قوانين رياضية جديدة للمكتبة ← تنبيه لجميع المستخدمين\n\nتسجيل الدخول: بريد + كلمة مرور"
+ },
+ "theme": {
+  "preset": "ai",
+  "seed": "#3B82F6",
+  "accent": "#8B5CF6",
+  "mode": "dark",
+  "style": "glass",
+  "radius": 34.0,
+  "layout": "tabs",
+  "look": "spatial",
+  "hero": "card",
+  "list": "cards",
+  "nav": "floating",
+  "deco": "glow",
+  "type": "heavy",
+  "school": "spatial",
+  "home": "bento",
+  "sheet": "sheet",
+  "font": "plex",
+  "onboarding": true,
+  "ai": true
+ },
+ "backend": {
+  "type": "none",
+  "prefix": "unimath_solver",
+  "auth": "email_password",
+  "push": false
+ },
+ "tables": [
+  {
+   "name": "math_formulas",
+   "label": "مكتبة القوانين الرياضية",
+   "icon": "book",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "title",
+     "label": "عنوان القانون",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "category",
+     "label": "التصنيف الرياضي",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "Calculus",
+      "Linear Algebra",
+      "Algebra",
+      "Differential Equations",
+      "Statistics"
+     ],
+     "show": true
+    },
+    {
+     "name": "formula_latex",
+     "label": "صيغة المعادلة",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "description",
+     "label": "الشرح والتوضيح",
+     "type": "longtext",
+     "show": false
+    },
+    {
+     "name": "is_featured",
+     "label": "قانون رئيسي",
+     "type": "bool",
+     "default": "false",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "customer",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "equation_records",
+   "label": "سجل المعادلات والمحفوظات",
+   "icon": "checklist",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "input_expression",
+     "label": "المعادلة المدخلة",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "input_type",
+     "label": "طريقة الإدخال",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "لوحة المفاتيح",
+      "صورة كاميرا"
+     ],
+     "show": true
+    },
+    {
+     "name": "equation_image",
+     "label": "صورة المعادلة",
+     "type": "image",
+     "show": false
+    },
+    {
+     "name": "solution_steps",
+     "label": "خطوات الحل التفصيلية",
+     "type": "longtext",
+     "required": true,
+     "show": false
+    },
+    {
+     "name": "math_category",
+     "label": "الفرع الرياضي",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "Calculus",
+      "Linear Algebra",
+      "Algebra",
+      "Differential Equations"
+     ],
+     "show": true
+    },
+    {
+     "name": "is_bookmarked",
+     "label": "محفوظ بالمفضلة",
+     "type": "bool",
+     "default": "false",
+     "show": true
+    },
+    {
+     "name": "folder_name",
+     "label": "اسم المجلد",
+     "type": "text",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "student_profiles",
+   "label": "ملفات الطلاب",
+   "icon": "person",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "full_name",
+     "label": "اسم الطالب",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "email_address",
+     "label": "البريد الإلكتروني",
+     "type": "email",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "university_level",
+     "label": "المستوى الجامعي",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "السنة الأولى",
+      "السنة الثانية",
+      "السنة الثالثة",
+      "السنة الرابعة",
+      "دراسات عليا"
+     ],
+     "show": true
+    },
+    {
+     "name": "major",
+     "label": "التخصص الجامعي",
+     "type": "text",
+     "show": true
+    },
+    {
+     "name": "daily_reminder_enabled",
+     "label": "تفعيل التذكير اليومي للمراجعة",
+     "type": "bool",
+     "default": "true",
+     "show": false
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  }
+ ]
+}

@@ -1,0 +1,17 @@
+{
+ "base": "unimath-solver",
+ "prefix": "unimath_solver",
+ "lang": "html",
+ "backend": "none",
+ "auth": "email_password",
+ "push": false,
+ "admins": [],
+ "apps": [
+  {
+   "slug": "unimath-solver",
+   "role": "single",
+   "title": "حاسبة المعادلات الجامعية",
+   "package": "com.alpha.unimath_solver"
+  }
+ ]
+}

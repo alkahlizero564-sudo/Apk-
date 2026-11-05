@@ -1,0 +1,867 @@
+/* ==========================================================================
+   حاسبة المعادلات الجامعية — Math Solver Spatial Design System (RTL)
+   ========================================================================== */
+
+:root.ai {
+  --seed: #3B82F6;
+  --accent: #8B5CF6;
+  --cyan: #06B6D4;
+  --grad: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 50%, #06B6D4 100%);
+  --grad-surface: linear-gradient(145deg, rgba(21, 30, 49, 0.85) 0%, rgba(13, 19, 33, 0.92) 100%);
+  --grad-glow: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.25) 0%, rgba(139, 92, 246, 0.1) 50%, transparent 80%);
+  
+  --bg: #070A12;
+  --surface: rgba(18, 26, 43, 0.75);
+  --surface2: rgba(30, 42, 68, 0.85);
+  --line: rgba(255, 255, 255, 0.08);
+  --line2: rgba(59, 130, 246, 0.3);
+  
+  --tx: #F8FAFC;
+  --mut: #94A3B8;
+  --on-seed: #FFFFFF;
+  --hero-tx: #FFFFFF;
+  
+  --ok: #10B981;
+  --bad: #EF4444;
+  --warn: #F59E0B;
+  
+  --r: 20px;
+  --btn-r: 14px;
+  --chip-r: 12px;
+  
+  --shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 20px 60px 0 rgba(0, 0, 0, 0.65), 0 0 20px rgba(59, 130, 246, 0.15);
+  
+  --font: 'A-plex', -apple-system, BlinkMacSystemFont, sans-serif;
+  --display: 'A-plex', sans-serif;
+}
+
+:root.ai.light {
+  --bg: #F0F4FA;
+  --surface: rgba(255, 255, 255, 0.82);
+  --surface2: rgba(235, 242, 253, 0.95);
+  --line: rgba(15, 23, 42, 0.08);
+  --line2: rgba(59, 130, 246, 0.25);
+  --tx: #0F172A;
+  --mut: #64748B;
+  --shadow: 0 10px 30px 0 rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 20px 40px 0 rgba(59, 130, 246, 0.12);
+}
+
+/* Background canvas background grid */
+:root.ai .deco {
+  background-color: var(--bg);
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.18) 0%, transparent 40%),
+    radial-gradient(circle at 85% 65%, rgba(139, 92, 246, 0.15) 0%, transparent 45%),
+    radial-gradient(circle at 50% 90%, rgba(6, 182, 212, 0.12) 0%, transparent 40%),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+  backdrop-filter: blur(20px);
+  z-index: 0;
+}
+
+/* Main App Wrapper */
+:root.ai #app {
+  font-family: var(--font);
+  color: var(--tx);
+  max-width: 440px;
+  margin: 0 auto;
+  position: relative;
+  min-height: 100vh;
+  padding-bottom: 96px;
+  box-sizing: border-box;
+}
+
+/* Base Glass Container */
+:root.ai .card, 
+:root.ai .hero,
+:root.ai .topbar,
+:root.ai .sheet-card,
+:root.ai .login .card {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+/* ==========================================================================
+   HERO SECTION
+   ========================================================================== */
+:root.ai .hero {
+  position: relative;
+  background: var(--grad-surface);
+  border-radius: var(--r);
+  padding: 28px 20px 22px;
+  margin: 14px 14px 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: var(--shadow-lg);
+}
+
+:root.ai .hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
+  height: 2px;
+  background: var(--grad);
+}
+
+/* Mathematical Decorative Orbs */
+:root.ai .hero .o1, :root.ai .hero .o2 {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+:root.ai .hero .o1 {
+  width: 160px;
+  height: 160px;
+  top: -40px;
+  inset-inline-end: -40px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.35) 0%, transparent 70%);
+  filter: blur(20px);
+  animation: pulseOrb 6s infinite alternate ease-in-out;
+}
+
+:root.ai .hero .o2 {
+  width: 140px;
+  height: 140px;
+  bottom: -30px;
+  inset-inline-start: -30px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
+  filter: blur(24px);
+  animation: pulseOrb 8s infinite alternate-reverse ease-in-out;
+}
+
+@keyframes pulseOrb {
+  0% { transform: scale(0.9) translate(0, 0); opacity: 0.6; }
+  100% { transform: scale(1.25) translate(10px, 10px); opacity: 0.9; }
+}
+
+:root.ai .hero .hb {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 30px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #60A5FA;
+  margin-bottom: 14px;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+}
+
+:root.ai .hero .hb svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+:root.ai .hero h1 {
+  font-family: var(--display);
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1.3;
+  margin: 0 0 8px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #CBD5E1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+:root.ai .hero p {
+  font-size: 0.88rem;
+  color: var(--mut);
+  line-height: 1.5;
+  margin: 0 0 18px;
+}
+
+/* Admin / Counter stats in Hero */
+:root.ai .hero .hs {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:root.ai .hero .hs > div {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+}
+
+:root.ai .hero .hs b {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #38BDF8;
+}
+
+:root.ai .hero .hs span {
+  font-size: 0.72rem;
+  color: var(--mut);
+}
+
+/* Ticker Strip Marquee */
+:root.ai .hero .marq {
+  display: flex;
+  margin-top: 14px;
+  padding: 6px 0;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: #A7F3D0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   BENTO GRID & HOME LAYOUT
+   ========================================================================== */
+:root.ai .wrap {
+  padding: 0 14px;
+}
+
+:root.ai .section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 22px 4px 12px;
+}
+
+:root.ai .section h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--tx);
+  letter-spacing: -0.01em;
+}
+
+:root.ai .section button {
+  background: transparent;
+  border: none;
+  color: #60A5FA;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+:root.ai .section button:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+:root.ai .grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+:root.ai .card.tile {
+  background: var(--grad-surface);
+  border-radius: var(--r);
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 110px;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s, box-shadow 0.25s;
+}
+
+:root.ai .card.tile:active {
+  transform: scale(0.97);
+}
+
+:root.ai .card.tile.hl {
+  grid-column: span 2;
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.6) 0%, rgba(88, 28, 135, 0.5) 100%);
+  border: 1px solid rgba(96, 165, 250, 0.4);
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.25);
+}
+
+:root.ai .card.tile.wide {
+  grid-column: span 2;
+}
+
+:root.ai .card.tile .ic {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  color: #60A5FA;
+}
+
+:root.ai .card.tile.hl .ic {
+  background: var(--grad);
+  color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+}
+
+:root.ai .card.tile .ic svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2.2;
+}
+
+:root.ai .card.tile b {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.1;
+  display: block;
+  margin-bottom: 4px;
+}
+
+:root.ai .card.tile span {
+  font-size: 0.85rem;
+  color: var(--mut);
+  font-weight: 500;
+}
+
+:root.ai .card.tile .spark {
+  position: absolute;
+  top: 12px;
+  inset-inline-end: 12px;
+  width: 18px;
+  height: 18px;
+  opacity: 0.4;
+  fill: #A7F3D0;
+}
+
+/* Horizontal Featured Rail */
+:root.ai .rail {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 0 12px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+:root.ai .rail::-webkit-scrollbar {
+  display: none;
+}
+
+:root.ai .card.feat {
+  min-width: 240px;
+  max-width: 260px;
+  scroll-snap-align: start;
+  background: var(--surface2);
+  border-radius: var(--r);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+:root.ai .card.feat .cv {
+  height: 100px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(124, 58, 237, 0.3));
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:root.ai .card.feat .fb {
+  padding: 12px 14px;
+}
+
+:root.ai .card.feat .title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+}
+
+/* ==========================================================================
+   LIST SCREEN & CARDS (Step-by-Step & Formula Records)
+   ========================================================================== */
+:root.ai .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(7, 10, 18, 0.85);
+  backdrop-filter: blur(16px);
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+:root.ai .topbar h2 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+:root.ai .search {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+:root.ai .search input.input {
+  width: 100%;
+  height: 48px;
+  background: rgba(18, 26, 43, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 0 44px 0 16px;
+  color: var(--tx);
+  font-size: 0.9rem;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+:root.ai .search input.input:focus {
+  border-color: #38BDF8;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
+}
+
+:root.ai .search svg {
+  position: absolute;
+  inset-inline-start: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: var(--mut);
+  pointer-events: none;
+}
+
+:root.ai .chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+:root.ai .chip {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  border-radius: var(--chip-r);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--mut);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+:root.ai .chip.on {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3B82F6;
+  color: #60A5FA;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+}
+
+:root.ai .card.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border-radius: var(--r);
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+:root.ai .card.row:hover {
+  border-color: rgba(59, 130, 246, 0.35);
+  transform: translateY(-2px);
+}
+
+:root.ai .card.row .thumb {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #38BDF8;
+}
+
+:root.ai .card.row .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+:root.ai .card.row .when {
+  font-size: 0.72rem;
+  color: var(--mut);
+  margin-bottom: 2px;
+}
+
+:root.ai .card.row .title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--tx);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: ltr;
+  text-align: right;
+  font-family: 'A-plex', monospace;
+}
+
+:root.ai .card.row .sub {
+  font-size: 0.8rem;
+  color: var(--mut);
+  margin-top: 4px;
+}
+
+:root.ai .pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+:root.ai .pill.ok {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+:root.ai .pill.warn {
+  background: rgba(245, 158, 11, 0.15);
+  color: #FBBF24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+:root.ai .pill.bad {
+  background: rgba(239, 68, 68, 0.15);
+  color: #F87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ==========================================================================
+   FLOATING ACTION BUTTON (Camera / Keyboard Scanner)
+   ========================================================================== */
+:root.ai .fab {
+  position: fixed;
+  bottom: 84px;
+  inset-inline-end: 20px;
+  z-index: 50;
+  height: 52px;
+  padding: 0 22px;
+  border-radius: 30px;
+  background: var(--grad);
+  color: #FFFFFF;
+  border: none;
+  font-weight: 700;
+  font-size: 0.92rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+:root.ai .fab:active {
+  transform: scale(0.92);
+}
+
+:root.ai .fab svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ==========================================================================
+   FLOATING NAVIGATION BAR
+   ========================================================================== */
+:root.ai .nav {
+  position: fixed;
+  bottom: 16px;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  width: min(92%, 410px);
+  height: 64px;
+  background: rgba(15, 22, 37, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px;
+  box-shadow: var(--shadow-lg);
+  z-index: 90;
+}
+
+:root.ai .nav button, :root.ai .nav a {
+  background: transparent;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--mut);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  flex: 1;
+  height: 100%;
+  position: relative;
+  transition: color 0.2s;
+}
+
+:root.ai .nav button i, :root.ai .nav a i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+:root.ai .nav button.on, :root.ai .nav a.on {
+  color: #38BDF8;
+}
+
+:root.ai .nav button.on::after, :root.ai .nav a.on::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  width: 24px;
+  height: 3px;
+  background: var(--grad);
+  border-radius: 2px;
+  box-shadow: 0 0 8px #38BDF8;
+}
+
+:root.ai .nav .badge {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 22%;
+  background: #EF4444;
+  color: #FFF;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 10px;
+  border: 2px solid #0F1625;
+}
+
+/* ==========================================================================
+   SOLUTION & MATH INPUT SHEET / MODAL
+   ========================================================================== */
+:root.ai .sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+:root.ai .sheet.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+:root.ai .sheet-card {
+  width: 100%;
+  max-height: 90vh;
+  background: #0D1322;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 12px 20px 32px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root.ai .sheet.open .sheet-card {
+  transform: translateY(0);
+}
+
+:root.ai .sheet-card .handle {
+  width: 40px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  margin: 0 auto 16px;
+}
+
+:root.ai .sheet-card h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0 0 16px;
+  color: var(--tx);
+}
+
+:root.ai label.lbl {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--mut);
+  margin: 14px 0 6px;
+}
+
+:root.ai input.input, :root.ai select.input, :root.ai textarea.input {
+  width: 100%;
+  background: rgba(21, 30, 49, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--btn-r);
+  padding: 12px 14px;
+  color: var(--tx);
+  font-family: var(--font);
+  font-size: 0.92rem;
+  box-sizing: border-box;
+  outline: none;
+}
+
+:root.ai input.input:focus, :root.ai textarea.input:focus {
+  border-color: #38BDF8;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+}
+
+/* Key Value display inside Sheet/Details (Step-by-Step Breakdown) */
+:root.ai .kv {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--line);
+}
+
+:root.ai .kv span:first-child {
+  color: var(--mut);
+  font-size: 0.85rem;
+}
+
+:root.ai .kv span:last-child {
+  color: #38BDF8;
+  font-weight: 700;
+  font-family: 'A-plex', monospace;
+  direction: ltr;
+}
+
+/* ==========================================================================
+   BUTTONS & ACTIONS
+   ========================================================================== */
+:root.ai .btn {
+  width: 100%;
+  height: 50px;
+  background: var(--grad);
+  border: none;
+  border-radius: var(--btn-r);
+  color: #FFFFFF;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+  margin-top: 18px;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+:root.ai .btn:active {
+  transform: scale(0.98);
+}
+
+:root.ai .btn.ghost {
+  background: transparent;
+  border: 1px solid var(--line2);
+  color: #60A5FA;
+  box-shadow: none;
+}
+
+:root.ai .linkbtn {
+  background: transparent;
+  border: none;
+  color: var(--mut);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: block;
+  margin: 12px auto 0;
+  text-decoration: underline;
+}
+
+/* Empty State */
+:root.ai .empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--mut);
+}
+
+:root.ai .empty .big {
+  display: inline-flex;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  color: #38BDF8;
+}
+
+/* Toast Alerts */
+:root.ai .toast {
+  position: fixed;
+  top: 20px;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid #3B82F6;
+  color: #FFF;
+  padding: 12px 20px;
+  border-radius: 30px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  z-index: 120;
+}
+
+:root.ai .toast.bad {
+  border-color: #EF4444;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 360px) {
+  :root.ai .hero h1 { font-size: 1.4rem; }
+  :root.ai .grid { grid-template-columns: 1fr; }
+  :root.ai .card.tile.hl { grid-column: span 1; }
+}
