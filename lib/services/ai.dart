@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/project.dart';
 import '../generator/ai_edit.dart';
@@ -247,6 +248,30 @@ high-fidelity, clickable prototype of the WHOLE app:
     final i = html.toLowerCase().indexOf('<!doctype');
     if (i > 0) html = html.substring(i);
     if (!html.toLowerCase().contains('<html') || html.length < 1500) throw Exception('لم يكتمل التصميم من الذكاء الاصطناعي، جرّب مرة أخرى');
+    return html;
+  }
+
+  /// «معاينة فورية قبل الإنشاء» (like APK Fact): straight from the description, one HTML file that IS the app (HTML,
+  /// PHP) or a faithful interactive imitation of it (Flutter / Kotlin / Python, Material 3). Cached per description.
+  Future<String> instantPreview(Lang lang, String description, {bool fresh = false}) async {
+    final key = 'ip_${lang.id}_${description.hashCode}';
+    final prefs = await SharedPreferences.getInstance();
+    if (!fresh) {
+      final hit = prefs.getString(key);
+      if (hit != null && hit.isNotEmpty) return hit;
+    }
+    final what = switch (lang) {
+      Lang.html || Lang.php => 'Build the app itself as ONE complete, self-contained HTML file (inline CSS and JS).',
+      _ => 'Build an interactive PREVIEW of a ${switch (lang) { Lang.flutter => 'Flutter (Material 3)', Lang.kotlin => 'native Android Kotlin Jetpack Compose (Material 3)', _ => 'Python Flet (Material 3)' }} '
+          'mobile app as ONE self-contained HTML file (inline CSS and JS) that looks and behaves like that native app: '
+          'Material 3 components, app bar, bottom navigation, cards, FAB, ripple-like pressed states.',
+    };
+    final prompt = 'You are an expert mobile app designer and front-end developer. $what '
+        'Mobile-first full-height layout, no external resources (inline SVG or emoji icons), working navigation, '
+        'buttons, forms and lists with realistic sample data, localStorage for state. RTL Arabic when the request is Arabic.\n\n'
+        '${await designBrief()}\nReply with ONLY the file inside a single ```html code block.\n\nApp description:\n$description';
+    final html = _extractHtml(await ask(prompt, json: false, temperature: 0.5, maxTokens: 32000));
+    await prefs.setString(key, html);
     return html;
   }
 

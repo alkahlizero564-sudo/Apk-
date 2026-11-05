@@ -13,6 +13,7 @@ import '../../services/ai.dart';
 import '../ai_design_card.dart';
 import '../widgets.dart';
 import 'design_studio.dart';
+import 'instant_preview.dart';
 import 'preview.dart';
 import 'project.dart';
 
@@ -59,7 +60,7 @@ class _WizardScreenState extends State<WizardScreen> {
   bool get _pair => _kind == ProjectKind.pair;
   bool get _clientDb => widget.clientRef.isNotEmpty;
 
-  static const _steps = ['الوصف', 'الفهم', 'اللغة', 'الاسم', 'البيانات', 'التصميم', 'السيرفر', 'المراجعة'];
+  static const _steps = ['اللغة', 'الوصف', 'الفهم', 'الاسم', 'البيانات', 'التصميم', 'السيرفر', 'المراجعة'];
 
   @override
   void initState() {
@@ -110,7 +111,7 @@ class _WizardScreenState extends State<WizardScreen> {
   void _applyUnderstanding() {
     final u = _understood;
     if (u == null) return;
-    if (!_hasCode) _lang = u.lang;
+    // The language was chosen first (like APK Fact); the understanding only suggests one.
     if (_title.text.trim().isEmpty && u.title.isNotEmpty) _title.text = u.title;
     if (u.slug.isNotEmpty && RegExp(r'^app-\d+$').hasMatch(_slug.text)) _slug.text = slugApp(u.slug);
     if (u.auth != AuthMode.none || !_pair) _auth = u.auth;
@@ -146,7 +147,7 @@ class _WizardScreenState extends State<WizardScreen> {
 
   String? _stepError() {
     switch (_step) {
-      case 0:
+      case 1:
         if (_desc.text.trim().length < 8 && !(_hasCode && _code.text.trim().isNotEmpty)) return 'اكتب وصفاً لما تريد، أو الصق الكود';
         return null;
       case 3:
@@ -173,10 +174,10 @@ class _WizardScreenState extends State<WizardScreen> {
       showMessage(context, err, error: true);
       return;
     }
-    if (_step == 1) _applyUnderstanding();
+    if (_step == 2) _applyUnderstanding();
     if (_step < _steps.length - 1) setState(() => _step++);
     // Entering "الفهم" starts the understanding by itself the first time.
-    if (_step == 1 && _understood == null && _brief.text.isEmpty) _understand();
+    if (_step == 2 && _understood == null && _brief.text.isEmpty) _understand();
   }
 
   Project _build() {
@@ -327,15 +328,38 @@ class _WizardScreenState extends State<WizardScreen> {
   }
 
   Widget _body() => switch (_step) {
-        0 => _describeStep(),
-        1 => _understandStep(),
-        2 => _langStep(),
+        0 => _langStep(),
+        1 => _describeStep(),
+        2 => _understandStep(),
         3 => _nameStep(),
         4 => _dataStep(),
         5 => _designStep(),
         6 => _serverStep(),
         _ => _reviewStep(),
       };
+
+  static const _ideas = <(String, IconData, String)>[
+    ('وضع ليلي', Icons.dark_mode_rounded, 'زر للتبديل بين الوضع الفاتح والليلي.'),
+    ('بحث', Icons.search_rounded, 'بحث فوري في كل البيانات.'),
+    ('مفضلة', Icons.favorite_border_rounded, 'إضافة العناصر للمفضلة وصفحة للمفضلة.'),
+    ('إحصائيات', Icons.bar_chart_rounded, 'شاشة إحصائيات برسوم بيانية.'),
+    ('واتساب', Icons.chat_rounded, 'زر تواصل عبر واتساب.'),
+    ('تنبيهات', Icons.notifications_rounded, 'رسائل تنبيه داخل التطبيق بعد كل عملية.'),
+    ('مشاركة', Icons.share_rounded, 'زر لمشاركة العنصر مع الآخرين.'),
+    ('سلة مشتريات', Icons.shopping_cart_rounded, 'سلة مشتريات بتعديل الكمية والإجمالي.'),
+  ];
+
+  /// «معاينة فورية قبل الإنشاء»: the AI draws the app from the description now; the owner can keep it as the design.
+  Future<void> _instantPreview() async {
+    final html = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => InstantPreviewScreen(lang: _lang, description: _desc.text.trim(), title: _title.text.trim().isEmpty ? 'معاينة فورية' : _title.text.trim())),
+    );
+    if (html == null || !mounted) return;
+    final apps = Project.unitsFor(slugApp(_slug.text), _title.text.trim(), _kind);
+    setState(() => _design = AiDesign.fromJson(_design.toJson())..screens[apps.first.slug] = html);
+    showMessage(context, 'اعتُمدت المعاينة تصميماً للتطبيق${_pair ? ' (تطبيق العميل)' : ''}');
+  }
 
   Widget _describeStep() {
     final detected = _hasCode ? detectLang(_code.text) : null;
@@ -355,6 +379,28 @@ class _WizardScreenState extends State<WizardScreen> {
           ),
         ),
         const SizedBox(height: 10),
+        if (!_hasCode) ...[
+          OutlinedButton.icon(
+            onPressed: _desc.text.trim().length < 10 ? null : _instantPreview,
+            icon: Icon(_lang == Lang.html || _lang == Lang.php ? Icons.flash_on_rounded : Icons.auto_awesome_rounded, color: AlphaColors.teal),
+            label: Text(_design.hasPrototype ? 'معاينة فورية (معتمدة كتصميم ✓)' : 'معاينة فورية قبل الإنشاء'),
+          ),
+          const SectionTitle('أضف ميزة بضغطة'),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final idea in _ideas)
+              FilterChip(
+                avatar: Icon(idea.$2, size: 16),
+                label: Text(idea.$1),
+                selected: _desc.text.contains(idea.$3),
+                onSelected: (on) => setState(() {
+                  final t = _desc.text.trim();
+                  _desc.text = on ? (t.isEmpty ? idea.$3 : '$t\n${idea.$3}') : t.replaceAll(idea.$3, '').replaceAll(RegExp(r'\n{2,}'), '\n').trim();
+                  _understood = null;
+                }),
+              ),
+          ]),
+          const SizedBox(height: 6),
+        ],
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           value: _hasCode,
