@@ -138,7 +138,7 @@ class _AiDesignCardState extends State<AiDesignCard> {
           const Row(children: [
             Icon(Icons.auto_awesome_rounded, color: AlphaColors.amber),
             SizedBox(width: 8),
-            Expanded(child: Text('التصميم أولاً: الذكاء الاصطناعي يرسم التطبيق', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16))),
+            Expanded(child: Text('التصميم أولاً: الذكاء الاصطناعي يرسم التطبيق', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
           ]),
           const SizedBox(height: 6),
           Text(

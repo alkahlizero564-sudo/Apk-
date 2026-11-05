@@ -1,0 +1,5 @@
+IBM Plex Sans Arabic
+Copyright 2019 IBM Corp. All rights reserved.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1 (the same license text as OFL.txt in this folder).
+https://openfontlicense.org

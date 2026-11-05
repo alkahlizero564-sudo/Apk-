@@ -55,26 +55,32 @@ class AiDesigner {
 
   bool get available => claudeKey.isNotEmpty || geminiKeys.isNotEmpty;
 
-  Future<String> _claude(String prompt, {int maxTokens = 8000}) async {
+  /// Models tried in turn when one is not available or busy (like APK Fact).
+  static const claudeModels = ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-5-5'];
+  static const geminiFallbacks = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
+
+  Future<String> _claude(String model, String prompt, {int maxTokens = 8000}) async {
     final res = await http
         .post(Uri.parse('https://api.anthropic.com/v1/messages'),
             headers: {'x-api-key': claudeKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
             body: jsonEncode({
-              'model': 'claude-sonnet-5-5',
+              'model': model,
               'max_tokens': maxTokens,
               'messages': [
                 {'role': 'user', 'content': prompt}
               ],
             }))
-        .timeout(const Duration(minutes: 5));
-    if (res.statusCode >= 300) throw Exception('Claude (${res.statusCode}): ${res.body}');
+        .timeout(const Duration(minutes: 6));
+    if (res.statusCode >= 300) throw AiCallError('Claude', res.statusCode, res.body);
     final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map;
-    return ((j['content'] as List).where((b) => b['type'] == 'text').map((b) => b['text'])).join();
+    final text = ((j['content'] as List).where((b) => b['type'] == 'text').map((b) => b['text'])).join();
+    if (text.trim().isEmpty) throw AiCallError('Claude', 0, 'empty answer');
+    return text;
   }
 
-  Future<String> _gemini(String prompt, String geminiKey, {bool json = true, double temperature = 0.3}) async {
+  Future<String> _gemini(String model, String prompt, String geminiKey, {bool json = true, double temperature = 0.3}) async {
     final res = await http
-        .post(Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$geminiModel:generateContent'),
+        .post(Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent'),
             headers: {'x-goog-api-key': geminiKey, 'content-type': 'application/json'},
             body: jsonEncode({
               'contents': [
@@ -86,44 +92,65 @@ class AiDesigner {
               ],
               'generationConfig': {if (json) 'responseMimeType': 'application/json', 'temperature': temperature},
             }))
-        .timeout(const Duration(minutes: 5));
-    if (res.statusCode >= 300) throw Exception('Gemini (${res.statusCode}): ${res.body}');
+        .timeout(const Duration(minutes: 6));
+    if (res.statusCode >= 300) throw AiCallError('Gemini', res.statusCode, res.body);
     final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map;
-    return ((j['candidates'] as List).first['content']['parts'] as List).map((p) => p['text']).join();
+    final cands = (j['candidates'] as List?) ?? const [];
+    final parts = cands.isEmpty ? const [] : (((cands.first as Map)['content'] as Map?)?['parts'] as List?) ?? const [];
+    final text = parts.map((p) => '${(p as Map)['text'] ?? ''}').join();
+    if (text.trim().isEmpty) throw AiCallError('Gemini', 0, 'empty answer (${cands.isEmpty ? 'blocked' : (cands.first as Map)['finishReason']})');
+    return text;
   }
 
+  /// Asks the AI. Every model and every key is tried in turn (a busy model, a key out of quota or a model that
+  /// is not available does not stop the work), then everything once more after a short wait.
   /// [json]: the answer is JSON (default); otherwise free text such as fenced code files.
   Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000}) async {
-    Object? last;
+    if (!available) throw Exception('أضف مفتاح Claude أو Gemini في الإعدادات.');
+    AiCallError? last;
+    final gModels = [geminiModel, ...geminiFallbacks.where((m) => m != geminiModel)];
     Future<String?> tryClaude() async {
       if (claudeKey.isEmpty) return null;
-      try {
-        return await _claude(prompt, maxTokens: maxTokens);
-      } catch (e) {
-        last = e;
-        return null;
+      for (final m in claudeModels) {
+        try {
+          return await _claude(m, prompt, maxTokens: maxTokens);
+        } on AiCallError catch (e) {
+          last = e;
+          if (e.badKey) return null; // a wrong key: the other provider
+        } catch (e) {
+          last = AiCallError('Claude', 0, '$e');
+        }
       }
+      return null;
     }
 
     Future<String?> tryGemini() async {
-      // Each Gemini key in turn: a key out of quota does not stop the work.
-      for (final key in geminiKeys) {
-        try {
-          return await _gemini(prompt, key, json: json, temperature: temperature);
-        } catch (e) {
-          last = e;
+      for (final m in gModels) {
+        for (final key in geminiKeys) {
+          try {
+            return await _gemini(m, prompt, key, json: json, temperature: temperature);
+          } on AiCallError catch (e) {
+            last = e;
+            if (e.status == 404) break; // this model is not available: the next model
+          } catch (e) {
+            last = AiCallError('Gemini', 0, '$e');
+          }
         }
       }
       return null;
     }
 
     final order = geminiFirst ? [tryGemini, tryClaude] : [tryClaude, tryGemini];
-    for (final attempt in order) {
-      final text = await attempt();
-      if (text != null) return text;
+    for (var round = 0; round < 2; round++) {
+      for (final attempt in order) {
+        final text = await attempt();
+        if (text != null) return text;
+      }
+      if (round == 0) await Future<void>.delayed(const Duration(seconds: 4));
     }
-    throw Exception(last == null ? 'أضف مفتاح Claude أو Gemini في الإعدادات.' : '$last');
+    throw Exception(last?.arabic ?? 'لم يرد الذكاء الاصطناعي، حاول بعد قليل.');
   }
+
 
 
   Map<String, dynamic> _json(String text) {
@@ -133,27 +160,56 @@ class AiDesigner {
     return (jsonDecode(text.substring(start, end + 1)) as Map).cast<String, dynamic>();
   }
 
-  /// Step "الفهم": only understanding what the owner wants (no design, no tables yet).
-  Future<Understanding> understand(String description, {String code = ''}) async {
-    final prompt = """
-You are the requirements analyst of Alpha, an app builder. Your ONLY job now is to understand what the owner wants.
-Do not design colors and do not write code. Write everything in Arabic (keep technical names in English).
+  // ---------- understanding (like APK Fact) ----------
 
-The owner's description:
-$description
-${code.trim().isEmpty ? '' : '\nThe owner also pasted existing code they want to build (understand what it does):\n```\n${code.length > 12000 ? code.substring(0, 12000) : code}\n```\n'}
-Reply with JSON only:
-{"title": "short app name (Arabic ok)", "slug": "short english id, lowercase and dashes",
- "summary": "2-4 sentences: what the app is, for whom, the main flow",
- "kind": "single" or "pair" (pair = a customer app + an admin app that talk to each other, e.g. orders/bookings managed by the business),
- "lang": "flutter|html|php|python|kotlin" (best fit; flutter by default; the language of the pasted code if any),
- "screens_customer": ["screen: what the user does there", ...],
- "screens_admin": ["screen: what the admin does there", ...] (empty for a single app without admin),
- "data": ["entity: its fields", ...],
- "notifications": ["when → who is notified", ...],
- "auth": "none" | "email_password" | "email_code" (email_code when accounts with name, phone and email must be verified),
- "questions": ["anything unclear the owner should decide", ...]}
-""";
+  static const _analyst = """You are a senior product manager. The owner describes a mobile app idea in their own words, often
+briefly. Your job is to understand EXACTLY what they have in mind, not to invent a different app.
+- Keep their idea, domain, names, texts, numbers, prices, currencies, colors and language exactly as they wrote them.
+- Turn it into a clear, complete list of requirements a developer can build and check one by one.
+- Where the idea is short, fill the gaps with what such an app normally needs, but stay inside their idea.
+- If they pasted code, understand what that code does: the requirements describe THAT app.
+- Ask ONLY about things that really change the app and that you cannot reasonably decide yourself (0 to 5 questions).
+  Each question gets 2 to 4 short ready answers (the most likely first).
+- Write everything in the owner's language (Arabic when they wrote Arabic, in the same dialect style), short and simple,
+  no technical words.""";
+
+  static const _pairLine = 'This is a SYSTEM of two connected apps sharing one online database: a CUSTOMER app (the people who use the '
+      'service) and an ADMIN app (the business that manages everything). Start every screen, feature and data item with '
+      '«الزبون: », «الإدارة: » or «الاثنين: » to say which app it belongs to, and cover both apps fully.';
+
+  static const _specFormat = """Reply with JSON only, no markdown:
+{"title": "short app name in the owner's words", "slug": "short english id, lowercase and dashes",
+ "summary": "one or two sentences: what the app is and who uses it",
+ "screens": ["each screen and what is on it"],
+ "features": ["each feature or behavior, one short checkable sentence"],
+ "data": ["what the app saves, with its fields"],
+ "texts": ["exact names, texts, prices, numbers or colors the owner mentioned"],
+ "notifications": ["when → who is notified (only if the app needs it)"],
+ "kind": "single" or "pair" (pair only when the idea needs a customer app AND a business/admin app),
+ "lang": "flutter|html|php|python|kotlin" (the language of pasted code; otherwise the best fit),
+ "auth": "none" | "email_password" | "email_code" (only what the owner's words ask for; none when they did not ask),
+ "questions": [{"q": "question", "options": ["answer 1", "answer 2"]}]}""";
+
+  /// Step "الفهم": the idea (even one line) or pasted code becomes a checklist of requirements + short questions.
+  Future<Understanding> understand(String description, {String code = '', ProjectKind? kind, Lang? lang}) async {
+    final prompt = '$_analyst\n${kind == ProjectKind.pair ? '$_pairLine\n' : ''}'
+        '${lang == null ? '' : 'It will be built as ${_platform[lang]}.\n'}\n'
+        "THE OWNER'S IDEA (their exact words, the highest priority):\n$description\n"
+        '${code.trim().isEmpty ? '' : '\nTHE CODE THEY PASTED (build this app):\n```\n${code.length > 15000 ? code.substring(0, 15000) : code}\n```\n'}'
+        '\n$_specFormat';
+    return Understanding.fromJson(_json(await ask(prompt)));
+  }
+
+  /// The owner removed items, answered questions and wrote corrections: the full updated list.
+  Future<Understanding> refine(String description, Understanding u, {required List<(String, String)> answers, String notes = '', ProjectKind? kind}) async {
+    final current = u.toJson()..remove('questions');
+    var prompt = '$_analyst\n${kind == ProjectKind.pair ? '$_pairLine\n' : ''}\n'
+        "THE OWNER'S IDEA (their exact words):\n$description\n\n"
+        "YOUR CURRENT LIST (the owner already removed what they don't want; do not add those back):\n${const JsonEncoder.withIndent(' ').convert(current)}\n";
+    if (answers.isNotEmpty) prompt += "\nTHE OWNER'S ANSWERS (apply each one to the list):\n${answers.map((x) => '- ${x.$1} → ${x.$2}').join('\n')}\n";
+    if (notes.trim().isNotEmpty) prompt += "\nTHE OWNER'S CORRECTIONS AND ADDITIONS (apply exactly):\n${notes.trim()}\n";
+    prompt += '\nReturn the full updated list in the same JSON format. Ask new questions only if something important is still '
+        'unclear (usually none). Do not ask again what was answered.\n$_specFormat';
     return Understanding.fromJson(_json(await ask(prompt)));
   }
 
@@ -286,7 +342,7 @@ high-fidelity, clickable prototype of the WHOLE app:
       prompt = '$system\n\n$base\nCurrent design:\n```html\n$current\n```\n\nChange requested by the owner (apply it fully and precisely; '
           'keep everything else as it is unless the change needs it; keep the screens switcher):\n$change\n';
     } else {
-      prompt = '$system\n\n$base\nWhat the app is and does (approved by the owner):\n${p.brief.isEmpty ? p.description : p.brief}\n\n${_appFacts(p)}\n'
+      prompt = '$system\n\n$base\nWhat the app is and does (the owner\'s own words first, then the checklist they approved; build EXACTLY this app, every item):\n${forApp(p.brief.isEmpty ? p.description : p.brief, p.isPair ? app.role : '')}\n\n${_appFacts(p)}\n'
           '${p.isPair ? '\nDesign ONLY the ${app.role == 'admin' ? 'ADMIN' : 'CUSTOMER'} app; the other app of the pair is designed separately.\n' : ''}'
           '${brandFrom.isEmpty ? '' : '\nThis app belongs to the same business as the design below. Use the SAME brand: palette, fonts, corner radius, icon style and component look, so the two apps feel like one product:\n```html\n${brandFrom.length > 40000 ? brandFrom.substring(0, 40000) : brandFrom}\n```\n'}'
           '${change.isEmpty ? '' : '\nThe owner also wants: $change\n'}';
@@ -445,6 +501,7 @@ Reply with JSON only: {"tables": [ ... ]}. Each table:
  "owner": "catalog" (everyone reads, admin writes: products, services, menu) | "customer" (each customer sees only their rows: orders, bookings) | "public" (everyone reads, each edits own: reviews, messages) | "admin" (admin only: expenses, staff),
  "columns": [{"name": "english_snake_case", "label": "Arabic", "type": "text|longtext|int|decimal|bool|date|datetime|image|phone|email|choice", "required": true/false, "options": ["..."] (choice only), "default": "...", "adminOnly": true for fields only the admin sets (like status), "show": true/false (show in lists)}],
  "notify": {"onInsert": "admin|customer|none", "onUpdate": "owner|admin|customer|none"}}
+Every data item in the approved checklist must have its table and fields, with the owner's own names; nothing that the idea does not need.
 Rules: 2 to 6 tables, 3 to 8 columns each, never columns named id, created_at, updated_at, customer_id.
 Orders/bookings: notify admin on insert and the owner on update, with a status choice column that is adminOnly.
 ''';
@@ -463,6 +520,7 @@ Orders/bookings: notify admin on insert and the owner on update, with a status c
 }
 
 /// What the AI understood from the description (step "الفهم"); the owner edits and approves it.
+/// What the AI understood: a checklist the owner edits item by item (like APK Fact), plus a few suggestions.
 class Understanding {
   Understanding({
     this.title = '',
@@ -470,54 +528,142 @@ class Understanding {
     this.summary = '',
     this.kind = ProjectKind.single,
     this.lang = Lang.flutter,
-    this.screensCustomer = const [],
-    this.screensAdmin = const [],
-    this.data = const [],
-    this.notifications = const [],
+    List<String>? screens,
+    List<String>? features,
+    List<String>? data,
+    List<String>? texts,
+    List<String>? notifications,
     this.auth = AuthMode.none,
-    this.questions = const [],
-  });
+    List<UQuestion>? questions,
+  })  : screens = screens ?? [],
+        features = features ?? [],
+        data = data ?? [],
+        texts = texts ?? [],
+        notifications = notifications ?? [],
+        questions = questions ?? [];
 
   String title;
   String slug;
   String summary;
   ProjectKind kind;
   Lang lang;
-  List<String> screensCustomer;
-  List<String> screensAdmin;
+  List<String> screens;
+  List<String> features;
   List<String> data;
+  List<String> texts;
   List<String> notifications;
   AuthMode auth;
-  List<String> questions;
+  List<UQuestion> questions;
 
-  static List<String> _list(Object? v) => ((v as List?) ?? const []).map((e) => '$e').where((e) => e.trim().isNotEmpty).toList();
+  static const sections = {
+    'screens': 'الشاشات',
+    'features': 'الميزات والوظائف',
+    'data': 'البيانات التي يحفظها التطبيق',
+    'texts': 'الأسماء والنصوص والأرقام والألوان',
+    'notifications': 'الإشعارات',
+  };
 
-  factory Understanding.fromJson(Map<String, dynamic> j) => Understanding(
-        title: '${j['title'] ?? ''}',
-        slug: '${j['slug'] ?? ''}',
-        summary: '${j['summary'] ?? ''}',
-        kind: ProjectKind.parse(j['kind'] as String?),
-        lang: Lang.parse('${j['lang']}'),
-        screensCustomer: _list(j['screens_customer']),
-        screensAdmin: _list(j['screens_admin']),
-        data: _list(j['data']),
-        notifications: _list(j['notifications']),
-        auth: AuthMode.parse('${j['auth']}'),
-        questions: _list(j['questions']),
-      );
+  List<String> list(String key) => switch (key) {
+        'screens' => screens,
+        'features' => features,
+        'data' => data,
+        'texts' => texts,
+        _ => notifications,
+      };
 
-  /// The brief every later step (design, data, code) works from.
-  String toBrief() {
-    String section(String title, List<String> items) => items.isEmpty ? '' : '$title:\n${items.map((e) => '- $e').join('\n')}\n';
-    return [
-      if (title.isNotEmpty) 'التطبيق: $title',
-      if (summary.isNotEmpty) summary,
-      'النوع: ${kind.label} (${kind.hint})',
-      section('شاشات العميل', screensCustomer),
-      section('شاشات الإدارة', screensAdmin),
-      section('البيانات', data),
-      section('الإشعارات', notifications),
-      'تسجيل الدخول: ${auth.label}',
-    ].where((e) => e.isNotEmpty).join('\n');
+  static List<String> _list(Object? v) => ((v as List?) ?? const []).map((e) => '$e'.trim()).where((e) => e.isNotEmpty).take(40).toList();
+
+  factory Understanding.fromJson(Map<String, dynamic> j) {
+    final u = Understanding(
+      title: '${j['title'] ?? ''}',
+      slug: '${j['slug'] ?? ''}',
+      summary: '${j['summary'] ?? ''}',
+      kind: ProjectKind.parse(j['kind'] as String?),
+      lang: Lang.parse('${j['lang']}'),
+      screens: _list(j['screens'] ?? [..._list(j['screens_customer']), ..._list(j['screens_admin'])]),
+      features: _list(j['features']),
+      data: _list(j['data']),
+      texts: _list(j['texts']),
+      notifications: _list(j['notifications']),
+      auth: AuthMode.parse('${j['auth']}'),
+      questions: ((j['questions'] as List?) ?? const [])
+          .map((q) => q is Map ? UQuestion('${q['q'] ?? ''}'.trim(), _list(q['options']).take(4).toList()) : UQuestion('$q'.trim(), const []))
+          .where((q) => q.q.isNotEmpty)
+          .take(5)
+          .toList(),
+    );
+    if (u.summary.isEmpty && u.screens.isEmpty && u.features.isEmpty) throw Exception('لم يصل فهم الفكرة كاملاً، حاول مرة أخرى');
+    return u;
   }
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'slug': slug,
+        'summary': summary,
+        'screens': screens,
+        'features': features,
+        'data': data,
+        'texts': texts,
+        'notifications': notifications,
+        'kind': kind.name,
+        'lang': lang.id,
+        'auth': auth.id,
+        'questions': [for (final q in questions) {'q': q.q, 'options': q.options}],
+      };
+
+  /// The approved list as text (APK Fact's «المواصفات» block): the design, the data, the code and the request check
+  /// after generation follow it item by item.
+  String specText() {
+    final out = ['=== المواصفات التي وافق عليها صاحب التطبيق (نفّذها كلها بنداً بنداً، ولا تبنِ تطبيقاً مختلفاً) ==='];
+    if (summary.isNotEmpty) out.add('الفكرة: $summary');
+    for (final e in sections.entries) {
+      final items = list(e.key);
+      if (items.isNotEmpty) out.addAll(['${e.value}:', ...items.map((x) => '- $x')]);
+    }
+    return out.join('\n');
+  }
+
+  /// What every later step works from: the owner's exact words first, then the approved list.
+  String toBrief(String ownerWords) => [
+        '=== فكرة صاحب التطبيق بكلماته (الأولوية الأعلى) ===',
+        ownerWords.trim(),
+        '',
+        specText(),
+      ].join('\n');
+}
+
+class UQuestion {
+  UQuestion(this.q, this.options);
+  final String q;
+  final List<String> options;
+}
+
+/// For one app of a pair: its own items («الزبون:» / «الإدارة:») and the shared ones («الاثنين:»).
+String forApp(String text, String role) {
+  final other = role == 'customer' ? 'الإدارة' : role == 'admin' ? 'الزبون' : '';
+  if (other.isEmpty) return text;
+  final drop = RegExp('^\\s*-\\s*«?\\s*$other\\s*(:\\s*»|»\\s*:|:)');
+  return text.split('\n').where((l) => !drop.hasMatch(l)).join('\n');
+}
+
+/// A failed AI call, with a clear Arabic reason for the owner.
+class AiCallError implements Exception {
+  AiCallError(this.provider, this.status, this.body);
+  final String provider;
+  final int status;
+  final String body;
+
+  bool get badKey => status == 401 || status == 403;
+
+  String get arabic => switch (status) {
+        401 || 403 => 'مفتاح $provider غير صحيح أو لا يملك صلاحية. راجعه في الإعدادات.',
+        404 => 'نموذج $provider غير متاح لهذا المفتاح. اختر نموذجاً آخر في الإعدادات.',
+        429 => 'انتهت حصة مفتاح $provider مؤقتاً. أضف مفتاحاً آخر أو انتظر قليلاً.',
+        0 => 'لم يصل رد من $provider ($body). تأكد من الإنترنت وحاول مرة أخرى.',
+        _ when status >= 500 => 'خدمة $provider مزدحمة الآن. حاول بعد دقيقة.',
+        _ => '$provider ($status): ${body.length > 300 ? body.substring(0, 300) : body}',
+      };
+
+  @override
+  String toString() => arabic;
 }
