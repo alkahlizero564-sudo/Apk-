@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/project.dart';
+import '../generator/ai_edit.dart';
 import '../generator/presets.dart';
 import '../models/schema.dart';
 
@@ -188,6 +189,61 @@ Then pick colors that fit (premium, modern, good contrast). Reply with JSON only
       onboarding: j['onboarding'] == true,
     );
     return (theme: theme, headline: '${j['headline'] ?? ''}', subtitle: '${j['subtitle'] ?? ''}', reason: '${j['reason'] ?? ''}');
+  }
+
+  /// Changing an app that already exists (and may be installed): add, remove or change anything the owner asks.
+  /// The AI only proposes; Alpha shows the exact differences and applies them when the owner agrees.
+  Future<AiEdit> planEdit(Project p, String request) async {
+    final now = jsonEncode({
+      'title': p.title,
+      'headline': p.headline,
+      'subtitle': p.subtitle,
+      'kind': p.isPair ? 'pair (customer app + admin app)' : 'single app',
+      'language': p.lang.id,
+      'backend': p.backend.id,
+      'auth': p.auth.id,
+      'push': p.push,
+      'theme': {
+        'school': p.theme.school.isEmpty ? (lookById(p.theme.look)?.id ?? '') : p.theme.school,
+        'seed': p.theme.seed, 'accent': p.theme.accent, 'mode': p.theme.mode, 'home': p.theme.home, 'list': p.theme.list,
+        'nav': p.theme.nav, 'sheet': p.theme.sheet, 'font': p.theme.font, 'onboarding': p.theme.onboarding,
+      },
+      'tables': p.schema.toJson(),
+    });
+    final prompt = """
+You are the change engineer of Alpha, an app factory. The app below is already built and INSTALLED on phones; the owner
+wants to change it. Do exactly what they ask (add, remove, rename, move, recolor...), and nothing else.
+What the app is about:
+${p.brief.isEmpty ? p.description : p.brief}
+
+The app now (JSON):
+$now
+
+The owner's request (Arabic or English):
+$request
+
+Rules:
+- Data: if the request touches data (sections/tables, fields/columns, choices, permissions, notifications), return "tables" =
+  the COMPLETE new list in exactly the same format as above. Keep every existing table and column name unchanged unless the
+  owner asks to remove it (names are database names: renaming = only change "label"). New names: english_snake_case.
+  Never columns named id, created_at, updated_at, customer_id. Types: text|longtext|int|decimal|bool|date|datetime|image|phone|email|choice.
+  Owners: catalog|customer|public|admin. Notify: admin|customer|owner|none. Icons: ${tableIcons.join(', ')}.
+  If data does not change, "tables": null.
+- Design: "theme" holds ONLY what changes: school (${looks.map((l) => l.id).join('|')}), seed/accent (#RRGGBB), mode (dark|light|system),
+  home (tiles|bento|carousel|feed|chat|focus), list (cards|compact|grid|timeline|reels), nav (bar|floating|pill), sheet (sheet|page),
+  font (cairo|tajawal|plex|readex|messiri|kufi|changa|lalezar), onboarding (true|false).
+- Texts: title (the name under the icon), headline (big home title), subtitle: only when they change.
+- auth (none|email_password|email_code) and push (true|false): only when they change.
+- If the request needs something the engine above cannot express (a cart, a map, a custom screen or calculation, a
+  special flow, a WhatsApp button...), describe it precisely in "code_request" (it is then written as code on top of the app,
+  keeping its data, sign-in and notifications). Otherwise "code_request": "".
+- If something is truly unclear, still make the best change and put the question in "questions".
+Reply with JSON only:
+{"summary": "one Arabic sentence: what will change", "changes": ["short Arabic line per change"],
+ "title": null, "headline": null, "subtitle": null, "theme": {}, "tables": null, "auth": null, "push": null,
+ "code_request": "", "questions": []}
+""";
+    return AiEdit.fromJson(request, _json(await ask(prompt)));
   }
 
   /// Tables and columns for a business, in Alpha's schema format (validated before use).
