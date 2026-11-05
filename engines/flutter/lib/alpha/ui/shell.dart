@@ -7,6 +7,7 @@ import '../config.dart';
 import '../updater.dart';
 import '../wiring.dart';
 import 'icons.dart';
+import 'look.dart';
 import 'pages.dart';
 import 'widgets.dart';
 
@@ -131,7 +132,10 @@ class _AppShellState extends State<AppShell> {
     if (_tab >= pages.length) _tab = 0;
     final current = pages[_tab];
 
+
     return Scaffold(
+      extendBody: c.navStyle != 'bar',
+      backgroundColor: Colors.transparent,
       appBar: _tab == 0
           ? null
           : AppBar(
@@ -155,18 +159,11 @@ class _AppShellState extends State<AppShell> {
         duration: const Duration(milliseconds: 250),
         child: KeyedSubtree(key: ValueKey(_tab), child: current.page),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: [
-          for (final p in pages)
-            NavigationDestination(
-              icon: p.label == 'الإشعارات' && _unread > 0
-                  ? Badge(label: Text('$_unread'), child: Icon(p.icon))
-                  : Icon(p.icon),
-              label: p.label,
-            ),
-        ],
+      bottomNavigationBar: LookNav(
+        config: c,
+        index: _tab,
+        onTap: (i) => setState(() => _tab = i),
+        items: [for (final p in pages) (icon: p.icon, label: p.label, badge: p.label == 'الإشعارات' ? _unread : 0)],
       ),
     );
   }

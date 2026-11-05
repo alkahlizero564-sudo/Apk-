@@ -55,7 +55,11 @@
     const root = document.documentElement;
     const mode = t.mode === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : t.mode || "dark";
     root.classList.toggle("light", mode === "light");
+    // Design tokens chosen in Alpha (a "look" sets them all; each can be changed alone).
+    const tok = { card: t.style || "glass", hero: t.hero || "blob", list: t.list || "cards", nav: t.nav || "floating", deco: t.deco || "none", type: t.type || "heavy" };
+    Object.entries(tok).forEach(([k, v]) => root.classList.add(k + "-" + v));
     root.classList.add(t.style || "glass");
+    if (!document.querySelector(".deco")) document.body.insertAdjacentHTML("afterbegin", '<div class="deco"></div>');
     root.style.setProperty("--seed", t.seed || "#6E4BFF");
     root.style.setProperty("--accent", t.accent || "#2DD4BF");
     root.style.setProperty("--r", (t.radius || 18) + "px");
@@ -227,13 +231,19 @@
     } catch (e) { /* offline: try next time */ }
   }
 
+  // The home header in the chosen shape (the wave is an SVG; the other shapes are CSS).
+  function heroHtml(title, subtitle, icon, badge) {
+    const wave = '<svg class="shape" viewBox="0 0 400 48" preserveAspectRatio="none"><path d="M0,30 C80,58 160,2 240,22 C300,38 350,40 400,18 L400,48 L0,48 Z" fill="var(--bg)"/></svg>';
+    return '<div class="hero"><div class="hero-badge">' + ic(icon, 14) + esc(badge || "") + "</div><h1>" + esc(title) + "</h1><p>" + esc(subtitle) + "</p>" + wave + "</div>";
+  }
+
   function homeView(tables) {
     const t = C.app;
     const hello = B.name ? "أهلاً " + B.name : "أهلاً بك";
     let tiles = tables.map((x) => '<div class="card stat" data-open="' + esc(x.name) + '"><div class="ic">' + ic(x.icon) + "</div><b>" +
       (S.stats && S.stats[x.name] != null ? S.stats[x.name] : "›") + "</b><span>" + esc(x.label) + "</span></div>").join("");
     if (S.stats && S.stats._customers != null) tiles += '<div class="card stat"><div class="ic">' + ic("person") + "</div><b>" + S.stats._customers + "</b><span>العملاء</span></div>";
-    return '<div class="hero"><h1>' + esc(t.headline || t.title) + "</h1><p>" + esc(t.subtitle || (B.isAdmin ? "لوحة التحكم" : hello)) + "</p></div>" +
+    return heroHtml(t.headline || t.title, t.subtitle || (B.isAdmin ? "لوحة التحكم" : hello), B.isAdmin ? "dashboard" : "home", B.isAdmin ? "لوحة الإدارة" : C.app.title) +
       '<div class="wrap"><div class="section">' + (B.isAdmin ? "نظرة عامة" : "الأقسام") + '</div><div class="grid">' + tiles + "</div></div>";
   }
 
@@ -306,7 +316,8 @@
       const details = (t.columns || []).filter((c) => c.show !== false && c !== title && c !== image && c !== badge && c !== price && r[c.name] != null && r[c.name] !== "")
         .slice(0, 3).map((c) => esc(c.label) + ": " + esc(fmt(c, r[c.name]))).join("  •  ");
       const img = image && /^https?:/.test(r[image.name] || "") ? '<img src="' + esc(r[image.name]) + '" alt="" onerror="this.remove()">' : ic(t.icon);
-      return '<div class="card row" data-row="' + esc(r.id) + '"><div class="thumb">' + img + '</div><div class="grow"><div class="title">' +
+      return '<div class="card row" data-row="' + esc(r.id) + '"><div class="thumb">' + img + '</div><div class="grow">' +
+        (r.created_at ? '<div class="when">' + ago(new Date(r.created_at)) + "</div>" : "") + '<div class="title">' +
         esc(title ? fmt(title, r[title.name]) : t.label) + "</div>" + (details ? '<div class="sub">' + details + "</div>" : "") + '<div class="meta">' +
         (badge && r[badge.name] ? '<span class="pill ' + pillClass(r[badge.name]) + '">' + esc(r[badge.name]) + "</span>" : "") +
         (price && r[price.name] != null ? '<span class="price">' + esc(fmt(price, r[price.name])) + "</span>" : "") + "</div></div></div>";

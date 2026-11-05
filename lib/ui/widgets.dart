@@ -248,7 +248,7 @@ IconData tableIcon(String name) => switch (name) {
       _ => Icons.view_list_rounded,
     };
 
-/// A live miniature of the app being designed: same theme, tables and layout as the engines draw them.
+/// A live miniature of the app being designed: the look's header shape, cards, list style and bottom bar.
 class PhonePreview extends StatelessWidget {
   const PhonePreview({super.key, required this.theme, required this.title, required this.schema, this.role = 'single', this.width = 220});
   final ThemeSpec theme;
@@ -259,17 +259,176 @@ class PhonePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final seed = hexColor(theme.seed);
-    final accent = hexColor(theme.accent, AlphaColors.teal);
-    final dark = theme.mode != 'light';
-    final bg = dark ? Color.lerp(const Color(0xFF0B0D16), seed, 0.06)! : const Color(0xFFF5F6FB);
-    final card = dark ? Colors.white.withValues(alpha: theme.style == 'glass' ? 0.07 : 0.05) : Colors.white;
+    final t = theme;
+    final seed = hexColor(t.seed);
+    final accent = hexColor(t.accent, AlphaColors.teal);
+    final dark = t.mode != 'light';
+    final brutal = t.style == 'brutal';
+    final ink = const Color(0xFF0B0B0F);
+    final bg = t.style == 'neu'
+        ? (dark ? const Color(0xFF1B1E2B) : const Color(0xFFE9EDF5))
+        : brutal && !dark
+            ? const Color(0xFFFFF8EC)
+            : (dark ? Color.lerp(const Color(0xFF0A0B14), seed, 0.06)! : const Color(0xFFF4F5FA));
     final text = dark ? Colors.white : const Color(0xFF0F172A);
     final muted = dark ? Colors.white60 : Colors.black54;
-    final r = theme.radius * width / 390;
-    final tables = schema.tables.where((t) => role == 'admin' || t.owner != TableOwner.admin).toList();
-    final first = tables.isEmpty ? null : tables.first;
     final s = width / 220;
+    final r = t.radius * s * 0.55;
+    final tables = schema.tables.where((x) => role == 'admin' || x.owner != TableOwner.admin).toList();
+    final first = tables.isEmpty ? null : tables.first;
+
+    BoxDecoration card({bool highlight = false}) {
+      if (highlight && !brutal) return BoxDecoration(gradient: LinearGradient(colors: [seed, accent]), borderRadius: BorderRadius.circular(r));
+      return switch (t.style) {
+        'brutal' => BoxDecoration(color: highlight ? accent : Colors.white, borderRadius: BorderRadius.circular(r * 0.5),
+            border: Border.all(color: ink, width: 1.4 * s), boxShadow: [BoxShadow(color: ink, offset: Offset(2.5 * s, 2.5 * s))]),
+        'neu' => BoxDecoration(color: bg, borderRadius: BorderRadius.circular(r), boxShadow: dark
+            ? const [BoxShadow(color: Color(0xFF12141D), offset: Offset(3, 3), blurRadius: 6), BoxShadow(color: Color(0xFF242839), offset: Offset(-3, -3), blurRadius: 6)]
+            : const [BoxShadow(color: Color(0xFFC9D0DC), offset: Offset(3, 3), blurRadius: 6), BoxShadow(color: Colors.white, offset: Offset(-3, -3), blurRadius: 6)]),
+        'outline' => BoxDecoration(borderRadius: BorderRadius.circular(r), border: Border.all(color: dark ? seed.withValues(alpha: 0.6) : Colors.black26, width: s)),
+        'soft' => BoxDecoration(color: dark ? const Color(0xFF151827) : Colors.white, borderRadius: BorderRadius.circular(r),
+            boxShadow: [BoxShadow(color: seed.withValues(alpha: 0.16), blurRadius: 10, offset: const Offset(0, 4))]),
+        'flat' => BoxDecoration(color: dark ? Colors.white.withValues(alpha: 0.07) : const Color(0xFFE9ECF3), borderRadius: BorderRadius.circular(r)),
+        _ => BoxDecoration(color: dark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(r),
+            border: Border.all(color: (dark ? Colors.white : Colors.black).withValues(alpha: 0.08))),
+      };
+    }
+
+    Widget bar(double w, Color c, [double h = 5]) => Container(width: w * s, height: h * s, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(3)));
+
+    // Header
+    final plain = t.hero == 'minimal';
+    final headerText = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Text(title.isEmpty ? 'تطبيقي' : title, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: plain ? text : (t.hero == 'block' ? ink : Colors.white), fontWeight: t.type == 'light' ? FontWeight.w300 : FontWeight.w900, fontSize: 15 * s)),
+      SizedBox(height: 2 * s),
+      Text(role == 'admin' ? 'لوحة التحكم' : 'أهلاً بك', style: TextStyle(color: plain ? muted : Colors.white70, fontSize: 9 * s)),
+      if (plain) ...[SizedBox(height: 6 * s), bar(18, seed, 2.5)],
+    ]);
+    Widget header = switch (t.hero) {
+      'minimal' => Padding(padding: EdgeInsets.fromLTRB(14 * s, 26 * s, 14 * s, 8 * s), child: headerText),
+      'card' => Container(
+          margin: EdgeInsets.fromLTRB(8 * s, 22 * s, 8 * s, 0),
+          padding: EdgeInsets.all(12 * s),
+          decoration: BoxDecoration(gradient: LinearGradient(colors: [seed, accent]), borderRadius: BorderRadius.circular(r + 4 * s)),
+          child: SizedBox(width: double.infinity, child: headerText)),
+      'block' => Container(
+          padding: EdgeInsets.fromLTRB(14 * s, 26 * s, 14 * s, 14 * s),
+          decoration: BoxDecoration(color: seed, border: Border(bottom: BorderSide(color: ink, width: 1.6 * s))),
+          child: SizedBox(width: double.infinity, child: headerText)),
+      'glow' => Stack(clipBehavior: Clip.hardEdge, children: [
+          Positioned(top: -30 * s, right: -20 * s, child: Container(width: 110 * s, height: 110 * s, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [seed.withValues(alpha: 0.7), seed.withValues(alpha: 0)])))),
+          Padding(padding: EdgeInsets.fromLTRB(14 * s, 26 * s, 14 * s, 14 * s), child: SizedBox(width: double.infinity, child: headerText)),
+        ]),
+      _ => ClipPath(
+          clipper: _PreviewHeaderClipper(t.hero),
+          child: Container(
+            padding: EdgeInsets.fromLTRB(14 * s, 26 * s, 14 * s, (t.hero == 'blob' ? 16 : 28) * s),
+            decoration: BoxDecoration(gradient: LinearGradient(colors: [seed, Color.lerp(seed, accent, 0.75)!])),
+            child: SizedBox(width: double.infinity, child: headerText),
+          ),
+        ),
+    };
+
+    // Rows
+    Widget row(int i) => Container(
+          margin: EdgeInsets.symmetric(vertical: 3 * s, horizontal: 3 * s),
+          padding: EdgeInsets.all(6 * s),
+          decoration: t.list == 'compact' ? null : card(),
+          child: Row(children: [
+            Container(
+              width: 22 * s,
+              height: 22 * s,
+              decoration: BoxDecoration(
+                  color: brutal ? accent : seed.withValues(alpha: 0.15),
+                  shape: t.list == 'compact' ? BoxShape.circle : BoxShape.rectangle,
+                  borderRadius: t.list == 'compact' ? null : BorderRadius.circular(6 * s),
+                  border: brutal ? Border.all(color: ink, width: s) : null),
+              child: Icon(tableIcon(first?.icon ?? 'list'), color: brutal ? ink : seed, size: 11 * s),
+            ),
+            SizedBox(width: 6 * s),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [bar(56, text.withValues(alpha: 0.75)), SizedBox(height: 3 * s), bar(36, muted.withValues(alpha: 0.5), 4)])),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 5 * s, vertical: 2 * s),
+              decoration: BoxDecoration(color: seed.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(99)),
+              child: Text(['جديد', 'تم', 'مؤكد'][i % 3], style: TextStyle(color: seed, fontSize: 7 * s, fontWeight: FontWeight.w800)),
+            ),
+          ]),
+        );
+    Widget gridCell() => Expanded(
+          child: Container(
+            margin: EdgeInsets.all(3 * s),
+            height: 58 * s,
+            clipBehavior: Clip.antiAlias,
+            decoration: card(),
+            child: Column(children: [
+              Expanded(child: Container(width: double.infinity, decoration: BoxDecoration(gradient: LinearGradient(colors: [seed.withValues(alpha: 0.25), accent.withValues(alpha: 0.25)])),
+                  child: Icon(tableIcon(first?.icon ?? 'list'), color: seed, size: 14 * s))),
+              Padding(padding: EdgeInsets.all(4 * s), child: bar(30, text.withValues(alpha: 0.7), 4)),
+            ]),
+          ),
+        );
+    final list = first == null
+        ? <Widget>[Padding(padding: EdgeInsets.all(10 * s), child: Text('أضف جداول', style: TextStyle(color: muted, fontSize: 10 * s)))]
+        : t.list == 'grid'
+            ? [Row(children: [gridCell(), gridCell()]), Row(children: [gridCell(), gridCell()])]
+            : t.list == 'compact'
+                ? [Container(margin: EdgeInsets.all(3 * s), decoration: card(), child: Column(children: [row(0), Divider(height: 1, color: muted.withValues(alpha: 0.2)), row(1), Divider(height: 1, color: muted.withValues(alpha: 0.2)), row(2)]))]
+                : [for (var i = 0; i < 3; i++) row(i)];
+
+    // Bottom bar
+    final icons = [Icons.space_dashboard_rounded, for (final x in tables.take(2)) tableIcon(x.icon), Icons.person_rounded];
+    Widget nav;
+    if (t.nav == 'pill') {
+      nav = Container(
+        margin: EdgeInsets.fromLTRB(16 * s, 0, 16 * s, 10 * s),
+        padding: EdgeInsets.all(3 * s),
+        decoration: BoxDecoration(color: text.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(99)),
+        child: Row(children: [
+          for (var i = 0; i < icons.length; i++)
+            Expanded(
+              flex: i == 0 ? 3 : 2,
+              child: Container(
+                height: 20 * s,
+                decoration: BoxDecoration(gradient: i == 0 ? LinearGradient(colors: [seed, accent]) : null, borderRadius: BorderRadius.circular(99)),
+                child: Icon(icons[i], size: 11 * s, color: i == 0 ? Colors.white : bg.withValues(alpha: 0.7)),
+              ),
+            ),
+        ]),
+      );
+    } else {
+      final items = Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+        for (var i = 0; i < icons.length; i++)
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8 * s, vertical: 3 * s),
+            decoration: BoxDecoration(
+                color: i == 0 ? (brutal ? accent : seed.withValues(alpha: 0.18)) : null,
+                borderRadius: BorderRadius.circular(brutal ? 4 * s : 99),
+                border: i == 0 && brutal ? Border.all(color: ink, width: s) : null),
+            child: Icon(icons[i], size: 13 * s, color: i == 0 ? (brutal ? ink : seed) : muted),
+          ),
+      ]);
+      nav = t.nav == 'floating'
+          ? Container(
+              margin: EdgeInsets.fromLTRB(8 * s, 0, 8 * s, 8 * s),
+              height: 30 * s,
+              decoration: BoxDecoration(color: dark ? const Color(0xFF1A1D2B) : Colors.white, borderRadius: BorderRadius.circular(r + 4 * s),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 12 * s, offset: Offset(0, 4 * s))]),
+              child: items)
+          : Container(
+              height: 36 * s,
+              decoration: BoxDecoration(
+                  color: dark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
+                  border: Border(top: BorderSide(color: brutal ? ink : muted.withValues(alpha: 0.15), width: brutal ? 1.6 * s : 1))),
+              child: items);
+    }
+
+    // Background decoration
+    final decoPaint = switch (t.deco) {
+      'dots' => BoxDecoration(color: bg, image: null),
+      _ => BoxDecoration(color: bg),
+    };
+
     return Container(
       width: width,
       height: width * 2.05,
@@ -282,120 +441,110 @@ class PhonePreview extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28 * s),
-        child: ColoredBox(
-          color: bg,
-          child: Column(
-            children: [
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.fromLTRB(14 * s, 26 * s, 14 * s, 16 * s),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [seed, Color.lerp(seed, accent, 0.75)!]),
-                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(r + 8 * s)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title.isEmpty ? 'تطبيقي' : title,
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15 * s)),
-                    SizedBox(height: 2 * s),
-                    Text(role == 'admin' ? 'لوحة التحكم' : 'أهلاً بك', style: TextStyle(color: Colors.white70, fontSize: 9 * s)),
-                  ],
-                ),
-              ),
+        child: DecoratedBox(
+          decoration: decoPaint,
+          child: Stack(children: [
+            if (t.deco == 'dots' || t.deco == 'grid')
+              Positioned.fill(child: CustomPaint(painter: _MiniDeco(t.deco, dark))),
+            if (t.deco == 'blobs' || t.deco == 'glow')
+              Positioned(top: -40 * s, right: -40 * s, child: Container(width: 160 * s, height: 160 * s,
+                  decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [seed.withValues(alpha: 0.3), seed.withValues(alpha: 0)])))),
+            Column(children: [
+              header,
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.all(8 * s),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          for (final t in tables.take(2))
-                            Expanded(
-                              child: Container(
-                                margin: EdgeInsets.all(3 * s),
-                                padding: EdgeInsets.all(7 * s),
-                                decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(r * 0.8)),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(tableIcon(t.icon), color: seed, size: 14 * s),
-                                    SizedBox(height: 4 * s),
-                                    Text('12', style: TextStyle(color: text, fontWeight: FontWeight.w900, fontSize: 12 * s)),
-                                    Text(t.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: muted, fontSize: 8 * s)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          if (tables.isEmpty)
-                            Expanded(child: Center(child: Text('أضف جداول', style: TextStyle(color: muted, fontSize: 10 * s)))),
-                        ],
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    if (first != null)
+                      Container(
+                        margin: EdgeInsets.all(3 * s),
+                        padding: EdgeInsets.all(8 * s),
+                        decoration: card(highlight: true),
+                        child: Row(children: [
+                          Icon(tableIcon(first.icon), color: brutal ? ink : Colors.white, size: 14 * s),
+                          SizedBox(width: 6 * s),
+                          Text('12', style: TextStyle(color: brutal ? ink : Colors.white, fontWeight: FontWeight.w900, fontSize: 13 * s)),
+                          const Spacer(),
+                          Text(first.label, style: TextStyle(color: brutal ? ink : Colors.white70, fontSize: 8 * s)),
+                        ]),
                       ),
-                      SizedBox(height: 4 * s),
-                      for (var i = 0; i < 3 && first != null; i++)
-                        Container(
-                          margin: EdgeInsets.symmetric(vertical: 3 * s, horizontal: 3 * s),
-                          padding: EdgeInsets.all(6 * s),
-                          decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(r * 0.8)),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 24 * s,
-                                height: 24 * s,
-                                decoration: BoxDecoration(color: seed.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(7 * s)),
-                                child: Icon(tableIcon(first.icon), color: seed, size: 12 * s),
-                              ),
-                              SizedBox(width: 6 * s),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(height: 5 * s, width: 60 * s, decoration: BoxDecoration(color: text.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(3))),
-                                    SizedBox(height: 3 * s),
-                                    Container(height: 4 * s, width: 40 * s, decoration: BoxDecoration(color: muted.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(3))),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: EdgeInsets.symmetric(horizontal: 5 * s, vertical: 2 * s),
-                                decoration: BoxDecoration(color: seed.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(99)),
-                                child: Text(['جديد', 'تم', 'مؤكد'][i], style: TextStyle(color: seed, fontSize: 7 * s, fontWeight: FontWeight.w800)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      const Spacer(),
-                    ],
-                  ),
+                    SizedBox(height: 3 * s),
+                    ...list,
+                    const Spacer(),
+                  ]),
                 ),
               ),
-              Container(
-                height: 38 * s,
-                decoration: BoxDecoration(color: dark ? Colors.white.withValues(alpha: 0.04) : Colors.white, border: Border(top: BorderSide(color: muted.withValues(alpha: 0.15)))),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _nav(Icons.space_dashboard_rounded, seed, true, s),
-                    for (final t in tables.take(2)) _nav(tableIcon(t.icon), muted, false, s),
-                    _nav(Icons.notifications_rounded, muted, false, s),
-                    _nav(Icons.person_rounded, muted, false, s),
-                  ],
-                ),
-              ),
-            ],
-          ),
+              nav,
+            ]),
+          ]),
         ),
       ),
     );
   }
+}
 
-  Widget _nav(IconData i, Color c, bool on, double s) => Container(
-        padding: EdgeInsets.symmetric(horizontal: 9 * s, vertical: 3 * s),
-        decoration: BoxDecoration(color: on ? c.withValues(alpha: 0.18) : null, borderRadius: BorderRadius.circular(99)),
-        child: Icon(i, size: 14 * s, color: c),
-      );
+class _PreviewHeaderClipper extends CustomClipper<Path> {
+  _PreviewHeaderClipper(this.shape);
+  final String shape;
+
+  @override
+  Path getClip(Size s) {
+    final p = Path();
+    switch (shape) {
+      case 'wave':
+        p
+          ..lineTo(0, s.height - 12)
+          ..cubicTo(s.width * 0.3, s.height + 4, s.width * 0.6, s.height - 22, s.width, s.height - 10);
+      case 'diagonal':
+        p
+          ..lineTo(0, s.height)
+          ..lineTo(s.width, s.height * 0.72);
+      case 'curve':
+        p
+          ..lineTo(0, s.height - 14)
+          ..quadraticBezierTo(s.width / 2, s.height + 10, s.width, s.height - 14);
+      default:
+        p.addRRect(RRect.fromRectAndCorners(Offset.zero & s, bottomLeft: const Radius.circular(18), bottomRight: const Radius.circular(18)));
+        return p;
+    }
+    p
+      ..lineTo(s.width, 0)
+      ..close();
+    return p;
+  }
+
+  @override
+  bool shouldReclip(covariant _PreviewHeaderClipper old) => old.shape != shape;
+}
+
+class _MiniDeco extends CustomPainter {
+  _MiniDeco(this.kind, this.dark);
+  final String kind;
+  final bool dark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = (dark ? Colors.white : Colors.black).withValues(alpha: kind == 'dots' ? 0.14 : 0.07)
+      ..strokeWidth = 1;
+    if (kind == 'dots') {
+      for (double y = 6; y < size.height; y += 10) {
+        for (double x = 6; x < size.width; x += 10) {
+          canvas.drawCircle(Offset(x, y), 0.8, p);
+        }
+      }
+    } else {
+      for (double y = 0; y < size.height; y += 16) {
+        canvas.drawLine(Offset(0, y), Offset(size.width, y), p);
+      }
+      for (double x = 0; x < size.width; x += 16) {
+        canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MiniDeco old) => old.kind != kind || old.dark != dark;
 }
 
 void showMessage(BuildContext context, String text, {bool error = false}) {

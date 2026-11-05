@@ -3,6 +3,66 @@
 import '../models/project.dart';
 import '../models/schema.dart';
 
+/// A complete visual identity: shapes, cards, lists, navigation and decoration chosen to work together.
+class Look {
+  const Look(this.id, this.name, this.hint, {required this.seed, required this.accent, required this.mode, required this.style,
+      required this.radius, required this.hero, required this.list, required this.nav, required this.deco, this.type = 'heavy'});
+  final String id;
+  final String name;
+  final String hint;
+  final String seed;
+  final String accent;
+  final String mode;
+  final String style;
+  final double radius;
+  final String hero;
+  final String list;
+  final String nav;
+  final String deco;
+  final String type;
+
+  /// The look with the owner's colors kept (when [keepColors]).
+  ThemeSpec apply(ThemeSpec current, {bool keepColors = false}) => current.copyWith(
+        look: id,
+        preset: keepColors ? current.preset : id,
+        seed: keepColors ? current.seed : seed,
+        accent: keepColors ? current.accent : accent,
+        mode: mode,
+        style: style,
+        radius: radius,
+        hero: hero,
+        list: list,
+        nav: nav,
+        deco: deco,
+        type: type,
+      );
+}
+
+const looks = <Look>[
+  Look('aurora', 'أورورا', 'زجاج شفاف وفقاعات ضوء وشريط عائم',
+      seed: '#6E4BFF', accent: '#2DD4BF', mode: 'dark', style: 'glass', radius: 22, hero: 'blob', list: 'cards', nav: 'floating', deco: 'blobs'),
+  Look('wave', 'موجة', 'رأس بموجة ناعمة وبطاقات بظل خفيف',
+      seed: '#0EA5E9', accent: '#6366F1', mode: 'light', style: 'soft', radius: 20, hero: 'wave', list: 'cards', nav: 'pill', deco: 'none'),
+  Look('bold', 'جريء', 'Neo-Brutalism: حدود سميكة وظل مزاح وألوان صارخة',
+      seed: '#FF5C35', accent: '#FFD23F', mode: 'light', style: 'brutal', radius: 6, hero: 'block', list: 'cards', nav: 'bar', deco: 'dots'),
+  Look('luxe', 'فاخر', 'بساطة راقية: خطوط رفيعة ومساحات وعناوين أنيقة',
+      seed: '#1C1917', accent: '#B45309', mode: 'light', style: 'outline', radius: 14, hero: 'minimal', list: 'compact', nav: 'bar', deco: 'none', type: 'light'),
+  Look('soft', 'نيومورفيزم', 'بطاقات بارزة ناعمة على خلفية هادئة',
+      seed: '#6366F1', accent: '#EC4899', mode: 'light', style: 'neu', radius: 24, hero: 'curve', list: 'cards', nav: 'floating', deco: 'none'),
+  Look('gallery', 'معرض', 'الصور أولاً: شبكة كبيرة مثل المتاجر العالمية',
+      seed: '#E11D48', accent: '#F59E0B', mode: 'light', style: 'flat', radius: 18, hero: 'card', list: 'grid', nav: 'pill', deco: 'none'),
+  Look('neon', 'نيون', 'داكن بتوهج ملوّن وخط زمني للأحداث',
+      seed: '#A855F7', accent: '#22D3EE', mode: 'dark', style: 'outline', radius: 16, hero: 'glow', list: 'timeline', nav: 'floating', deco: 'glow'),
+  Look('geo', 'هندسي', 'قطع مائل وشبكة خطوط وحضور قوي',
+      seed: '#059669', accent: '#0EA5E9', mode: 'dark', style: 'soft', radius: 12, hero: 'diagonal', list: 'cards', nav: 'bar', deco: 'grid'),
+];
+
+const heroShapes = {'blob': 'فقاعات', 'wave': 'موجة', 'curve': 'منحنى', 'diagonal': 'مائل', 'card': 'بطاقة عائمة', 'minimal': 'بسيط', 'block': 'كتلة', 'glow': 'توهج'};
+const cardStyles = {'glass': 'زجاجي', 'soft': 'ظل ناعم', 'flat': 'مسطّح', 'outline': 'إطار', 'neu': 'بارز', 'brutal': 'جريء'};
+const listStyles = {'cards': 'بطاقات', 'compact': 'مضغوطة', 'grid': 'شبكة', 'timeline': 'خط زمني'};
+const navStyles = {'bar': 'شريط', 'floating': 'عائم', 'pill': 'كبسولة'};
+const decoStyles = {'none': 'بدون', 'blobs': 'فقاعات', 'dots': 'نقاط', 'grid': 'شبكة', 'glow': 'توهج'};
+
 class ThemePreset {
   const ThemePreset(this.id, this.name, this.seed, this.accent, this.mode, this.style);
   final String id;

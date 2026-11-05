@@ -132,6 +132,13 @@ class AlphaConfig {
   Color get seed => parseColor('${theme['seed'] ?? '#6E4BFF'}', const Color(0xFF6E4BFF));
   Color get accent => parseColor('${theme['accent'] ?? '#2DD4BF'}', const Color(0xFF2DD4BF));
   String get style => '${theme['style'] ?? 'glass'}';
+
+  // Design tokens chosen in Alpha (a "look" sets them all).
+  String get hero => '${theme['hero'] ?? 'blob'}';
+  String get listStyle => '${theme['list'] ?? 'cards'}';
+  String get navStyle => '${theme['nav'] ?? 'floating'}';
+  String get deco => '${theme['deco'] ?? 'none'}';
+  bool get lightTitles => theme['type'] == 'light';
   double get radius => (theme['radius'] as num?)?.toDouble() ?? 18;
   ThemeMode get themeMode => switch ('${theme['mode']}') {
         'light' => ThemeMode.light,

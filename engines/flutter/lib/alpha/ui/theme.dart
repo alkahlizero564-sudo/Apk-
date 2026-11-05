@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../config.dart';
+import 'look.dart';
 
 ThemeData buildTheme(AlphaConfig c, Brightness brightness) {
   final dark = brightness == Brightness.dark;
@@ -10,13 +11,15 @@ ThemeData buildTheme(AlphaConfig c, Brightness brightness) {
     secondary: c.accent,
   );
   final r = BorderRadius.circular(c.radius);
-  final glass = c.style == 'glass';
+  final glass = c.style == 'glass' || c.style == 'outline';
   final flat = c.style == 'flat';
-  final surface = dark ? Color.lerp(const Color(0xFF0B0D16), c.seed, 0.06)! : Color.lerp(const Color(0xFFF6F7FB), c.seed, 0.03)!;
+  final brutal = c.style == 'brutal';
+  final surface = pageColor(c, dark);
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme.copyWith(surface: surface),
-    scaffoldBackgroundColor: surface,
+    // The page itself is painted by DecoBackground (color + decoration of the chosen look).
+    scaffoldBackgroundColor: Colors.transparent,
     visualDensity: VisualDensity.standard,
     appBarTheme: AppBarTheme(
       centerTitle: true,
@@ -32,7 +35,9 @@ ThemeData buildTheme(AlphaConfig c, Brightness brightness) {
           : (dark ? Color.lerp(surface, Colors.white, 0.05) : Colors.white),
       shape: RoundedRectangleBorder(
         borderRadius: r,
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: glass ? 0.35 : (flat ? 0.6 : 0.0))),
+        side: brutal
+            ? const BorderSide(color: Color(0xFF0B0B0F), width: 2.5)
+            : BorderSide(color: scheme.outlineVariant.withValues(alpha: glass ? 0.35 : (flat ? 0.6 : 0.0))),
       ),
       margin: const EdgeInsets.symmetric(vertical: 6),
     ),
@@ -64,7 +69,9 @@ ThemeData buildTheme(AlphaConfig c, Brightness brightness) {
       indicatorColor: scheme.primary.withValues(alpha: 0.18),
       labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: scheme.onSurface)),
     ),
+    dialogTheme: DialogThemeData(backgroundColor: dark ? const Color(0xFF181B28) : Colors.white),
     bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: surface,
       showDragHandle: true,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(c.radius + 10))),
     ),

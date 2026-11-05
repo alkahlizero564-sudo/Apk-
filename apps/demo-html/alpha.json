@@ -12,12 +12,18 @@
   "subtitle": "تطبيق تجريبي بلغة html"
  },
  "theme": {
-  "preset": "custom",
-  "seed": "#F97316",
-  "accent": "#F43F5E",
+  "seed": "#FF5C35",
+  "accent": "#FFD23F",
   "mode": "light",
-  "style": "soft",
-  "radius": 18,
+  "style": "brutal",
+  "radius": 6,
+  "hero": "block",
+  "list": "cards",
+  "nav": "bar",
+  "deco": "dots",
+  "type": "heavy",
+  "preset": "bold",
+  "look": "bold",
   "layout": "tabs"
  },
  "backend": {

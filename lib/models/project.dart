@@ -60,6 +60,7 @@ enum AuthMode {
 /// How the app code is made: Alpha's tested engine (no AI, no errors) or code written by AI on top of it.
 enum CodeMode { engine, ai }
 
+/// The design of the generated apps. A "look" sets every token at once; each token can then be changed alone.
 class ThemeSpec {
   ThemeSpec({
     this.preset = 'aurora',
@@ -69,15 +70,27 @@ class ThemeSpec {
     this.style = 'glass',
     this.radius = 18,
     this.layout = 'tabs',
+    this.look = 'aurora',
+    this.hero = 'blob',
+    this.list = 'cards',
+    this.nav = 'floating',
+    this.deco = 'blobs',
+    this.type = 'heavy',
   });
 
   String preset;
   String seed;
   String accent;
   String mode; // dark | light | system
-  String style; // glass | soft | flat
+  String style; // cards: glass | soft | flat | outline | neu | brutal
   double radius;
   String layout; // tabs | drawer
+  String look; // the named look the tokens came from (or "custom")
+  String hero; // header shape: blob | wave | curve | diagonal | card | minimal | block | glow
+  String list; // rows: cards | compact | grid | timeline
+  String nav; // bottom bar: bar | floating | pill
+  String deco; // background: none | blobs | dots | grid | glow
+  String type; // titles: heavy | light
 
   Map<String, dynamic> toJson() => {
         'preset': preset,
@@ -87,6 +100,12 @@ class ThemeSpec {
         'style': style,
         'radius': radius,
         'layout': layout,
+        'look': look,
+        'hero': hero,
+        'list': list,
+        'nav': nav,
+        'deco': deco,
+        'type': type,
       };
 
   factory ThemeSpec.fromJson(Map<String, dynamic>? j) {
@@ -99,8 +118,34 @@ class ThemeSpec {
       style: '${j['style'] ?? 'glass'}',
       radius: (j['radius'] as num?)?.toDouble() ?? 18,
       layout: '${j['layout'] ?? 'tabs'}',
+      look: '${j['look'] ?? 'aurora'}',
+      hero: '${j['hero'] ?? 'blob'}',
+      list: '${j['list'] ?? 'cards'}',
+      nav: '${j['nav'] ?? 'floating'}',
+      deco: '${j['deco'] ?? 'blobs'}',
+      type: '${j['type'] ?? 'heavy'}',
     );
   }
+
+  ThemeSpec copyWith({
+    String? preset, String? seed, String? accent, String? mode, String? style, double? radius, String? layout,
+    String? look, String? hero, String? list, String? nav, String? deco, String? type,
+  }) =>
+      ThemeSpec(
+        preset: preset ?? this.preset,
+        seed: seed ?? this.seed,
+        accent: accent ?? this.accent,
+        mode: mode ?? this.mode,
+        style: style ?? this.style,
+        radius: radius ?? this.radius,
+        layout: layout ?? this.layout,
+        look: look ?? this.look,
+        hero: hero ?? this.hero,
+        list: list ?? this.list,
+        nav: nav ?? this.nav,
+        deco: deco ?? this.deco,
+        type: type ?? this.type,
+      );
 }
 
 /// One installable app (a single project has one, a pair has customer + admin).

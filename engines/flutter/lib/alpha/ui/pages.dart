@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../backend.dart';
 import '../config.dart';
 import 'icons.dart';
+import 'look.dart';
 import 'table_page.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -261,37 +262,29 @@ class _DashboardPageState extends State<DashboardPage> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          HeroHeader(
+          LookHero(
             config: c,
             title: c.headline.isNotEmpty ? c.headline : c.title,
             subtitle: c.subtitle.isNotEmpty ? c.subtitle : (b.isAdmin ? 'لوحة التحكم' : hello),
-            trailing: Icon(b.isAdmin ? Icons.insights_rounded : Icons.auto_awesome_rounded, color: Colors.white, size: 40),
+            badge: b.isAdmin ? 'لوحة الإدارة' : c.title,
+            icon: b.isAdmin ? Icons.space_dashboard_rounded : Icons.home_rounded,
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
-            child: Text(b.isAdmin ? 'نظرة عامة' : 'الأقسام', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            child: Row(children: [
+              Container(width: 4, height: 18, decoration: BoxDecoration(gradient: brandGradient(c), borderRadius: BorderRadius.circular(4))),
+              const SizedBox(width: 8),
+              Text(b.isAdmin ? 'نظرة عامة' : 'الأقسام',
+                  style: TextStyle(fontSize: 18, fontWeight: c.lightTitles ? FontWeight.w500 : FontWeight.w800)),
+            ]),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 1.35,
-              mainAxisSpacing: 4,
-              crossAxisSpacing: 8,
-              children: [
-                for (var i = 0; i < tables.length; i++)
-                  StatTile(
-                    icon: iconFor(tables[i].icon),
-                    label: tables[i].label,
-                    value: _stats == null ? '›' : '${_stats![tables[i].name] ?? 0}',
-                    onTap: () => widget.onOpenTable(i),
-                  ),
-                if (_stats?['_customers'] != null)
-                  StatTile(icon: Icons.groups_rounded, label: 'العملاء', value: '${_stats!['_customers']}'),
-              ],
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _Tiles(config: c, tiles: [
+              for (var i = 0; i < tables.length; i++)
+                (icon: iconFor(tables[i].icon), label: tables[i].label, value: _stats == null ? '›' : '${_stats![tables[i].name] ?? 0}', onTap: () => widget.onOpenTable(i)),
+              if (_stats?['_customers'] != null) (icon: Icons.groups_rounded, label: 'العملاء', value: '${_stats!['_customers']}', onTap: null),
+            ]),
           ),
           const SizedBox(height: 90),
         ],
@@ -511,4 +504,59 @@ class TableTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TablePage(key: ValueKey(table.name), backend: backend, table: table);
+}
+
+/// Home tiles: the first one is the highlight (full width), the others two per row; a last tile alone fills the row.
+class _Tiles extends StatelessWidget {
+  const _Tiles({required this.config, required this.tiles});
+  final AlphaConfig config;
+  final List<({IconData icon, String label, String value, VoidCallback? onTap})> tiles;
+
+  Widget _tile(BuildContext context, ({IconData icon, String label, String value, VoidCallback? onTap}) t, bool highlight) {
+    final c = config;
+    final cs = Theme.of(context).colorScheme;
+    final fg = highlight ? onHighlight(c) : cs.onSurface;
+    return Surface(
+      config: c,
+      highlight: highlight,
+      onTap: t.onTap,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: highlight ? Colors.white.withValues(alpha: 0.2) : (c.style == 'brutal' ? c.accent : c.seed.withValues(alpha: 0.14)),
+              borderRadius: BorderRadius.circular(c.style == 'brutal' ? 8 : c.radius * 0.6),
+              border: c.style == 'brutal' ? Border.all(color: ink, width: 2) : null,
+            ),
+            child: Icon(t.icon, color: highlight ? fg : (c.style == 'brutal' ? ink : cs.primary)),
+          ),
+          const SizedBox(height: 14),
+          Text(t.value, style: TextStyle(fontSize: 28, fontWeight: c.lightTitles ? FontWeight.w300 : FontWeight.w900, color: fg)),
+          Text(t.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: fg.withValues(alpha: 0.75), fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (tiles.isEmpty) return const SizedBox.shrink();
+    final rows = <Widget>[_tile(context, tiles.first, true)];
+    for (var i = 1; i < tiles.length; i += 2) {
+      if (i + 1 < tiles.length) {
+        rows.add(Row(children: [
+          Expanded(child: _tile(context, tiles[i], false)),
+          const SizedBox(width: 12),
+          Expanded(child: _tile(context, tiles[i + 1], false)),
+        ]));
+      } else {
+        rows.add(_tile(context, tiles[i], false));
+      }
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
+  }
 }

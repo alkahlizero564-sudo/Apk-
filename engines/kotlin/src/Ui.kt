@@ -1,5 +1,6 @@
 package app.main
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -167,6 +168,13 @@ fun fmt(c: ColumnCfg, v: Any?): String {
 }
 
 private val JSONNull = org.json.JSONObject.NULL
+
+/** Card border of the look chosen in Alpha: thick and black for the bold look, a thin frame for outline. */
+fun lookBorder(config: AlphaConfig): BorderStroke? = when (config.style) {
+    "brutal" -> BorderStroke(2.5.dp, Color(0xFF0B0B0F))
+    "outline" -> BorderStroke(1.5.dp, config.seed.copy(alpha = 0.45f))
+    else -> null
+}
 
 @Composable
 fun AppTheme(config: AlphaConfig, content: @Composable () -> Unit) {
@@ -483,7 +491,7 @@ fun Home(backend: Backend, onOpen: (Int) -> Unit) {
 
 @Composable
 private fun StatCard(icon: ImageVector, label: String, value: String, config: AlphaConfig, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(config.radius.dp)) {
+    Card(Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(config.radius.dp), border = lookBorder(config)) {
         Column(Modifier.padding(14.dp)) {
             Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
@@ -619,7 +627,8 @@ private fun RowCard(config: AlphaConfig, table: TableCfg, r: Rec, onClick: () ->
     val details = table.columns.filter { it.show && it != title && it != image && it != badge && it != price && fmt(it, r[it.name]).isNotEmpty() }
         .take(3).joinToString("  •  ") { "${it.label}: ${fmt(it, r[it.name])}" }
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(config.radius.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (config.style == "soft") 2.dp else 0.dp)) {
+        elevation = CardDefaults.cardElevation(defaultElevation = if (config.style == "soft" || config.style == "neu") 4.dp else 0.dp),
+        border = lookBorder(config)) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(58.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
                 if (url.startsWith("http")) AsyncImage(url, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
