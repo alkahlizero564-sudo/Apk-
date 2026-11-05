@@ -23,75 +23,68 @@ class SettingsScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
         children: [
-          const Text('الإعدادات', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
-          Text('${[s.hasGitHub, s.hasAi, s.hasSupabase && s.supabaseRef.isNotEmpty, s.hasFirebase].where((x) => x).length} من 4 خدمات مضبوطة · المفاتيح مشفّرة في الهاتف وكـ Secrets في المستودع',
-              style: const TextStyle(color: AlphaColors.muted, height: 1.6)),
-          const SectionTitle('الخدمات'),
-          GroupCard(children: [
-            ListRow(
-              icon: Icons.code_rounded,
-              color: AlphaColors.text,
-              title: 'GitHub',
-              subtitle: s.hasGitHub ? '${s.repo} · ${s.branch}' : 'مطلوب: التوكن والمستودع (البناء يتم فيه مجاناً)',
-              status: s.hasGitHub,
-              onTap: () => _sheet(context, const _GitHubForm()),
-            ),
-            ListRow(
-              icon: Icons.auto_awesome_rounded,
-              color: AlphaColors.infoText,
-              title: 'الذكاء الاصطناعي',
-              subtitle: s.hasAi ? 'متصل (Claude / Gemini)' : 'للفهم والتصميم والبيانات وكتابة الكود وإصلاح الأخطاء',
-              status: s.hasAi,
-              onTap: () => _sheet(context, const _AiForm()),
-            ),
-            ListRow(
-              icon: Icons.storage_rounded,
-              color: AlphaColors.teal,
-              title: 'Supabase',
-              subtitle: s.hasSupabase ? 'متصل · ${s.supabaseRef.isEmpty ? 'اختر المشروع' : s.supabaseRef}' : 'قاعدة البيانات والصلاحيات والدخول (مشروعك الأساسي)',
-              status: s.hasSupabase && s.supabaseRef.isNotEmpty,
-              onTap: () => _sheet(context, const _SupabaseForm()),
-            ),
-            ListRow(
-              icon: Icons.notifications_active_rounded,
-              color: AlphaColors.amber,
-              title: 'Firebase (الإشعارات)',
-              subtitle: s.hasFirebase ? 'متصل (Service Account)' : 'إشعارات Push حتى والتطبيق مقفول، أو Firestore',
-              status: s.hasFirebase,
-              onTap: () => _sheet(context, const _FirebaseForm()),
-            ),
-            ListRow(
-              icon: Icons.mark_email_unread_rounded,
-              color: AlphaColors.pink,
-              title: 'البريد (رموز التأكيد)',
-              subtitle: 'خادم SMTP لإرسال رمز تأكيد الحساب (Gmail يعمل)',
-              onTap: () => _sheet(context, const _SmtpForm()),
-              last: true,
-            ),
-          ]),
-          const SectionTitle('قواعد بيانات الزبائن'),
-          GroupCard(children: [
-            ListRow(
-              icon: Icons.person_pin_rounded,
-              color: AlphaColors.teal,
-              title: 'مشاريع Supabase للزبائن',
-              subtitle: 'مشروع منفصل لكل زبون: من حسابه، أو جديد في حسابك',
-              onTap: () => _sheet(context, const _ClientDbs()),
-              last: true,
-            ),
-          ]),
-          const SectionTitle('التحديثات'),
-          GroupCard(children: [
-            ListRow(
-              icon: Icons.system_update_rounded,
-              color: AlphaColors.blue,
-              title: 'التحديثات والتثبيت',
-              subtitle: s.updatesRepo.isNotEmpty ? 'التطبيقات المثبتة تتحدّث من ${s.updatesRepo}' : 'لتصل التحديثات للتطبيقات المثبتة بدون حساب GitHub',
-              status: s.updatesRepo.isNotEmpty,
-              onTap: () => _sheet(context, const _UpdatesForm()),
-              last: true,
-            ),
-          ]),
+          const Text('الإعدادات', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
+          const Text('المفاتيح تُحفظ مشفّرة في الهاتف، وتُنسخ مشفّرة كـ Secrets في المستودع لتستخدمها عمليات البناء.',
+              style: TextStyle(color: AlphaColors.muted, height: 1.6)),
+          const SizedBox(height: 10),
+          _Item(
+            icon: Icons.code_rounded,
+            color: AlphaColors.text,
+            title: 'GitHub',
+            subtitle: s.hasGitHub ? '${s.repo} · ${s.branch}' : 'مطلوب: التوكن والمستودع',
+            ok: s.hasGitHub,
+            onTap: () => _sheet(context, const _GitHubForm()),
+          ),
+          _Item(
+            icon: Icons.auto_awesome_rounded,
+            color: AlphaColors.amber,
+            title: 'الذكاء الاصطناعي',
+            subtitle: s.hasAi ? 'متصل (Claude / Gemini)' : 'اختياري: لتصميم الجداول وكتابة الكود وإصلاح الأخطاء',
+            ok: s.hasAi,
+            onTap: () => _sheet(context, const _AiForm()),
+          ),
+          _Item(
+            icon: Icons.bolt_rounded,
+            color: AlphaColors.teal,
+            title: 'Supabase',
+            subtitle: s.hasSupabase ? 'متصل · ${s.supabaseRef.isEmpty ? 'اختر المشروع' : s.supabaseRef}' : 'لقاعدة البيانات PostgreSQL والصلاحيات والدخول',
+            ok: s.hasSupabase && s.supabaseRef.isNotEmpty,
+            onTap: () => _sheet(context, const _SupabaseForm()),
+          ),
+          _Item(
+            icon: Icons.person_pin_rounded,
+            color: AlphaColors.amber,
+            title: 'قواعد بيانات الزبائن',
+            subtitle: 'مشروع Supabase لكل زبون: من حسابه أو جديد في حسابك',
+            ok: true,
+            onTap: () => _sheet(context, const _ClientDbs()),
+          ),
+          _Item(
+            icon: Icons.local_fire_department_rounded,
+            color: const Color(0xFFFFA000),
+            title: 'Firebase',
+            subtitle: s.hasFirebase ? 'متصل (Service Account)' : 'للإشعارات Push، أو Firestore كقاعدة بيانات',
+            ok: s.hasFirebase,
+            onTap: () => _sheet(context, const _FirebaseForm()),
+          ),
+          _Item(
+            icon: Icons.mark_email_unread_rounded,
+            color: AlphaColors.pink,
+            title: 'البريد (رموز التأكيد)',
+            subtitle: 'خادم بريد SMTP لإرسال رمز تأكيد الحساب للعملاء (Gmail يعمل)',
+            ok: false,
+            onTap: () => _sheet(context, const _SmtpForm()),
+          ),
+          _Item(
+            icon: Icons.system_update_rounded,
+            color: AlphaColors.blue,
+            title: 'التحديثات والتثبيت',
+            subtitle: s.updatesRepo.isNotEmpty
+                ? 'التطبيقات المثبتة تتحدّث من ${s.updatesRepo}'
+                : 'لتصل التحديثات للتطبيقات المثبتة بدون حساب GitHub',
+            ok: s.updatesRepo.isNotEmpty,
+            onTap: () => _sheet(context, const _UpdatesForm()),
+          ),
           const SectionTitle('عن Alpha'),
           const GlassCard(
             child: Text(
@@ -110,6 +103,41 @@ class SettingsScreen extends StatelessWidget {
         isScrollControlled: true,
         useSafeArea: true,
         builder: (c) => Padding(padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(c).bottom), child: child),
+      );
+}
+
+class _Item extends StatelessWidget {
+  const _Item({required this.icon, required this.color, required this.title, required this.subtitle, required this.ok, required this.onTap});
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final bool ok;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GlassCard(
+        onTap: onTap,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(14)),
+              child: Icon(icon, color: color),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  Text(subtitle, style: const TextStyle(color: AlphaColors.muted, fontSize: 12)),
+                ],
+              ),
+            ),
+            Icon(ok ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, color: ok ? AlphaColors.ok : AlphaColors.muted),
+          ],
+        ),
       );
 }
 
@@ -135,7 +163,7 @@ abstract class _FormState<T extends StatefulWidget> extends State<T> {
         shrinkWrap: true,
         padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
         children: [
-          Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+          Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
           const SizedBox(height: 6),
           Text(help, style: const TextStyle(color: AlphaColors.muted, height: 1.6, fontSize: 13)),
           if (link != null)
@@ -153,7 +181,6 @@ abstract class _FormState<T extends StatefulWidget> extends State<T> {
         ],
       );
 }
-
 
 class _GitHubForm extends StatefulWidget {
   const _GitHubForm();
@@ -497,7 +524,7 @@ class _GeminiModelSheetState extends State<_GeminiModelSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('اختر نموذج Gemini', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          const Text('اختر نموذج Gemini', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
           const Text('يُستخدم في الفهم والتصميم والبيانات على الهاتف، وفي كتابة الكود وإصلاحه في GitHub Actions. إذا لم ينجح يُجرَّب غيره تلقائياً.',
               style: TextStyle(color: AlphaColors.muted, fontSize: 12, height: 1.5)),
@@ -572,7 +599,7 @@ class _ClientDbsState extends State<_ClientDbs> {
   Widget build(BuildContext context) => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('قواعد بيانات الزبائن', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          const Text('قواعد بيانات الزبائن', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
           const Text('كل زبون في مشروع Supabase خاص به: بياناته وحساباته منفصلة عن مشروعك وعن باقي الزبائن.',
               style: TextStyle(color: AlphaColors.muted, fontSize: 12.5, height: 1.5)),

@@ -15,20 +15,18 @@ class NewProjectChoice {
 }
 
 /// «أنشئ تطبيقاً»: first «لمين؟» (mine / a client → the client's database), then one app or both.
-/// [kind]: already chosen (e.g. the «تطبيقين متصلين» card): the sheet only asks «لمين؟».
-Future<NewProjectChoice?> pickNewProject(BuildContext context, {ProjectKind? kind}) => showModalBottomSheet<NewProjectChoice>(
+Future<NewProjectChoice?> pickNewProject(BuildContext context) => showModalBottomSheet<NewProjectChoice>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (c) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(c).bottom),
-        child: SafeArea(child: _NewProjectSheet(kind: kind)),
+        child: const SafeArea(child: _NewProjectSheet()),
       ),
     );
 
 class _NewProjectSheet extends StatefulWidget {
-  const _NewProjectSheet({this.kind});
-  final ProjectKind? kind;
+  const _NewProjectSheet();
 
   @override
   State<_NewProjectSheet> createState() => _NewProjectSheetState();
@@ -42,16 +40,6 @@ class _NewProjectSheetState extends State<_NewProjectSheet> {
   ClientDb? _client;
   String _clientName = '';
   final _name = TextEditingController();
-
-  /// After «لمين؟»: ask one app or both, unless it was already chosen.
-  void _toKind() {
-    final k = widget.kind;
-    if (k != null) {
-      Navigator.pop(context, NewProjectChoice(kind: k, client: _client, clientName: _clientName));
-    } else {
-      setState(() => _stage = _Stage.kind);
-    }
-  }
 
   @override
   void initState() {
@@ -81,7 +69,7 @@ class _NewProjectSheetState extends State<_NewProjectSheet> {
               const SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                   const SizedBox(height: 3),
                   Text(sub, style: const TextStyle(color: AlphaColors.muted, fontSize: 12.5, height: 1.4)),
                 ]),
@@ -112,16 +100,16 @@ class _NewProjectSheetState extends State<_NewProjectSheet> {
                 onPressed: () => setState(() => _stage = _stage == _Stage.addDb ? _Stage.client : _Stage.owner),
                 icon: const Icon(Icons.arrow_forward_rounded),
               ),
-            Expanded(child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
           ]),
           const SizedBox(height: 12),
           ...switch (_stage) {
             _Stage.owner => [
-                _big(Icons.home_rounded, 'لي (المشروع الأساسي)', 'في مشروع Supabase الأساسي الخاص بك (من الإعدادات)', () {
-                  _client = null;
-                  _clientName = '';
-                  _toKind();
-                }),
+                _big(Icons.home_rounded, 'لي (المشروع الأساسي)', 'في مشروع Supabase الأساسي الخاص بك (من الإعدادات)', () => setState(() {
+                      _client = null;
+                      _clientName = '';
+                      _stage = _Stage.kind;
+                    })),
                 _big(Icons.person_rounded, 'لزبون', 'في قاعدة بيانات خاصة بالزبون: منفصلة عن مشروعك وعن باقي الزبائن', () => setState(() => _stage = _Stage.client),
                     color: AlphaColors.amber),
               ],
@@ -133,11 +121,11 @@ class _NewProjectSheetState extends State<_NewProjectSheet> {
                   ),
                 for (final d in _dbs)
                   _big(d.inClientAccount ? Icons.person_rounded : Icons.dns_rounded, d.label,
-                      '${d.inClientAccount ? 'حساب الزبون' : 'في حسابك'} · ${d.ref}', () {
-                    _client = d;
-                    _clientName = d.label;
-                    _toKind();
-                  },
+                      '${d.inClientAccount ? 'حساب الزبون' : 'في حسابك'} · ${d.ref}', () => setState(() {
+                            _client = d;
+                            _clientName = d.label;
+                            _stage = _Stage.kind;
+                          }),
                       color: AlphaColors.teal),
                 GradientButton(label: 'أضف زبوناً جديداً', icon: Icons.add_circle_rounded, onPressed: () => setState(() => _stage = _Stage.addDb)),
                 const SizedBox(height: 14),
@@ -150,9 +138,11 @@ class _NewProjectSheetState extends State<_NewProjectSheet> {
                     onPressed: () {
                       final n = _name.text.trim();
                       if (n.isEmpty) return;
-                      _client = null;
-                      _clientName = n;
-                      _toKind();
+                      setState(() {
+                        _client = null;
+                        _clientName = n;
+                        _stage = _Stage.kind;
+                      });
                     },
                     child: const Text('تمام'),
                   ),
@@ -160,10 +150,12 @@ class _NewProjectSheetState extends State<_NewProjectSheet> {
               ],
             _Stage.addDb => [
                 ClientDbPanel(onAdded: (d) {
-                  _dbs = [..._dbs.where((x) => x.ref != d.ref), d];
-                  _client = d;
-                  _clientName = d.label;
-                  _toKind();
+                  setState(() {
+                    _dbs = [..._dbs.where((x) => x.ref != d.ref), d];
+                    _client = d;
+                    _clientName = d.label;
+                    _stage = _Stage.kind;
+                  });
                 }),
               ],
             _Stage.kind => [

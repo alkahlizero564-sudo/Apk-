@@ -46,7 +46,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
           children: [
-            const Text('البناء والعمليات', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+            const Text('البناء والعمليات', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
             const Text('كل عملية تعمل مجاناً في GitHub Actions: تجهيز السيرفر، كتابة الكود، البناء والتوقيع والنشر.',
                 style: TextStyle(color: AlphaColors.muted, height: 1.6)),
             const SizedBox(height: 10),

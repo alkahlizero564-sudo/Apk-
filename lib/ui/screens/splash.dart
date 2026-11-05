@@ -53,7 +53,7 @@ class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateM
                             const SizedBox(height: 22),
                             ShaderMask(
                               shaderCallback: (r) => AlphaColors.aurora.createShader(r, textDirection: TextDirection.rtl),
-                              child: const Text('Alpha', style: TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 1)),
+                              child: const Text('Alpha', style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
                             ),
                             const SizedBox(height: 6),
                             const Text('مصنع التطبيقات المتكاملة', style: TextStyle(color: AlphaColors.muted, fontSize: 15)),

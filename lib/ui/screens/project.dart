@@ -47,7 +47,7 @@ class ProjectScreen extends StatelessWidget {
                   ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  title: Text(p.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  title: Text(p.title, style: const TextStyle(fontWeight: FontWeight.w900)),
                   background: Container(
                     decoration: BoxDecoration(gradient: LinearGradient(colors: [seed, accent], begin: Alignment.topRight, end: Alignment.bottomLeft)),
                     child: SafeArea(

@@ -282,29 +282,11 @@ class _WizardScreenState extends State<WizardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: Text(widget.clientName.isEmpty ? 'جديد: ${_kind.label}' : '${_kind.label} لـ ${widget.clientName}')),
       body: AuroraBackground(
         child: SafeArea(
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 10, 14, 4),
-                child: Row(children: [
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(_pair ? 'تطبيقين متصلين' : 'تطبيق جديد', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-                      Text(
-                        widget.clientName.isEmpty ? 'لي (المشروع الأساسي)' : 'للزبون: ${widget.clientName}',
-                        style: const TextStyle(color: AlphaColors.muted, fontSize: 13),
-                      ),
-                    ]),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.maybePop(context),
-                    icon: const Icon(Icons.close_rounded),
-                    style: IconButton.styleFrom(backgroundColor: AlphaColors.surface, side: const BorderSide(color: AlphaColors.line), fixedSize: const Size(46, 46)),
-                  ),
-                ]),
-              ),
               _Stepper(steps: _steps, current: _step, onTap: (i) => i < _step ? setState(() => _step = i) : null),
               Expanded(
                 child: AnimatedSwitcher(
@@ -447,7 +429,7 @@ class _WizardScreenState extends State<WizardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(u.title.isEmpty ? 'تطبيقك' : u.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                Text(u.title.isEmpty ? 'تطبيقك' : u.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 6),
                 Text(u.summary, style: const TextStyle(height: 1.6)),
                 const SizedBox(height: 10),
@@ -505,7 +487,7 @@ class _WizardScreenState extends State<WizardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(l.label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+                        Text(l.label, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
                         const SizedBox(height: 2),
                         Text(l.stack, style: const TextStyle(color: AlphaColors.muted, fontSize: 13)),
                         const SizedBox(height: 4),
@@ -827,46 +809,67 @@ class _WizardScreenState extends State<WizardScreen> {
       );
 }
 
-/// Progress as segments with the step names under them (APK Fact's design language): done = violet, now = gradient.
-class _Stepper extends StatelessWidget {
+class _Stepper extends StatefulWidget {
   const _Stepper({required this.steps, required this.current, required this.onTap});
   final List<String> steps;
   final int current;
   final void Function(int) onTap;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(18, 10, 18, 8),
-        child: Row(children: [
-          for (var i = 0; i < steps.length; i++) ...[
-            if (i > 0) const SizedBox(width: 5),
-            Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => onTap(i),
-                child: Column(children: [
-                  AnimatedContainer(
+  State<_Stepper> createState() => _StepperState();
+}
+
+class _StepperState extends State<_Stepper> {
+  late final _keys = List.generate(widget.steps.length, (_) => GlobalKey());
+
+  @override
+  void didUpdateWidget(covariant _Stepper old) {
+    super.didUpdateWidget(old);
+    if (old.current != widget.current) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = _keys[widget.current].currentContext;
+        if (ctx != null) Scrollable.ensureVisible(ctx, alignment: 0.5, duration: const Duration(milliseconds: 300));
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 64,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          child: Row(
+            children: [
+              for (var i = 0; i < widget.steps.length; i++) ...[
+                if (i > 0) const SizedBox(width: 6),
+                GestureDetector(
+                  key: _keys[i],
+                  onTap: () => widget.onTap(i),
+                  child: AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
-                    height: 4,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      gradient: i == current ? AlphaColors.aurora : null,
-                      color: i == current ? null : (i < current ? AlphaColors.violet.withValues(alpha: 0.55) : AlphaColors.line),
+                      gradient: i == widget.current ? AlphaColors.aurora : null,
+                      color: i == widget.current
+                          ? null
+                          : (i < widget.current ? AlphaColors.violet.withValues(alpha: 0.18) : Colors.white.withValues(alpha: 0.05)),
                       borderRadius: BorderRadius.circular(99),
                     ),
+                    child: Row(
+                      children: [
+                        if (i < widget.current) const Icon(Icons.check_rounded, size: 16, color: AlphaColors.teal),
+                        if (i < widget.current) const SizedBox(width: 4),
+                        Text('${i + 1}. ${widget.steps[i]}',
+                            style: TextStyle(fontWeight: FontWeight.w700, color: i == widget.current ? Colors.white : AlphaColors.muted)),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 6),
-                  FittedBox(
-                    child: Text(steps[i],
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: i == current ? FontWeight.w800 : FontWeight.w500,
-                          color: i == current ? AlphaColors.text : AlphaColors.muted,
-                        )),
-                  ),
-                ]),
-              ),
-            ),
-          ],
-        ]),
+                ),
+              ],
+            ],
+          ),
+        ),
       );
 }
