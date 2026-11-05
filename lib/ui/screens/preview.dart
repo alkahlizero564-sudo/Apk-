@@ -144,16 +144,47 @@ Future<String> buildPreviewHtml(Project p, AppUnit app, {required bool admin, in
   (cfg['app'] as Map)['role'] = role;
   (cfg['app'] as Map)['slug'] = '${app.slug}-preview$seed';
   String safe(String code) => code.replaceAll('</script', '<\\/script');
+  // The AI-designed interface: its CSS after the engine's, its JS (and the libraries it names) before app.js.
+  var designCss = '', designJs = '';
+  if (!p.design.isEmpty) {
+    designCss = '<style>${p.design.css.replaceAll('</style', '<\\/style')}</style>';
+    final js = p.design.js;
+    if (js.trim().isNotEmpty) {
+      for (final lib in designLibs.entries) {
+        if (!RegExp('\\b${lib.key}\\b').hasMatch(js)) continue;
+        for (final f in lib.value) {
+          final code = await rootBundle.loadString('engines/html/design-libs/$f');
+          if (f.endsWith('.css')) {
+            designCss += '<style>$code</style>';
+          } else {
+            designJs += '<script>${safe(code)}</script>';
+          }
+        }
+      }
+      designJs += '<script>${safe(js)}</script>';
+    }
+  }
   return '''<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>${p.title}</title>
 <style>$css</style><script>window.ALPHA = ${safe(jsonEncode(cfg))};
 try { if (localStorage.getItem("alpha_preview_seed") !== "$seed") { localStorage.clear(); localStorage.setItem("alpha_preview_seed", "$seed"); } } catch (e) {}
-</script></head><body>
+</script>$designCss</head><body>
 <div id="app"><div class="boot"><div class="spinner"></div></div></div>
 <div id="sheet" class="sheet" hidden><div class="sheet-card"><div class="handle"></div><div id="sheet-body"></div></div></div>
 <div id="toast" class="toast" hidden></div>
-<script>${safe(backend)}</script><script>${safe(js)}</script></body></html>''';
+<script>${safe(backend)}</script>$designJs<script>${safe(js)}</script></body></html>''';
 }
+
+/// Libraries an AI design may use (global name → files in engines/html/design-libs), same list as factory/prepare.py.
+const designLibs = {
+  'gsap': ['gsap.min.js'],
+  'ScrollTrigger': ['ScrollTrigger.min.js'],
+  'AOS': ['aos.css', 'aos.js'],
+  'Typed': ['typed.umd.js'],
+  'VanillaTilt': ['vanilla-tilt.min.js'],
+  'confetti': ['confetti.js'],
+  'rough': ['rough.js'],
+};
 
 /// The engine's fonts as data URLs (the preview page has no files next to it). Read once.
 String? _fontsCss;

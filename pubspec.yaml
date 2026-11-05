@@ -75,6 +75,7 @@ flutter:
     - engines/html/backend.js
     - engines/html/style.css
     - engines/html/fonts/
+    - engines/html/design-libs/
     # Design-school thumbnails rendered from the HTML engine.
     - assets/schools/
   fonts:

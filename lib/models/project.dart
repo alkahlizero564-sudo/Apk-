@@ -26,7 +26,18 @@ enum Lang {
   bool get supportsPush => this != Lang.python;
 }
 
-enum ProjectKind { single, pair }
+/// Who the app is for: the business owner (one app that manages everything), the customers only, or both (two connected apps).
+enum ProjectKind {
+  single('لصاحب المشروع', 'تطبيق واحد يدير كل شيء: يضيف ويعدّل ويتابع'),
+  customer('للزبون', 'تطبيق الزبائن فقط: يتصفحون ويطلبون ويحجزون'),
+  pair('التطبيقين', 'تطبيق للزبون + تطبيق للإدارة، متصلان بالإشعارات');
+
+  const ProjectKind(this.label, this.hint);
+  final String label;
+  final String hint;
+
+  static ProjectKind parse(String? v) => ProjectKind.values.firstWhere((k) => k.name == v, orElse: () => ProjectKind.single);
+}
 
 enum BackendType {
   none('none', 'بدون سيرفر', 'البيانات محفوظة في الجهاز'),
@@ -188,6 +199,22 @@ class AppUnit {
   String get roleLabel => switch (role) { 'customer' => 'تطبيق العميل', 'admin' => 'تطبيق الإدارة', _ => 'التطبيق' };
 }
 
+/// The interface the AI designed for this app from its description: a visual layer (CSS + motion JS with the design
+/// libraries) on top of the tested engine, and a written spec the native languages are coded from.
+class AiDesign {
+  AiDesign({this.css = '', this.js = '', this.spec = '', this.summary = ''});
+  String css; // design.css: restyles every screen of the engine (HTML, PHP, and the instant preview)
+  String js; // design.js: motion and effects (GSAP, AOS, Typed, VanillaTilt, confetti, rough), hooked to each render
+  String spec; // design spec in words + numbers: Flutter / Python / Kotlin code is written to match it
+  String summary; // one line for the owner
+
+  bool get isEmpty => css.trim().isEmpty;
+
+  Map<String, dynamic> toJson() => {'css': css, 'js': js, 'spec': spec, 'summary': summary};
+  factory AiDesign.fromJson(Map<String, dynamic>? j) =>
+      AiDesign(css: '${j?['css'] ?? ''}', js: '${j?['js'] ?? ''}', spec: '${j?['spec'] ?? ''}', summary: '${j?['summary'] ?? ''}');
+}
+
 class Project {
   Project({
     required this.id,
@@ -213,7 +240,9 @@ class Project {
     this.supabaseRef = '',
     this.brief = '',
     this.customCode = '',
+    AiDesign? design,
   })  : theme = theme ?? ThemeSpec(),
+        design = design ?? AiDesign(),
         schema = schema ?? DbSchema(),
         apps = apps ?? [],
         createdAt = createdAt ?? DateTime.now();
@@ -248,6 +277,9 @@ class Project {
   /// Code the owner pasted: it becomes the app's own code (custom/), the build fixes it if needed.
   String customCode;
 
+  /// The interface designed by the AI (empty: the chosen design school alone).
+  AiDesign design;
+
   /// Prefix of every table of this project, so many projects can share one Supabase / Firebase project.
   String get prefix => slugIdent(base, fallback: 'app');
 
@@ -277,6 +309,7 @@ class Project {
         'supabaseRef': supabaseRef,
         if (brief.isNotEmpty) 'brief': brief,
         if (customCode.isNotEmpty) 'customCode': customCode,
+        if (!design.isEmpty) 'design': design.toJson(),
       };
 
   factory Project.fromJson(Map<String, dynamic> j) => Project(
@@ -284,7 +317,7 @@ class Project {
         base: '${j['base']}',
         title: '${j['title'] ?? j['base']}',
         lang: Lang.parse(j['lang'] as String?),
-        kind: j['kind'] == 'pair' ? ProjectKind.pair : ProjectKind.single,
+        kind: ProjectKind.parse(j['kind'] as String?),
         description: '${j['description'] ?? ''}',
         theme: ThemeSpec.fromJson((j['theme'] as Map?)?.cast<String, dynamic>()),
         schema: DbSchema.fromJson(j['schema'] as List?),
@@ -303,13 +336,14 @@ class Project {
         supabaseRef: '${j['supabaseRef'] ?? ''}',
         brief: '${j['brief'] ?? ''}',
         customCode: '${j['customCode'] ?? ''}',
+        design: AiDesign.fromJson((j['design'] as Map?)?.cast<String, dynamic>()),
       );
 
   String encode() => jsonEncode(toJson());
 
   /// The apps of this project, made from its kind.
-  static List<AppUnit> unitsFor(String base, String title, ProjectKind kind) => kind == ProjectKind.single
-      ? [AppUnit(slug: base, role: 'single', title: title)]
+  static List<AppUnit> unitsFor(String base, String title, ProjectKind kind) => kind != ProjectKind.pair
+      ? [AppUnit(slug: base, role: kind == ProjectKind.customer ? 'customer' : 'single', title: title)]
       : [
           AppUnit(slug: '$base-customer', role: 'customer', title: title),
           AppUnit(slug: '$base-admin', role: 'admin', title: '$title - الإدارة'),

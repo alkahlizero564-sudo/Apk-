@@ -382,6 +382,43 @@ def prepare_flutter(cfg, app, out, version):
     overlay_custom(app, out)
 
 
+# Libraries an AI design may use, the global name that shows it is used, and their files (engines/html/design-libs).
+DESIGN_LIBS = [
+    ("gsap", ["gsap.min.js"]), ("ScrollTrigger", ["ScrollTrigger.min.js"]), ("AOS", ["aos.css", "aos.js"]),
+    ("Typed", ["typed.umd.js"]), ("VanillaTilt", ["vanilla-tilt.min.js"]), ("confetti", ["confetti.js"]), ("rough", ["rough.js"]),
+]
+
+
+def design_files(cfg, app, out, prefix=""):
+    """Copies the AI-designed interface (apps/<app>/design) and the libraries its JS uses into <out>/<prefix>.
+    Returns (head_tags, script_tags) to put in the page, or ("", "") when the app has no AI design."""
+    d = app_dir(app) / "design"
+    if not cfg.get("theme", {}).get("ai") or not (d / "design.css").is_file():
+        return "", ""
+    out = Path(out) / prefix
+    out.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(d / "design.css", out / "design.css")
+    head = f'  <link rel="stylesheet" href="{prefix}design.css">\n'
+    scripts = ""
+    js = (d / "design.js").read_text(encoding="utf-8") if (d / "design.js").is_file() else ""
+    if js.strip():
+        libs = ENGINES / "html" / "design-libs"
+        for name, files in DESIGN_LIBS:
+            if not re.search(r"\b" + name + r"\b", js):
+                continue
+            for f in files:
+                (out / "design-libs").mkdir(exist_ok=True)
+                shutil.copy2(libs / f, out / "design-libs" / f)
+                if f.endswith(".css"):
+                    head += f'  <link rel="stylesheet" href="{prefix}design-libs/{f}">\n'
+                else:
+                    scripts += f'  <script src="{prefix}design-libs/{f}"></script>\n'
+        shutil.copy2(d / "design.js", out / "design.js")
+        scripts += f'  <script src="{prefix}design.js"></script>\n'
+    print(f"AI design of {app} added ({'with' if js.strip() else 'without'} motion)")
+    return head, scripts
+
+
 def prepare_html(cfg, app, out, version):
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -398,8 +435,13 @@ def prepare_html(cfg, app, out, version):
         index = (out / "index.html").read_text(encoding="utf-8")
         index = index.replace('  <script src="backend.js"></script>', tags + '  <script src="backend.js"></script>')
         (out / "index.html").write_text(index, encoding="utf-8")
+    shutil.rmtree(out / "design-libs", ignore_errors=True)  # only the libraries the design uses are copied back
     index = (out / "index.html").read_text(encoding="utf-8")
     index = re.sub(r"<title>.*?</title>", f"<title>{label(cfg)}</title>", index)
+    head, scripts = design_files(cfg, app, out)
+    index = index.replace('  <script src="config.js"></script>', head + '  <script src="config.js"></script>')
+    # The design's JS only registers window.AlphaDesign; it runs before app.js so the first screen is already designed.
+    index = index.replace('  <script src="app.js"></script>', scripts + '  <script src="app.js"></script>')
     (out / "index.html").write_text(index, encoding="utf-8")
     overlay_custom(app, out)
 
@@ -462,6 +504,9 @@ def prepare_php(cfg, app, out, version):
     (out / "assets").mkdir(exist_ok=True)
     shutil.copy2(ENGINES / "html" / "style.css", out / "assets" / "style.css")
     shutil.copytree(ENGINES / "html" / "fonts", out / "assets" / "fonts", dirs_exist_ok=True)
+    head, scripts = design_files(cfg, app, out, prefix="assets/")
+    if head:
+        (out / "assets" / "design.html").write_text(head + scripts, encoding="utf-8")  # lib/view.php adds it to every page
     raw = json.dumps(runtime_config(cfg), ensure_ascii=False, indent=1)
     if "\nJSON" in raw:
         raise SystemExit("config contains a line starting with JSON")

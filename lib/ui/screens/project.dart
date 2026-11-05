@@ -58,7 +58,7 @@ class ProjectScreen extends StatelessWidget {
                           runSpacing: 8,
                           children: [
                             _HeaderChip(langIcon(p.lang), p.lang.label),
-                            _HeaderChip(p.isPair ? Icons.connecting_airports_rounded : Icons.phone_android_rounded, p.isPair ? 'عميل + إدارة' : 'تطبيق واحد'),
+                            _HeaderChip(KindPicker.icons[p.kind]!, p.kind.label),
                             _HeaderChip(Icons.table_chart_rounded, '${p.schema.tables.length} جداول'),
                             if (p.backend != BackendType.none) _HeaderChip(Icons.storage_rounded, p.backend.label),
                             if (p.push) const _HeaderChip(Icons.notifications_active_rounded, 'إشعارات'),

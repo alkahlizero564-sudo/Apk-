@@ -57,26 +57,11 @@ class HomeScreen extends StatelessWidget {
                   const Text('اختر اللغة والتصميم وقاعدة البيانات، وAlpha يكتب الجداول والصلاحيات والإشعارات ويبني الـ APK.',
                       style: TextStyle(color: AlphaColors.muted, height: 1.6)),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _QuickAction(
-                          icon: Icons.add_to_home_screen_rounded,
-                          title: 'تطبيق واحد',
-                          gradient: AlphaColors.aurora,
-                          onTap: () => _start(context, ProjectKind.single),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _QuickAction(
-                          icon: Icons.connecting_airports_rounded,
-                          title: 'تطبيقين متصلين',
-                          gradient: AlphaColors.sunrise,
-                          onTap: () => _start(context, ProjectKind.pair),
-                        ),
-                      ),
-                    ],
+                  _QuickAction(
+                    icon: Icons.add_circle_rounded,
+                    title: 'أنشئ تطبيقاً',
+                    gradient: AlphaColors.aurora,
+                    onTap: () => _choose(context),
                   ),
                 ],
               ),
@@ -130,6 +115,27 @@ class HomeScreen extends StatelessWidget {
 
   void _start(BuildContext context, ProjectKind kind) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => WizardScreen(kind: kind)));
+  }
+
+  /// «أنشئ تطبيقاً»: first who the app is for (the owner, the customers, or both apps).
+  Future<void> _choose(BuildContext context) async {
+    final kind = await showModalBottomSheet<ProjectKind>(
+      context: context,
+      showDragHandle: true,
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Text('لمن التطبيق؟', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            const Text('تقدر تغيّر هذا لاحقاً في خطوة الفهم', style: TextStyle(color: AlphaColors.muted, fontSize: 13)),
+            const SizedBox(height: 14),
+            KindPicker(onPick: (k) => Navigator.pop(c, k)),
+          ]),
+        ),
+      ),
+    );
+    if (kind != null && context.mounted) _start(context, kind);
   }
 }
 
@@ -252,7 +258,7 @@ class _ProjectCard extends StatelessWidget {
                   runSpacing: 6,
                   children: [
                     LangBadge(p.lang),
-                    Pill(p.isPair ? 'عميل + إدارة' : 'تطبيق واحد', color: AlphaColors.blue),
+                    Pill(p.kind.label, color: AlphaColors.blue),
                     if (p.backend != BackendType.none) Pill(p.backend.label, color: AlphaColors.teal, icon: Icons.storage_rounded),
                     if (p.push) const Pill('إشعارات', color: AlphaColors.pink, icon: Icons.notifications_active_rounded),
                   ],

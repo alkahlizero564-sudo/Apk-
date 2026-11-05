@@ -6,6 +6,7 @@ import '../../app/theme.dart';
 import '../../generator/presets.dart';
 import '../../models/project.dart';
 import '../../models/schema.dart';
+import '../ai_design_card.dart';
 import '../widgets.dart';
 import 'preview.dart';
 
@@ -179,18 +180,36 @@ class _DesignStudioScreenState extends State<DesignStudioScreen> {
   late ThemeSpec _theme = ThemeSpec.fromJson(widget.project.theme.toJson());
   late final _headline = TextEditingController(text: widget.project.headline);
   late final _subtitle = TextEditingController(text: widget.project.subtitle);
+  late AiDesign _design = AiDesign.fromJson(widget.project.design.toJson());
   bool _busy = false;
+
+  Project _draft() => Project.fromJson(widget.project.toJson())
+    ..theme = _theme
+    ..design = _design
+    ..headline = _headline.text.trim()
+    ..subtitle = _subtitle.text.trim();
 
   Future<void> _save({bool build = false}) async {
     final s = context.read<AppState>();
     final p = widget.project
       ..theme = _theme
+      ..design = _design
       ..headline = _headline.text.trim()
       ..subtitle = _subtitle.text.trim();
     setState(() => _busy = true);
     try {
       await s.save(p, message: 'Alpha: design of ${p.title}');
-      if (build && s.hasGitHub) await s.buildAll(p);
+      final native = p.lang == Lang.flutter || p.lang == Lang.python || p.lang == Lang.kotlin;
+      if (build && s.hasGitHub) {
+        if (native && !_design.isEmpty) {
+          // The native code is rewritten by the AI to match the new design, then built.
+          for (final a in p.apps) {
+            await s.generateWithAi(a, 'غيّر واجهات التطبيق لتطابق التصميم المعتمد الجديد (design/spec.md) بدقة، مع إبقاء كل الوظائف.');
+          }
+        } else {
+          await s.buildAll(p);
+        }
+      }
       if (!mounted) return;
       showMessage(context, build ? 'حُفظ التصميم وبدأ البناء' : 'حُفظ التصميم');
       Navigator.pop(context);
@@ -211,19 +230,27 @@ class _DesignStudioScreenState extends State<DesignStudioScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
             children: [
-              OutlinedButton.icon(
-                onPressed: () {
-                  final draft = Project.fromJson(p.toJson())
-                    ..theme = _theme
-                    ..headline = _headline.text.trim()
-                    ..subtitle = _subtitle.text.trim();
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => PreviewScreen(project: draft)));
-                },
-                icon: const Icon(Icons.play_circle_rounded, color: AlphaColors.teal),
-                label: const Text('معاينة فورية للتصميم'),
+              AiDesignCard(
+                draft: _draft,
+                brief: p.brief,
+                onDesigned: (d, t, h, sub) => setState(() {
+                  _design = d;
+                  _theme = t;
+                  if (h.isNotEmpty) _headline.text = h;
+                  if (sub.isNotEmpty) _subtitle.text = sub;
+                }),
+                onClear: () => setState(() => _design = AiDesign()),
               ),
               const SizedBox(height: 12),
-              DesignEditor(theme: _theme, title: p.title, schema: p.schema, pair: p.isPair, onChanged: (t) => setState(() => _theme = t)),
+              if (_design.isEmpty) ...[
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PreviewScreen(project: _draft()))),
+                  icon: const Icon(Icons.play_circle_rounded, color: AlphaColors.teal),
+                  label: const Text('معاينة فورية للتصميم'),
+                ),
+                const SizedBox(height: 12),
+                DesignEditor(theme: _theme, title: p.title, schema: p.schema, pair: p.isPair, onChanged: (t) => setState(() => _theme = t)),
+              ],
               const SectionTitle('نصوص الواجهة الرئيسية'),
               TextField(controller: _headline, decoration: const InputDecoration(labelText: 'العنوان الكبير (اختياري)')),
               const SizedBox(height: 10),

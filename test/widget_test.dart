@@ -137,7 +137,16 @@ void main() {
     expect(html, contains('"preview":true'));
     expect(html, contains('"role":"customer"'));
     expect(html, contains('window.AlphaBackend'));
+    expect(html, isNot(contains('gsap')));
     final out = Platform.environment['ALPHA_PREVIEW_OUT'];
     if (out != null) File(out).writeAsStringSync(html);
+    // With an AI design: its CSS, the libraries its JS names (and only those), then its JS before app.js.
+    p.design = AiDesign(css: ':root.ai .card{outline:1px solid gold}', js: 'window.AlphaDesign={onRender(){ if (window.gsap) gsap.to({}, {}); }}');
+    final designed = await buildPreviewHtml(p, p.apps.first, admin: false);
+    expect(designed, contains('outline:1px solid gold'));
+    expect(designed, contains('GreenSock'));
+    expect(designed, isNot(contains('VanillaTilt')));
+    expect(designed.indexOf('window.AlphaDesign'), lessThan(designed.indexOf('Alpha HTML engine: screens')));
+    expect(designed, contains('"ai":true'));
   });
 }

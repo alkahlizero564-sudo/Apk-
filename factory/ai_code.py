@@ -119,6 +119,18 @@ def write_files(app, lang, files):
     return written
 
 
+def design_note(cfg):
+    """The interface the AI designed in Alpha (apps/<app>/design): the code must reproduce it."""
+    d = app_dir(cfg["app"]["slug"]) / "design"
+    if not cfg.get("theme", {}).get("ai") or not (d / "spec.md").is_file():
+        return ""
+    spec = (d / "spec.md").read_text(encoding="utf-8")[:9000]
+    css = (d / "design.css").read_text(encoding="utf-8")[:9000] if (d / "design.css").is_file() else ""
+    return ("\nTHE APPROVED DESIGN (the owner saw it in the instant preview and chose it): reproduce it faithfully, natively, "
+            "screen by screen (colors, fonts, radii, shadows, layout, components, motion). Spec:\n" + spec +
+            ("\n\nIts web preview CSS, for exact values (do not copy CSS into native code, translate it):\n" + css if css else "") + "\n")
+
+
 def prompt_base(cfg, lang):
     c = CONTRACT[lang]
     api = (ROOT / c["api"]).read_text(encoding="utf-8")
@@ -126,6 +138,7 @@ def prompt_base(cfg, lang):
     theme = json.dumps(cfg.get("theme", {}), ensure_ascii=False)
     brief = str(cfg["app"].get("brief") or "").strip()
     brief_note = f"\nThe approved understanding of the app (follow it):\n{brief}\n" if brief else ""
+    brief_note += design_note(cfg)
     return f"""You write the code of one mobile app made with Alpha.{brief_note}
 Language: {lang}. App: «{cfg['app'].get('title')}» (role: {cfg['app'].get('role')} — single app, or the customer / admin app of a connected pair).
 Backend: {cfg['backend'].get('type')} (sign-in: {cfg['backend'].get('auth', 'none')}). Theme: {theme}.

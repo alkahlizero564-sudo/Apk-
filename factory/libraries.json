@@ -32,7 +32,7 @@
       {"name": "daisyui", "version": "5.7.50", "files": {"daisyui.css": "daisyui.css"}, "use": "مكونات جاهزة فوق Tailwind", "tag": "<link rel=\"stylesheet\" href=\"vendor/daisyui.css\">"},
       {"name": "@tsparticles/slim", "version": "4.5.1", "files": {"tsparticles.slim.min.js": "tsparticles.slim.bundle.min.js"}, "use": "جزيئات وخلفيات متحركة", "tag": "<script src=\"vendor/tsparticles.slim.min.js\"></script>"},
       {"name": "canvas-confetti", "version": "1.9.4", "files": {"confetti.js": "dist/confetti.browser.js"}, "use": "احتفال بالقصاصات", "tag": "<script src=\"vendor/confetti.js\"></script>"},
-      {"name": "typed.js", "version": "3.0.0", "files": {"typed.umd.js": "dist/typed.umd.js"}, "use": "كتابة متحركة (Kinetic)", "tag": "<script src=\"vendor/typed.umd.js\"></script>"},
+      {"name": "typed.js", "version": "2.1.0", "files": {"typed.umd.js": "dist/typed.umd.js"}, "use": "كتابة متحركة (Kinetic)", "tag": "<script src=\"vendor/typed.umd.js\"></script>"},
       {"name": "splitting", "version": "1.1.0", "files": {"splitting.min.js": "dist/splitting.min.js", "splitting.css": "dist/splitting.css"}, "use": "تقطيع النص لحروف متحركة", "tag": "<link rel=\"stylesheet\" href=\"vendor/splitting.css\"><script src=\"vendor/splitting.min.js\"></script>"},
       {"name": "vanilla-tilt", "version": "1.8.1", "files": {"vanilla-tilt.min.js": "dist/vanilla-tilt.min.js"}, "use": "ميلان ثلاثي الأبعاد للبطاقات", "tag": "<script src=\"vendor/vanilla-tilt.min.js\"></script>"}
     ]
