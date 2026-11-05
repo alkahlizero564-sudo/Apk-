@@ -1,0 +1,17 @@
+{
+ "base": "personal-daily-expens",
+ "prefix": "personal_daily_expens",
+ "lang": "flutter",
+ "backend": "none",
+ "auth": "none",
+ "push": false,
+ "admins": [],
+ "apps": [
+  {
+   "slug": "personal-daily-expens",
+   "role": "single",
+   "title": "مصروفاتي",
+   "package": "com.alpha.personal_daily_expens"
+  }
+ ]
+}

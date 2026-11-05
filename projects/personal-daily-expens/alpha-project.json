@@ -1,0 +1,239 @@
+{
+ "id": "1793855553094813",
+ "base": "personal-daily-expens",
+ "title": "مصروفاتي",
+ "lang": "flutter",
+ "kind": "single",
+ "description": "مصروفاتي الشخصية اليوميه",
+ "theme": {
+  "preset": "glass",
+  "seed": "#7C3AED",
+  "accent": "#06B6D4",
+  "mode": "dark",
+  "style": "glass",
+  "radius": 22.0,
+  "layout": "tabs",
+  "look": "glass",
+  "hero": "blob",
+  "list": "cards",
+  "nav": "floating",
+  "deco": "blobs",
+  "type": "heavy",
+  "school": "glass",
+  "home": "bento",
+  "sheet": "sheet",
+  "font": "readex",
+  "onboarding": true
+ },
+ "schema": [
+  {
+   "name": "categories",
+   "label": "فئات المعاملات",
+   "icon": "list",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "name",
+     "label": "اسم الفئة",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "type",
+     "label": "نوع الفئة",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "مصروف",
+      "دخل"
+     ],
+     "show": true
+    },
+    {
+     "name": "icon_name",
+     "label": "رمز الأيقونة",
+     "type": "text",
+     "show": false
+    },
+    {
+     "name": "color",
+     "label": "اللون",
+     "type": "text",
+     "show": false
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "transactions",
+   "label": "المعاملات المالية",
+   "icon": "receipt",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "title",
+     "label": "عنوان المعاملة",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "transaction_type",
+     "label": "نوع المعاملة",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "مصروف",
+      "دخل"
+     ],
+     "show": true
+    },
+    {
+     "name": "amount",
+     "label": "المبلغ",
+     "type": "decimal",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "category_name",
+     "label": "الفئة",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "transaction_date",
+     "label": "التاريخ",
+     "type": "date",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "payment_method",
+     "label": "طريقة الدفع",
+     "type": "choice",
+     "options": [
+      "نقداً",
+      "بطاقة ائتمانية",
+      "تحويل بنكي",
+      "أخرى"
+     ],
+     "show": false
+    },
+    {
+     "name": "note",
+     "label": "ملاحظات",
+     "type": "longtext",
+     "show": false
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "budgets",
+   "label": "الميزانيات الشهرية",
+   "icon": "wallet",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "category_name",
+     "label": "الفئة",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "monthly_limit",
+     "label": "الحد الشهرية",
+     "type": "decimal",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "month_year",
+     "label": "الشهر والسنة",
+     "type": "text",
+     "required": true,
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "user_settings",
+   "label": "إعدادات المستخدم",
+   "icon": "checklist",
+   "owner": "customer",
+   "columns": [
+    {
+     "name": "currency",
+     "label": "العملة",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "SAR",
+      "USD",
+      "EUR",
+      "EGP",
+      "AED",
+      "KWD"
+     ],
+     "default": "SAR",
+     "show": true
+    },
+    {
+     "name": "daily_reminder_time",
+     "label": "وقت التذكير اليومي",
+     "type": "text",
+     "show": true
+    },
+    {
+     "name": "is_dark_mode",
+     "label": "تفعيل الوضع الداكن",
+     "type": "bool",
+     "default": "false",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  }
+ ],
+ "backend": "none",
+ "auth": "none",
+ "push": false,
+ "codeMode": "engine",
+ "admins": [],
+ "serverUrl": "",
+ "headline": "ملخص ميزانيتك المالية",
+ "subtitle": "تتبع ميزانيتك الشهرية ونفقاتك اليومية بسهولة ووضوح",
+ "apps": [
+  {
+   "slug": "personal-daily-expens",
+   "role": "single",
+   "title": "مصروفاتي"
+  }
+ ],
+ "createdAt": "2026-11-05T07:12:33.094582",
+ "supabaseUrl": "",
+ "supabaseAnonKey": "",
+ "supabaseRef": "",
+ "brief": "التطبيق: مصروفاتي الشخصية\nتطبيق بسيط ومباشر يهدف إلى مساعدة الأفراد في تسجيل ومتابعة مصروفاتهم ودخلهم اليومي. يتيح للمستخدم تنظيم ميزانيته الشخصية، وتصنيف النفقات، ومتابعة الرصيد المتبقي عبر تقارير وإحصائيات بيانية واضحة.\nالنوع: تطبيق واحد\nشاشات العميل:\n- Home / Dashboard: عرض ملخص الدخل والمصروفات للشهر الحالي، الرصيد المتبقي، وآخر المعاملات المالية\n- Add/Edit Transaction: إضافة أو تعديل معاملة مالية (مصروف أو دخل) مع تحديد المبلغ، الفئة، التاريخ، والملاحظات\n- Transactions History: قائمة كافة المعاملات المالية مع خيارات التصفية حسب الفئة، النوع، أو نطاق تاريخي معين\n- Categories: إدارة فئات المصروفات والدخل (مثل: طعام، مواصلات، فواتير، راتب) وإضافة فئات مخصصة\n- Reports & Analytics: عرض تقارير إحصائية ورسوم بيانية توضح توزيع المصروفات حسب الفئات ومقارنة الدخل بالإنفاق\n- Settings: ضبط العملة المحلية، إعدادات التذكير اليومي، وإدارة الميزانية الشهرية\n\nالبيانات:\n- Transaction: id, type (expense/income), amount, category_id, date, note, payment_method\n- Category: id, name, icon, color, type (expense/income)\n- Budget: id, category_id, monthly_limit, month_year\n- UserSettings: currency, daily_reminder_time, is_dark_mode\n\nالإشعارات:\n- تذكير يومي لتسجيل المصروفات → المستخدم في الوقت المحدد يومياً\n- تنبيه عند تجاوز الميزانية المحددة لفئة معينة → المستخدم فور إضافة مصروف يتجاوز الحد\n\nتسجيل الدخول: بدون تسجيل دخول"
+}
