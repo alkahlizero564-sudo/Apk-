@@ -78,7 +78,19 @@ class AiDesigner {
     return text;
   }
 
-  Future<String> _gemini(String model, String prompt, String geminiKey, {bool json = true, double temperature = 0.3}) async {
+  Future<String> _gemini(String model, String prompt, String geminiKey, {bool json = true, double temperature = 0.3, int? thinking}) async {
+    try {
+      return await _geminiOnce(model, prompt, geminiKey, json: json, temperature: temperature, thinking: thinking);
+    } on AiCallError catch (e) {
+      // A model that does not take a thinking budget: the same call without it.
+      if (thinking != null && e.status == 400 && e.body.toLowerCase().contains('thinking')) {
+        return _geminiOnce(model, prompt, geminiKey, json: json, temperature: temperature);
+      }
+      rethrow;
+    }
+  }
+
+  Future<String> _geminiOnce(String model, String prompt, String geminiKey, {bool json = true, double temperature = 0.3, int? thinking}) async {
     final res = await http
         .post(Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent'),
             headers: {'x-goog-api-key': geminiKey, 'content-type': 'application/json'},
@@ -90,7 +102,12 @@ class AiDesigner {
                   ]
                 }
               ],
-              'generationConfig': {if (json) 'responseMimeType': 'application/json', 'temperature': temperature},
+              'generationConfig': {
+                if (json) 'responseMimeType': 'application/json',
+                'temperature': temperature,
+                // How long the model may think before answering: short for small tasks, so answers come fast.
+                if (thinking != null) 'thinkingConfig': {'thinkingBudget': thinking},
+              },
               // App ideas about security, health or similar topics must not be cut off as "unsafe".
               'safetySettings': [
                 for (final c in ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT'])
@@ -110,7 +127,8 @@ class AiDesigner {
   /// Asks the AI. Every model and every key is tried in turn (a busy model, a key out of quota or a model that
   /// is not available does not stop the work), then everything once more after a short wait.
   /// [json]: the answer is JSON (default); otherwise free text such as fenced code files.
-  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000}) async {
+  /// [thinking]: Gemini's thinking budget in tokens (null: the model's default, slow but deep).
+  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 1024}) async {
     if (!available) throw Exception('أضف مفتاح Claude أو Gemini في الإعدادات.');
     AiCallError? last;
     final gModels = [geminiModel, ...geminiFallbacks.where((m) => m != geminiModel)];
@@ -133,7 +151,7 @@ class AiDesigner {
       for (final m in gModels) {
         for (final key in geminiKeys) {
           try {
-            return await _gemini(m, prompt, key, json: json, temperature: temperature);
+            return await _gemini(m, prompt, key, json: json, temperature: temperature, thinking: thinking);
           } on AiCallError catch (e) {
             last = e;
             if (e.status == 404) break; // this model is not available: the next model
@@ -195,7 +213,24 @@ briefly. Your job is to understand EXACTLY what they have in mind, not to invent
  "questions": [{"q": "question", "options": ["answer 1", "answer 2"]}]}""";
 
   /// Step "الفهم": the idea (even one line) or pasted code becomes a checklist of requirements + short questions.
-  Future<Understanding> understand(String description, {String code = '', ProjectKind? kind, Lang? lang}) async {
+  Future<Understanding> understand(String description, {String code = '', ProjectKind? kind, Lang? lang, bool fresh = false}) async {
+    // The same idea is understood once: the next time it comes back at once.
+    final key = 'u_${stableHash('$description|$code|${kind?.name}|${lang?.id}')}';
+    final prefs = await SharedPreferences.getInstance();
+    if (!fresh) {
+      final hit = prefs.getString(key);
+      if (hit != null) {
+        try {
+          return Understanding.fromJson(looseJson(hit));
+        } catch (_) {}
+      }
+    }
+    final u = await _understandNow(description, code: code, kind: kind, lang: lang);
+    if (u.questions.every((q) => q.options.isNotEmpty)) await prefs.setString(key, jsonEncode(u.toJson()));
+    return u;
+  }
+
+  Future<Understanding> _understandNow(String description, {String code = '', ProjectKind? kind, Lang? lang}) async {
     final prompt = '$_analyst\n${kind == ProjectKind.pair ? '$_pairLine\n' : ''}'
         '${lang == null ? '' : 'It will be built as ${_platform[lang]}.\n'}\n'
         "THE OWNER'S IDEA (their exact words, the highest priority):\n$description\n"
@@ -209,7 +244,7 @@ briefly. Your job is to understand EXACTLY what they have in mind, not to invent
   Future<Understanding> _understanding(String prompt, String description) async {
     String? answer;
     try {
-      answer = await ask(prompt, json: false, maxTokens: 8000);
+      answer = await ask(prompt, json: false, maxTokens: 8000, thinking: 1024);
       return Understanding.fromJson(_json(answer));
     } catch (e) {
       if (answer == null) rethrow; // no answer at all (key, network): the owner must see why
@@ -217,7 +252,7 @@ briefly. Your job is to understand EXACTLY what they have in mind, not to invent
     try {
       final repair = '$prompt\n\nYour previous answer could not be read:\n${answer.length > 6000 ? answer.substring(0, 6000) : answer}\n\n'
           'Reply again with ONLY the JSON object in the exact format above (double quotes, no comments, no markdown).';
-      return Understanding.fromJson(_json(await ask(repair, json: true, maxTokens: 8000)));
+      return Understanding.fromJson(_json(await ask(repair, json: true, maxTokens: 8000, thinking: 0)));
     } catch (_) {
       return Understanding.fromOwnerWords(description, answer);
     }
@@ -302,6 +337,8 @@ high-fidelity, clickable prototype of the WHOLE app:
 - Show key states too: at least one empty state and one loading skeleton (reachable from the switcher).
 - Phone-first layout (360-430px wide, full height), right-to-left with Arabic text when the description is
   in Arabic.
+- Keep the file compact (about 25-45 KB) so it is ready fast: shared CSS classes and design tokens, and small JS
+  render functions fed by sample-data arrays instead of repeating the same markup.
 ''';
 
   String _role(AppUnit a) => switch (a.role) {
@@ -333,7 +370,7 @@ high-fidelity, clickable prototype of the WHOLE app:
   /// «معاينة فورية قبل الإنشاء» (like APK Fact): straight from the description, one HTML file that IS the app (HTML,
   /// PHP) or a faithful interactive imitation of it (Flutter / Kotlin / Python, Material 3). Cached per description.
   Future<String> instantPreview(Lang lang, String description, {bool fresh = false}) async {
-    final key = 'ip_${lang.id}_${description.hashCode}';
+    final key = 'ip_${lang.id}_${stableHash(description)}';
     final prefs = await SharedPreferences.getInstance();
     if (!fresh) {
       final hit = prefs.getString(key);
@@ -349,7 +386,7 @@ high-fidelity, clickable prototype of the WHOLE app:
         'Mobile-first full-height layout, no external resources (inline SVG or emoji icons), working navigation, '
         'buttons, forms and lists with realistic sample data, localStorage for state. RTL Arabic when the request is Arabic.\n\n'
         '${await designBrief()}\nReply with ONLY the file inside a single ```html code block.\n\nApp description:\n$description';
-    final html = _extractHtml(await ask(prompt, json: false, temperature: 0.5, maxTokens: 32000));
+    final html = _extractHtml(await ask(prompt, json: false, temperature: 0.5, maxTokens: 32000, thinking: 2048));
     await prefs.setString(key, html);
     return html;
   }
@@ -370,7 +407,7 @@ high-fidelity, clickable prototype of the WHOLE app:
           '${brandFrom.isEmpty ? '' : '\nThis app belongs to the same business as the design below. Use the SAME brand: palette, fonts, corner radius, icon style and component look, so the two apps feel like one product:\n```html\n${brandFrom.length > 40000 ? brandFrom.substring(0, 40000) : brandFrom}\n```\n'}'
           '${change.isEmpty ? '' : '\nThe owner also wants: $change\n'}';
     }
-    return _extractHtml(await ask(prompt, json: false, temperature: current.isEmpty ? 0.7 : 0.5, maxTokens: 32000));
+    return _extractHtml(await ask(prompt, json: false, temperature: current.isEmpty ? 0.7 : 0.5, maxTokens: 32000, thinking: 2048));
   }
 
   /// Step "التصميم": the AI itself designs the whole interface of the app from its description, as a senior UI designer:
@@ -753,4 +790,13 @@ Map<String, dynamic> looseJson(String text) {
   if (v is List) v = v.whereType<Map>().firstOrNull;
   if (v is! Map) throw const FormatException('no JSON object');
   return v.cast<String, dynamic>();
+}
+
+/// The same text gives the same key on every run (FNV-1a), for the caches of understandings and previews.
+String stableHash(String s) {
+  var h = 0x811c9dc5;
+  for (final c in s.codeUnits) {
+    h = ((h ^ c) * 0x01000193) & 0xffffffff;
+  }
+  return h.toRadixString(36);
 }

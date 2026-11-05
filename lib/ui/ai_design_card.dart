@@ -11,7 +11,10 @@ import 'widgets.dart';
 /// professional design standard; the owner opens it full screen, asks for changes in words, undoes, or starts over.
 /// The approved prototype is what the real app is then written from, in any language.
 class AiDesignCard extends StatefulWidget {
-  const AiDesignCard({super.key, required this.draft, required this.onDesigned, this.autoStart = false});
+  const AiDesignCard({super.key, required this.draft, required this.onDesigned, this.autoStart = false, this.busyElsewhere = ''});
+
+  /// The wizard is already designing it in the background (shown as progress; no second design is started).
+  final String busyElsewhere;
 
   /// The project as it would be saved now (its understanding, data, sign-in, apps).
   final Project Function() draft;
@@ -34,7 +37,7 @@ class _AiDesignCardState extends State<AiDesignCard> {
     super.initState();
     final p = widget.draft();
     _app = p.apps.isEmpty ? p.base : p.apps.first.slug;
-    if (widget.autoStart && !p.design.hasPrototype) {
+    if (widget.autoStart && widget.busyElsewhere.isEmpty && !p.design.hasPrototype) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final ai = await context.read<AppState>().ai();
         if (mounted && ai.available) _designAll();
@@ -148,13 +151,15 @@ class _AiDesignCardState extends State<AiDesignCard> {
             style: const TextStyle(color: AlphaColors.muted, fontSize: 12.5, height: 1.6),
           ),
           const SizedBox(height: 12),
-          if (_busy)
+          if (_busy || widget.busyElsewhere.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Column(children: [
                 const CircularProgressIndicator(),
                 const SizedBox(height: 12),
-                Text(_status, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(_busy ? _status : widget.busyElsewhere, style: const TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                const ElapsedText(),
                 const SizedBox(height: 4),
                 const Text('قد يأخذ دقيقة أو دقيقتين', style: TextStyle(color: AlphaColors.muted, fontSize: 12)),
               ]),
