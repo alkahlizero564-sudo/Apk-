@@ -40,7 +40,10 @@ def _claude(model, key, prompt, system, max_tokens):
 
 def _gemini(model, key, prompt, system, max_tokens):
     body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.3, "maxOutputTokens": max_tokens}}
+            "generationConfig": {"temperature": 0.3, "maxOutputTokens": max_tokens},
+            # App ideas about security, health and the like must not be cut off as "unsafe".
+            "safetySettings": [{"category": c, "threshold": "BLOCK_ONLY_HIGH"} for c in (
+                "HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT")]}
     if system:
         body["systemInstruction"] = {"parts": [{"text": system}]}
     data = _post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", body, {"x-goog-api-key": key})
