@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../generator/app_files.dart';
 import '../generator/custom_code.dart';
+import '../generator/ai_edit.dart';
 import '../models/project.dart';
 import '../services/ai.dart';
 import '../services/github.dart';
@@ -364,6 +365,65 @@ class AppState extends ChangeNotifier {
     String q(String s) => "'${s.replaceAll("'", "''")}'";
     await SupabaseAdmin(token).sql(ref,
         'insert into public.${p.prefix}_notifications (to_role, title, body, created_by) values (${q(toRole)}, ${q(title)}, ${q(body)}, null);');
+  }
+
+  // ---------- AI edits of an existing app ----------
+
+  /// The last AI edits of a project (newest first), each with the project as it was before (for undo).
+  Future<List<Map<String, dynamic>>> edits(Project p) async {
+    try {
+      return (jsonDecode(await Storage.get('edits_${p.id}', '[]')) as List).map((e) => (e as Map).cast<String, dynamic>()).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Saves the edited project, updates the server when the data changed, then rebuilds every app (or has the AI write
+  /// code first): the installed apps then show «تحديث جديد» and update in place. Returns what was started.
+  Future<String> applyEdit(Project before, Project after, AiEdit edit, {List<AppUnit>? codeApps}) async {
+    final history = await edits(before);
+    history.insert(0, {
+      'at': DateTime.now().toIso8601String(),
+      'request': edit.request,
+      'summary': edit.summary,
+      'before': before.toJson(),
+    });
+    await Storage.set('edits_${before.id}', jsonEncode(history.take(15).toList()));
+    await save(after, message: 'Alpha: AI edit of ${after.title}: ${edit.request.split('\n').first}');
+    if (!hasGitHub) return 'حُفظ التعديل على الهاتف. اربط GitHub لتحديث التطبيقات المثبتة.';
+    final code = edit.codeRequest.trim();
+    final steps = <String>[];
+    if (needsServer(before, after)) {
+      await setupServer(after, buildAfter: code.isEmpty);
+      steps.add('تحديث السيرفر (الجداول والصلاحيات)');
+    } else if (code.isEmpty) {
+      await buildAll(after);
+    }
+    if (code.isNotEmpty) {
+      for (final a in codeApps ?? after.apps) {
+        await generateWithAi(a, '$code\n\n(طلب صاحب التطبيق: ${edit.request})');
+      }
+      steps.add('كتابة الكود بالذكاء الاصطناعي');
+    }
+    steps.add('بناء ${after.apps.length == 1 ? 'التطبيق' : '${after.apps.length} تطبيقات'}');
+    return 'بدأ: ${steps.join(' ← ')}. التطبيقات المثبتة سيظهر فيها «تحديث جديد» عند انتهاء البناء.';
+  }
+
+  /// Puts the project back as it was before its last AI edit, and rebuilds.
+  Future<String> undoEdit(Project p) async {
+    final history = await edits(p);
+    if (history.isEmpty) throw Exception('لا يوجد تعديل للتراجع عنه');
+    final last = history.removeAt(0);
+    final before = Project.fromJson((last['before'] as Map).cast<String, dynamic>());
+    await Storage.set('edits_${p.id}', jsonEncode(history));
+    await save(before, message: 'Alpha: undo AI edit of ${before.title}');
+    if (!hasGitHub) return 'رجع التطبيق كما كان على الهاتف.';
+    if (needsServer(p, before)) {
+      await setupServer(before);
+    } else {
+      await buildAll(before);
+    }
+    return 'رجع التطبيق كما كان قبل «${last['request']}»، وبدأ البناء.';
   }
 
   Future<void> generateWithAi(AppUnit app, String request) async {

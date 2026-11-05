@@ -12,6 +12,7 @@ import '../widgets.dart';
 import 'activity.dart';
 import 'db_studio.dart';
 import 'design_studio.dart';
+import 'ai_edit.dart';
 import 'preview.dart';
 
 class ProjectScreen extends StatelessWidget {
@@ -121,7 +122,8 @@ class ProjectScreen extends StatelessWidget {
                         if (p.backend == BackendType.supabase)
                           _Tool(Icons.notifications_active_rounded, 'إشعار تجريبي', AlphaColors.amber, () => _testNotification(context, p)),
                         _Tool(Icons.rocket_launch_rounded, 'ابنِ الكل', AlphaColors.violet, () => _run(context, () => s.buildAll(p), 'بدأ بناء ${p.apps.length} تطبيق')),
-                        _Tool(Icons.auto_awesome_rounded, 'عدّل بالذكاء', AlphaColors.amber, () => _aiChange(context, p)),
+                        _Tool(Icons.auto_awesome_rounded, 'عدّل بالذكاء', AlphaColors.amber,
+                            () => Navigator.push(context, MaterialPageRoute(builder: (_) => AiEditScreen(project: p)))),
                       ],
                     ),
                     SectionTitle('سجل البناء', trailing: IconButton(onPressed: s.refreshRuns, icon: const Icon(Icons.refresh_rounded))),
@@ -180,51 +182,6 @@ class ProjectScreen extends StatelessWidget {
     );
     if (ok != true || !context.mounted) return;
     await _run(context, () => s.sendTestNotification(p, toRole: role, title: title.text, body: body.text), 'أُرسل: يظهر في التطبيقات وكإشعار Push');
-  }
-
-  static Future<void> _aiChange(BuildContext context, Project p) async {
-    final s = context.read<AppState>();
-    var app = p.apps.first;
-    final text = TextEditingController();
-    final ok = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (c) => StatefulBuilder(
-        builder: (c, set) => Padding(
-          padding: EdgeInsets.fromLTRB(18, 0, 18, 18 + MediaQuery.viewInsetsOf(c).bottom),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('عدّل التطبيق بالذكاء الاصطناعي', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 6),
-              const Text('يكتب الكود فوق محرّك Alpha (البيانات والدخول والإشعارات تبقى)، ثم يبنيه ويصلح أي خطأ تلقائياً.',
-                  style: TextStyle(color: AlphaColors.muted, fontSize: 13, height: 1.5)),
-              const SizedBox(height: 12),
-              if (p.apps.length > 1)
-                SegmentedButton<String>(
-                  segments: [for (final a in p.apps) ButtonSegment(value: a.slug, label: Text(a.roleLabel))],
-                  selected: {app.slug},
-                  onSelectionChanged: (v) => set(() => app = p.apps.firstWhere((a) => a.slug == v.first)),
-                ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: text,
-                minLines: 4,
-                maxLines: 8,
-                decoration: const InputDecoration(
-                  hintText: 'مثال: اجعل الرئيسية سلايدر عروض، وصفحة المنتجات شبكة صور بسلة مشتريات وزر طلب عبر واتساب',
-                ),
-              ),
-              const SizedBox(height: 12),
-              GradientButton(label: 'اكتب الكود وابنِ', icon: Icons.auto_awesome_rounded, onPressed: () => Navigator.pop(c, true)),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (ok != true || text.text.trim().isEmpty || !context.mounted) return;
-    await _run(context, () => s.generateWithAi(app, text.text.trim()), 'الذكاء الاصطناعي يكتب الكود في GitHub Actions ثم يبنيه');
   }
 }
 
