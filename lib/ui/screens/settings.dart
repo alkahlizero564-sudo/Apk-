@@ -7,6 +7,7 @@ import '../../app/theme.dart';
 import '../../services/ai.dart';
 import '../../services/storage.dart';
 import '../../services/supabase_admin.dart';
+import '../owner_picker.dart';
 import '../widgets.dart';
 
 /// GitHub (where apps are built), AI keys, Supabase and Firebase. Keys stay encrypted on the phone and are
@@ -49,6 +50,14 @@ class SettingsScreen extends StatelessWidget {
             subtitle: s.hasSupabase ? 'متصل · ${s.supabaseRef.isEmpty ? 'اختر المشروع' : s.supabaseRef}' : 'لقاعدة البيانات PostgreSQL والصلاحيات والدخول',
             ok: s.hasSupabase && s.supabaseRef.isNotEmpty,
             onTap: () => _sheet(context, const _SupabaseForm()),
+          ),
+          _Item(
+            icon: Icons.person_pin_rounded,
+            color: AlphaColors.amber,
+            title: 'قواعد بيانات الزبائن',
+            subtitle: 'مشروع Supabase لكل زبون: من حسابه أو جديد في حسابك',
+            ok: true,
+            onTap: () => _sheet(context, const _ClientDbs()),
           ),
           _Item(
             icon: Icons.local_fire_department_rounded,
@@ -562,4 +571,69 @@ class _GeminiModelSheetState extends State<_GeminiModelSheet> {
       ),
     );
   }
+}
+
+/// The clients' databases: list, remove from Alpha (the Supabase project stays), add.
+class _ClientDbs extends StatefulWidget {
+  const _ClientDbs();
+
+  @override
+  State<_ClientDbs> createState() => _ClientDbsState();
+}
+
+class _ClientDbsState extends State<_ClientDbs> {
+  List<ClientDb> _list = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final l = await context.read<AppState>().clientDbs();
+    if (mounted) setState(() => _list = l);
+  }
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Text('قواعد بيانات الزبائن', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          const Text('كل زبون في مشروع Supabase خاص به: بياناته وحساباته منفصلة عن مشروعك وعن باقي الزبائن.',
+              style: TextStyle(color: AlphaColors.muted, fontSize: 12.5, height: 1.5)),
+          const SizedBox(height: 12),
+          if (_list.isEmpty) const Text('لا يوجد بعد.', style: TextStyle(color: AlphaColors.muted)),
+          for (final d in _list)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(d.inClientAccount ? Icons.person_rounded : Icons.dns_rounded, color: AlphaColors.amber),
+              title: Text(d.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('${d.inClientAccount ? 'حساب الزبون' : 'في حسابك'} · ${d.ref}', style: const TextStyle(color: AlphaColors.muted)),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline_rounded),
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                      title: const Text('إزالة من Alpha؟'),
+                      content: Text('«${d.label}» يُزال من Alpha فقط. المشروع وبياناته في Supabase لا يتأثران.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('إلغاء')),
+                        FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('إزالة')),
+                      ],
+                    ),
+                  );
+                  if (ok == true && context.mounted) {
+                    await context.read<AppState>().removeClientDb(d.ref);
+                    await _load();
+                  }
+                },
+              ),
+            ),
+          const SectionTitle('أضف قاعدة بيانات زبون'),
+          ClientDbPanel(onAdded: (_) => _load()),
+        ]),
+      );
 }

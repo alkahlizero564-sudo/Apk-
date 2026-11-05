@@ -18,8 +18,12 @@ import 'project.dart';
 
 /// New project, one focus per step: description (or code), understanding, language, name, design, data, server, review.
 class WizardScreen extends StatefulWidget {
-  const WizardScreen({super.key, required this.kind});
+  const WizardScreen({super.key, required this.kind, this.clientName = '', this.clientRef = ''});
   final ProjectKind kind;
+
+  /// For a client: the client's name and (when it has one) its own Supabase project. Empty: the owner's own project.
+  final String clientName;
+  final String clientRef;
 
   @override
   State<WizardScreen> createState() => _WizardScreenState();
@@ -53,6 +57,7 @@ class _WizardScreenState extends State<WizardScreen> {
   AiDesign _design = AiDesign();
 
   bool get _pair => _kind == ProjectKind.pair;
+  bool get _clientDb => widget.clientRef.isNotEmpty;
 
   static const _steps = ['الوصف', 'الفهم', 'اللغة', 'الاسم', 'البيانات', 'التصميم', 'السيرفر', 'المراجعة'];
 
@@ -60,12 +65,15 @@ class _WizardScreenState extends State<WizardScreen> {
   void initState() {
     super.initState();
     _setKind(widget.kind);
+    if (_clientDb) {
+      // The apps live in the client's database (Supabase), separate from the owner's and the other clients'.
+      _backend = BackendType.supabase;
+      if (_auth == AuthMode.none && _pair) _auth = AuthMode.emailPassword;
+    }
   }
 
   void _setKind(ProjectKind k) {
     _kind = k;
-    // The customers' app alone reads what the business publishes: it needs a server.
-    if (k == ProjectKind.customer && _backend == BackendType.none) _backend = BackendType.supabase;
     if (k == ProjectKind.pair) {
       _backend = _backend == BackendType.none ? BackendType.supabase : _backend;
       if (_auth == AuthMode.none) _auth = AuthMode.emailPassword;
@@ -185,6 +193,8 @@ class _WizardScreenState extends State<WizardScreen> {
       brief: _briefText,
       customCode: _hasCode ? _code.text : '',
       design: _design,
+      clientName: widget.clientName,
+      supabaseRef: _clientDb ? widget.clientRef : '',
       headline: _headline,
       subtitle: _subtitle,
       theme: _theme,
@@ -207,7 +217,9 @@ class _WizardScreenState extends State<WizardScreen> {
       final nativeDesign = !p.design.isEmpty && (p.lang == Lang.flutter || p.lang == Lang.python || p.lang == Lang.kotlin);
       if (s.hasGitHub && nativeDesign) {
         // The interface the AI designed becomes ${p.lang.label} code (written and built in GitHub Actions, errors fixed by itself).
-        final server = (p.backend == BackendType.supabase && s.hasSupabase && s.supabaseRef.isNotEmpty) || (p.backend == BackendType.firebase && s.hasFirebase);
+        final server = p.forClient && p.supabaseRef.isNotEmpty ||
+            (p.backend == BackendType.supabase && s.hasSupabase && s.supabaseRef.isNotEmpty) ||
+            (p.backend == BackendType.firebase && s.hasFirebase);
         if (server) await s.setupServer(p, buildAfter: false);
         for (final a in p.apps) {
           await s.generateWithAi(a, 'ابنِ كل واجهات هذا التطبيق بنفس التصميم المعتمد (design/spec.md) بدقة، مع كل الشاشات والجداول.');
@@ -219,7 +231,8 @@ class _WizardScreenState extends State<WizardScreen> {
         if (p.backend == BackendType.none) {
           await s.buildAll(p);
           note = 'تم الإنشاء وبدأ البناء في GitHub Actions';
-        } else if ((p.backend == BackendType.supabase && s.hasSupabase && s.supabaseRef.isNotEmpty) ||
+        } else if (p.forClient && p.supabaseRef.isNotEmpty ||
+            (p.backend == BackendType.supabase && s.hasSupabase && s.supabaseRef.isNotEmpty) ||
             (p.backend == BackendType.firebase && s.hasFirebase)) {
           await s.setupServer(p);
           note = 'تم الإنشاء: تجهيز السيرفر ثم البناء يعملان الآن';
@@ -269,7 +282,7 @@ class _WizardScreenState extends State<WizardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('تطبيق جديد: ${_kind.label}')),
+      appBar: AppBar(title: Text(widget.clientName.isEmpty ? 'جديد: ${_kind.label}' : '${_kind.label} لـ ${widget.clientName}')),
       body: AuroraBackground(
         child: SafeArea(
           child: Column(
@@ -653,6 +666,22 @@ class _WizardScreenState extends State<WizardScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SectionTitle('السيرفر والصلاحيات', subtitle: 'Alpha يكتب SQL الجداول والصلاحيات RLS والأدوار تلقائياً'),
+        if (_clientDb)
+          GlassCard(
+            gradient: LinearGradient(colors: [AlphaColors.amber.withValues(alpha: 0.22), AlphaColors.teal.withValues(alpha: 0.08)]),
+            child: Row(children: [
+              const Icon(Icons.person_pin_rounded, color: AlphaColors.amber, size: 30),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('قاعدة بيانات الزبون: ${widget.clientName}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  Text('Supabase · ${widget.clientRef} — الجداول والصلاحيات والدخول تُجهَّز فيها، منفصلة عن مشروعك',
+                      style: const TextStyle(color: AlphaColors.muted, fontSize: 12.5, height: 1.5)),
+                ]),
+              ),
+            ]),
+          ),
+        if (!_clientDb)
         for (final b in backends)
           GlassCard(
             onTap: _pair && b == BackendType.none ? null : () => setState(() => _backend = b),
@@ -749,6 +778,7 @@ class _WizardScreenState extends State<WizardScreen> {
         GlassCard(
           child: Column(
             children: [
+              _row('لمين', p.forClient ? 'الزبون: ${p.clientName}${p.supabaseRef.isNotEmpty ? ' (قاعدة بياناته ${p.supabaseRef})' : ''}' : 'لي (المشروع الأساسي)'),
               _row('اللغة', p.lang.label),
               _row('التطبيقات', p.apps.map((a) => a.slug).join('، ')),
               _row('الجداول', p.schema.tables.isEmpty ? 'لا شيء' : p.schema.tables.map((t) => t.label).join('، ')),

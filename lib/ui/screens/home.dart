@@ -5,6 +5,7 @@ import '../../app/state.dart';
 import '../../app/theme.dart';
 import '../../models/project.dart';
 import '../install_sheet.dart';
+import '../owner_picker.dart';
 import '../widgets.dart';
 import 'project.dart';
 import 'wizard.dart';
@@ -113,29 +114,11 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _start(BuildContext context, ProjectKind kind) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => WizardScreen(kind: kind)));
-  }
-
-  /// «أنشئ تطبيقاً»: first who the app is for (the owner, the customers, or both apps).
+  /// «أنشئ تطبيقاً»: «لمين؟» (mine, or a client and the client's database), then one app or both.
   Future<void> _choose(BuildContext context) async {
-    final kind = await showModalBottomSheet<ProjectKind>(
-      context: context,
-      showDragHandle: true,
-      builder: (c) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('لمن التطبيق؟', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            const Text('تقدر تغيّر هذا لاحقاً في خطوة الفهم', style: TextStyle(color: AlphaColors.muted, fontSize: 13)),
-            const SizedBox(height: 14),
-            KindPicker(onPick: (k) => Navigator.pop(c, k)),
-          ]),
-        ),
-      ),
-    );
-    if (kind != null && context.mounted) _start(context, kind);
+    final c = await pickNewProject(context);
+    if (c == null || !context.mounted) return;
+    Navigator.push(context, MaterialPageRoute(builder: (_) => WizardScreen(kind: c.kind, clientName: c.clientName, clientRef: c.client?.ref ?? '')));
   }
 }
 
@@ -259,6 +242,7 @@ class _ProjectCard extends StatelessWidget {
                   children: [
                     LangBadge(p.lang),
                     Pill(p.kind.label, color: AlphaColors.blue),
+                    if (p.forClient) Pill('زبون: ${p.clientName}', color: AlphaColors.amber),
                     if (p.backend != BackendType.none) Pill(p.backend.label, color: AlphaColors.teal, icon: Icons.storage_rounded),
                     if (p.push) const Pill('إشعارات', color: AlphaColors.pink, icon: Icons.notifications_active_rounded),
                   ],

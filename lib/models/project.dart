@@ -26,17 +26,16 @@ enum Lang {
   bool get supportsPush => this != Lang.python;
 }
 
-/// Who the app is for: the business owner (one app that manages everything), the customers only, or both (two connected apps).
+/// One app, or two connected apps (a customer app + an admin app).
 enum ProjectKind {
-  single('لصاحب المشروع', 'تطبيق واحد يدير كل شيء: يضيف ويعدّل ويتابع'),
-  customer('للزبون', 'تطبيق الزبائن فقط: يتصفحون ويطلبون ويحجزون'),
-  pair('التطبيقين', 'تطبيق للزبون + تطبيق للإدارة، متصلان بالإشعارات');
+  single('تطبيق واحد', 'تطبيق واحد يدير كل شيء'),
+  pair('التطبيقين', 'تطبيق للزبائن + تطبيق للإدارة، متصلان بالإشعارات');
 
   const ProjectKind(this.label, this.hint);
   final String label;
   final String hint;
 
-  static ProjectKind parse(String? v) => ProjectKind.values.firstWhere((k) => k.name == v, orElse: () => ProjectKind.single);
+  static ProjectKind parse(String? v) => v == 'pair' ? ProjectKind.pair : ProjectKind.single;
 }
 
 enum BackendType {
@@ -241,6 +240,7 @@ class Project {
     this.brief = '',
     this.customCode = '',
     AiDesign? design,
+    this.clientName = '',
   })  : theme = theme ?? ThemeSpec(),
         design = design ?? AiDesign(),
         schema = schema ?? DbSchema(),
@@ -280,6 +280,11 @@ class Project {
   /// The interface designed by the AI (empty: the chosen design school alone).
   AiDesign design;
 
+  /// Who the project is for: empty = the owner's own (the main Supabase project of the settings); otherwise the
+  /// client's name, and [supabaseRef] is that client's own database project (its token: AppState.tokenFor).
+  String clientName;
+  bool get forClient => clientName.isNotEmpty;
+
   /// Prefix of every table of this project, so many projects can share one Supabase / Firebase project.
   String get prefix => slugIdent(base, fallback: 'app');
 
@@ -310,6 +315,7 @@ class Project {
         if (brief.isNotEmpty) 'brief': brief,
         if (customCode.isNotEmpty) 'customCode': customCode,
         if (!design.isEmpty) 'design': design.toJson(),
+        if (clientName.isNotEmpty) 'client': clientName,
       };
 
   factory Project.fromJson(Map<String, dynamic> j) => Project(
@@ -337,13 +343,14 @@ class Project {
         brief: '${j['brief'] ?? ''}',
         customCode: '${j['customCode'] ?? ''}',
         design: AiDesign.fromJson((j['design'] as Map?)?.cast<String, dynamic>()),
+        clientName: '${j['client'] ?? ''}',
       );
 
   String encode() => jsonEncode(toJson());
 
   /// The apps of this project, made from its kind.
   static List<AppUnit> unitsFor(String base, String title, ProjectKind kind) => kind != ProjectKind.pair
-      ? [AppUnit(slug: base, role: kind == ProjectKind.customer ? 'customer' : 'single', title: title)]
+      ? [AppUnit(slug: base, role: 'single', title: title)]
       : [
           AppUnit(slug: '$base-customer', role: 'customer', title: title),
           AppUnit(slug: '$base-admin', role: 'admin', title: '$title - الإدارة'),

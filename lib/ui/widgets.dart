@@ -577,7 +577,6 @@ class KindPicker extends StatelessWidget {
 
   static const icons = {
     ProjectKind.single: Icons.storefront_rounded,
-    ProjectKind.customer: Icons.person_rounded,
     ProjectKind.pair: Icons.connecting_airports_rounded,
   };
 

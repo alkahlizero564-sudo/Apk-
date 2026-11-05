@@ -16,21 +16,25 @@ void main() {
     expect(css, contains('data:image/svg+xml'));
   });
 
-  test('who the app is for: owner, customers only, or both', () {
+  test('one app or both; a project for a client keeps the client and its own database', () {
     expect(Project.unitsFor('shop', 'متجر', ProjectKind.single).single.role, 'single');
-    expect(Project.unitsFor('shop', 'متجر', ProjectKind.customer).single.role, 'customer');
     expect(Project.unitsFor('shop', 'متجر', ProjectKind.pair).map((a) => a.role), ['customer', 'admin']);
-    expect(ProjectKind.parse('customer'), ProjectKind.customer);
     expect(ProjectKind.parse('nonsense'), ProjectKind.single);
+    final p = Project(id: '1', base: 'roses', title: 'ورد', lang: Lang.html, kind: ProjectKind.pair, backend: BackendType.supabase,
+        clientName: 'محل الورد', supabaseRef: 'abcdefghijklmnopqrst', apps: Project.unitsFor('roses', 'ورد', ProjectKind.pair));
+    final again = Project.fromJson(p.toJson());
+    expect(again.forClient, isTrue);
+    expect(again.clientName, 'محل الورد');
+    expect(again.supabaseRef, 'abcdefghijklmnopqrst');
+    expect(Project.fromJson({...p.toJson()}..remove('client')).forClient, isFalse);
   });
 
   test('an AI design travels with the project and into each app folder', () {
-    final p = Project(id: '1', base: 'cafe', title: 'مقهى', lang: Lang.flutter, kind: ProjectKind.customer,
-        apps: Project.unitsFor('cafe', 'مقهى', ProjectKind.customer),
+    final p = Project(id: '1', base: 'cafe', title: 'مقهى', lang: Lang.flutter, kind: ProjectKind.single,
+        apps: Project.unitsFor('cafe', 'مقهى', ProjectKind.single),
         design: AiDesign(css: ':root.ai .card{color:red}', js: 'window.AlphaDesign={}', spec: '# spec', summary: 's'));
     final again = Project.fromJson(p.toJson());
     expect(again.design.css, contains('color:red'));
-    expect(again.kind, ProjectKind.customer);
     final files = projectFiles(again);
     expect(files['apps/cafe/design/spec.md'], '# spec');
     expect(files['apps/cafe/alpha.json'], contains('"ai": true'));

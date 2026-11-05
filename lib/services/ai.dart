@@ -143,7 +143,7 @@ ${code.trim().isEmpty ? '' : '\nThe owner also pasted existing code they want to
 Reply with JSON only:
 {"title": "short app name (Arabic ok)", "slug": "short english id, lowercase and dashes",
  "summary": "2-4 sentences: what the app is, for whom, the main flow",
- "kind": "single" | "customer" | "pair" (single = one app for the business owner that manages everything; customer = the customers' app only; pair = a customer app + an admin app that talk to each other, e.g. orders/bookings managed by the business),
+ "kind": "single" or "pair" (pair = a customer app + an admin app that talk to each other, e.g. orders/bookings managed by the business),
  "lang": "flutter|html|php|python|kotlin" (best fit; flutter by default; the language of the pasted code if any),
  "screens_customer": ["screen: what the user does there", ...],
  "screens_admin": ["screen: what the admin does there", ...] (empty for a single app without admin),
@@ -283,7 +283,7 @@ ${native ? '- The spec matters most: the real app is ${p.lang.label} code writte
       'title': p.title,
       'headline': p.headline,
       'subtitle': p.subtitle,
-      'kind': p.isPair ? 'pair (customer app + admin app)' : p.kind == ProjectKind.customer ? 'customer app only' : 'single app for the owner',
+      'kind': p.isPair ? 'pair (customer app + admin app)' : 'single app',
       'language': p.lang.id,
       'backend': p.backend.id,
       'auth': p.auth.id,
