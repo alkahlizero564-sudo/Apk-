@@ -407,7 +407,7 @@ high-fidelity, clickable prototype of the WHOLE app:
         'Mobile-first full-height layout, no external resources (inline SVG or emoji icons), working navigation, '
         'buttons, forms and lists with realistic sample data, localStorage for state. RTL Arabic when the request is Arabic.\n\n'
         '${await designBrief()}\nReply with ONLY the file inside a single ```html code block.\n\nApp description:\n$description';
-    final html = _extractHtml(await ask(prompt, json: false, temperature: 0.6, maxTokens: 60000, thinking: 0, perCall: const Duration(seconds: 180), budget: const Duration(seconds: 320)));
+    final html = _extractHtml(await ask(prompt, json: false, temperature: 0.6, maxTokens: 60000, thinking: null, perCall: const Duration(seconds: 150), budget: const Duration(seconds: 240)));
     await prefs.setString(key, html);
     return html;
   }
@@ -428,7 +428,7 @@ high-fidelity, clickable prototype of the WHOLE app:
           '${brandFrom.isEmpty ? '' : '\nThis app belongs to the same business as the design below. Use the SAME brand: palette, fonts, corner radius, icon style and component look, so the two apps feel like one product:\n```html\n${brandFrom.length > 40000 ? brandFrom.substring(0, 40000) : brandFrom}\n```\n'}'
           '${change.isEmpty ? '' : '\nThe owner also wants: $change\n'}';
     }
-    return _extractHtml(await ask(prompt, json: false, temperature: current.isEmpty ? 0.7 : 0.5, maxTokens: 60000, thinking: 0, perCall: const Duration(seconds: 180), budget: const Duration(seconds: 320)));
+    return _extractHtml(await ask(prompt, json: false, temperature: current.isEmpty ? 0.7 : 0.5, maxTokens: 60000, thinking: null, perCall: const Duration(seconds: 150), budget: const Duration(seconds: 240)));
   }
 
   /// Step "التصميم": the AI itself designs the whole interface of the app from its description, as a senior UI designer:
@@ -482,7 +482,7 @@ Rules:
   Only the listed libraries (they exist as globals only if you use them by name).
 ${native ? '- The spec matters most: the real app is ${p.lang.label} code written from it; the CSS is its instant preview.' : '- The CSS and JS ARE the real app (${p.lang.label}); the spec documents it.'}
 """;
-    final text = await ask(prompt, json: false, temperature: 0.7, maxTokens: 60000, thinking: 0, perCall: const Duration(seconds: 180), budget: const Duration(seconds: 320));
+    final text = await ask(prompt, json: false, temperature: 0.7, maxTokens: 60000, thinking: null, perCall: const Duration(seconds: 150), budget: const Duration(seconds: 240));
     final files = codeFiles(text);
     final css = files['design.css'] ?? files['css'] ?? '';
     if (css.trim().length < 400) throw Exception('لم يكتمل التصميم من الذكاء الاصطناعي، جرّب مرة أخرى');

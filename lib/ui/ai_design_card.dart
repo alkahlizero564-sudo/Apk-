@@ -25,9 +25,12 @@ class AiDesignCard extends StatefulWidget {
   State<AiDesignCard> createState() => _AiDesignCardState();
 }
 
+
+
 class _AiDesignCardState extends State<AiDesignCard> {
   bool _busy = false;
   String _status = '';
+  String _failed = ''; // last error, shown with a retry and a note that the ready engine design is used instead
   String _app = '';
   final _change = TextEditingController();
   final Map<String, List<String>> _history = {}; // per app, for «تراجع»
@@ -61,7 +64,10 @@ class _AiDesignCardState extends State<AiDesignCard> {
       if (mounted) showMessage(context, 'أضف مفتاح Claude أو Gemini في الإعدادات', error: true);
       return;
     }
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _failed = '';
+    });
     try {
       var p = widget.draft();
       final d = _copy(p);
@@ -79,7 +85,7 @@ class _AiDesignCardState extends State<AiDesignCard> {
       _change.clear();
       if (mounted) _open();
     } catch (e) {
-      if (mounted) showMessage(context, '$e', error: true);
+      if (mounted) setState(() => _failed = '$e'.replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -151,6 +157,18 @@ class _AiDesignCardState extends State<AiDesignCard> {
             style: const TextStyle(color: AlphaColors.muted, fontSize: 12.5, height: 1.6),
           ),
           const SizedBox(height: 12),
+          if (_failed.isNotEmpty && !_busy && widget.busyElsewhere.isEmpty)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: AlphaColors.amber.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [const Icon(Icons.info_outline_rounded, color: AlphaColors.amber, size: 18), const SizedBox(width: 6), Expanded(child: Text(_failed, style: const TextStyle(fontSize: 12.5, height: 1.5)))]),
+                const SizedBox(height: 6),
+                const Text('لا مشكلة: التطبيق سيُبنى بالتصميم الجاهز من المحرّك. تقدر تكمل، أو تجرّب تصميم الذكاء مرة أخرى.',
+                    style: TextStyle(color: AlphaColors.muted, fontSize: 12, height: 1.5)),
+              ]),
+            ),
           if (_busy || widget.busyElsewhere.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -172,7 +190,7 @@ class _AiDesignCardState extends State<AiDesignCard> {
               decoration: const InputDecoration(hintText: 'ملاحظات للتصميم (اختياري): ألوان، أسلوب، شاشة مهمة…'),
             ),
             const SizedBox(height: 10),
-            GradientButton(label: 'صمّم التطبيق بالذكاء الاصطناعي', icon: Icons.brush_rounded, onPressed: _designAll),
+            GradientButton(label: _failed.isEmpty ? 'صمّم التطبيق بالذكاء الاصطناعي' : 'حاول تصميم الذكاء مرة أخرى', icon: Icons.brush_rounded, onPressed: _designAll),
           ] else ...[
             if (p.apps.length > 1)
               Padding(
