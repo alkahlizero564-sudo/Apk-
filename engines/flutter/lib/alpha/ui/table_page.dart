@@ -104,6 +104,11 @@ class _TablePageState extends State<TablePage> {
             ]),
           ),
         );
+      case 'reels':
+        return SliverList.builder(
+          itemCount: rows.length,
+          itemBuilder: (_, i) => _Reel(config: c, table: t, row: rows[i], onTap: () => _open(rows[i])),
+        );
       case 'timeline':
         return SliverList.builder(
           itemCount: rows.length,
@@ -511,6 +516,78 @@ class _RowDetailsState extends State<_RowDetails> {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Reels: one tall picture-first card per row, the text on a dark fade at the bottom.
+class _Reel extends StatelessWidget {
+  const _Reel({required this.config, required this.table, required this.row, required this.onTap});
+  final AlphaConfig config;
+  final TableCfg table;
+  final Rec row;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = config;
+    final title = table.titleColumn;
+    final badge = table.badgeColumn;
+    final price = table.priceColumn;
+    final image = table.imageColumn;
+    final url = image == null ? '' : '${row[image.name] ?? ''}';
+    final h = MediaQuery.sizeOf(context).height * 0.66;
+    final hue = '${row['id']}'.hashCode % 3;
+    final colors = [c.seed, c.accent, Color.lerp(c.seed, c.accent, 0.5)!];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: GestureDetector(
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(c.radius + 6),
+          child: SizedBox(
+            height: h,
+            child: Stack(fit: StackFit.expand, children: [
+              DecoratedBox(
+                decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [colors[hue], colors[(hue + 1) % 3]])),
+                child: Center(child: Icon(iconFor(table.icon), size: 90, color: Colors.white.withValues(alpha: 0.9))),
+              ),
+              if (url.startsWith('http')) Image.network(url, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox()),
+              const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black87], stops: [0.45, 1]))),
+              PositionedDirectional(
+                start: 18,
+                end: 70,
+                bottom: 20,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text(title == null ? table.label : formatValue(title, row[title.name]),
+                      style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, height: 1.2)),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    if (badge != null && row[badge.name] != null) Flexible(child: StatusPill('${row[badge.name]}')),
+                    const SizedBox(width: 10),
+                    if (price != null && row[price.name] != null)
+                      Text(formatValue(price, row[price.name]), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                  ]),
+                ]),
+              ),
+              PositionedDirectional(
+                end: 14,
+                bottom: 22,
+                child: Column(children: [
+                  for (final ic in const [Icons.favorite_border_rounded, Icons.share_rounded])
+                    Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.2)),
+                      child: Icon(ic, color: Colors.white),
+                    ),
+                ]),
+              ),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }

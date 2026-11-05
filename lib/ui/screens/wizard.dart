@@ -31,7 +31,7 @@ class _WizardScreenState extends State<WizardScreen> {
   final _slug = TextEditingController(text: 'app-${Random().nextInt(9000) + 1000}');
   final _desc = TextEditingController();
   final _admins = TextEditingController();
-  ThemeSpec _theme = looks.first.apply(ThemeSpec());
+  ThemeSpec _theme = lookById('material')!.apply(ThemeSpec());
   DbSchema _schema = schemaPresets.first.build();
   String _schemaPreset = schemaPresets.first.id;
   BackendType _backend = BackendType.none;

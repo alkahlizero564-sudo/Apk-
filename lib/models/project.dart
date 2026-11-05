@@ -76,6 +76,11 @@ class ThemeSpec {
     this.nav = 'floating',
     this.deco = 'blobs',
     this.type = 'heavy',
+    this.school = '',
+    this.home = '',
+    this.sheet = 'sheet',
+    this.font = '',
+    this.onboarding = false,
   });
 
   String preset;
@@ -91,6 +96,11 @@ class ThemeSpec {
   String nav; // bottom bar: bar | floating | pill
   String deco; // background: none | blobs | dots | grid | glow
   String type; // titles: heavy | light
+  String school; // design school (see presets.dart schools); empty = older apps, their look decides
+  String home; // home layout: tiles | bento | carousel | feed | chat | focus (empty = the school's)
+  String sheet; // details open as: sheet (draggable bottom sheet) | page
+  String font; // Arabic font id (cairo, plex, tajawal, messiri, readex, kufi, lalezar, changa); empty = the school's
+  bool onboarding; // welcome carousel on first launch
 
   Map<String, dynamic> toJson() => {
         'preset': preset,
@@ -106,6 +116,11 @@ class ThemeSpec {
         'nav': nav,
         'deco': deco,
         'type': type,
+        if (school.isNotEmpty) 'school': school,
+        if (home.isNotEmpty) 'home': home,
+        'sheet': sheet,
+        if (font.isNotEmpty) 'font': font,
+        'onboarding': onboarding,
       };
 
   factory ThemeSpec.fromJson(Map<String, dynamic>? j) {
@@ -124,12 +139,18 @@ class ThemeSpec {
       nav: '${j['nav'] ?? 'floating'}',
       deco: '${j['deco'] ?? 'blobs'}',
       type: '${j['type'] ?? 'heavy'}',
+      school: '${j['school'] ?? ''}',
+      home: '${j['home'] ?? ''}',
+      sheet: '${j['sheet'] ?? 'sheet'}',
+      font: '${j['font'] ?? ''}',
+      onboarding: j['onboarding'] == true,
     );
   }
 
   ThemeSpec copyWith({
     String? preset, String? seed, String? accent, String? mode, String? style, double? radius, String? layout,
     String? look, String? hero, String? list, String? nav, String? deco, String? type,
+    String? school, String? home, String? sheet, String? font, bool? onboarding,
   }) =>
       ThemeSpec(
         preset: preset ?? this.preset,
@@ -145,6 +166,11 @@ class ThemeSpec {
         nav: nav ?? this.nav,
         deco: deco ?? this.deco,
         type: type ?? this.type,
+        school: school ?? this.school,
+        home: home ?? this.home,
+        sheet: sheet ?? this.sheet,
+        font: font ?? this.font,
+        onboarding: onboarding ?? this.onboarding,
       );
 }
 

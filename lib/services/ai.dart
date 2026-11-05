@@ -159,23 +159,33 @@ You are the UI designer of Alpha. Your ONLY job now is the visual identity of th
 The approved understanding of the app:
 $brief
 
-Pick ONE look (the complete visual language) that fits the business and its customers:
-${looks.map((l) => '- ${l.id}: ${l.hint}').join('\n')}
+Pick ONE design school (the complete visual language) that fits the business and its customers. Be bold and specific:
+a kids or food brand suits clay/brutal/sketch, luxury suits swiss/spatial, tech suits glass/cyber/hud/aurora, a content or media app
+suits kinetic or a reels feed, an assistant suits chat, a single-action app (timer, panic button, quick order) suits zero.
+${looks.map((l) => '- ${l.id}: ${l.name}: ${l.hint}').join('\n')}
+Layouts you can change: home = tiles|bento|carousel|feed (full-screen vertical reels)|chat|focus; list = cards|compact|grid|timeline|reels;
+nav = bar|floating|pill; sheet = sheet|page. Fonts: cairo, tajawal, plex, readex, messiri, kufi, changa, lalezar (display).
 Then pick colors that fit (premium, modern, good contrast). Reply with JSON only:
-{"look": one of the ids above, "seed": "#RRGGBB" (main color), "accent": "#RRGGBB" (second color of the gradient), "mode": "dark|light",
- "radius": 8-28, "headline": "big Arabic title of the home screen",
- "subtitle": "short Arabic line under it", "reason": "one Arabic sentence: why this look"}
+{"look": one of the ids above, "seed": "#RRGGBB" (main color), "accent": "#RRGGBB" (second color), "mode": "dark|light",
+ "home": optional layout, "list": optional, "nav": optional, "font": optional font id, "onboarding": true if a welcome carousel helps,
+ "headline": "big Arabic title of the home screen",
+ "subtitle": "short Arabic line under it", "reason": "one Arabic sentence: why this school"}
 """;
     final j = _json(await ask(prompt));
     String hex(Object? v, String d) => RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch('$v') ? '$v'.toUpperCase() : d;
-    final look = looks.firstWhere((l) => l.id == j['look'], orElse: () => looks.first);
-    // The look sets shapes, cards, lists and navigation; the AI's colors are kept on top of it.
+    final look = lookById('${j['look']}') ?? lookById('material')!;
+    String? one(Object? v, Map<String, String> ok) => v != null && '$v'.isNotEmpty && ok.containsKey('$v') ? '$v' : null;
+    // The school sets shapes, cards, lists and navigation; the AI's colors and layout choices are kept on top of it.
     final theme = look.apply(ThemeSpec()).copyWith(
       preset: 'ai',
       seed: hex(j['seed'], look.seed),
       accent: hex(j['accent'], look.accent),
       mode: j['mode'] == 'light' ? 'light' : (j['mode'] == 'dark' ? 'dark' : look.mode),
-      radius: ((j['radius'] as num?)?.toDouble() ?? look.radius).clamp(4, 32),
+      home: one(j['home'], homeLayouts),
+      list: one(j['list'], listStyles),
+      nav: one(j['nav'], navStyles),
+      font: one(j['font'], fontChoices),
+      onboarding: j['onboarding'] == true,
     );
     return (theme: theme, headline: '${j['headline'] ?? ''}', subtitle: '${j['subtitle'] ?? ''}', reason: '${j['reason'] ?? ''}');
   }

@@ -24,7 +24,8 @@
   "type": "light",
   "preset": "luxe",
   "look": "luxe",
-  "layout": "tabs"
+  "layout": "tabs",
+  "school": "swiss"
  },
  "backend": {
   "type": "none",

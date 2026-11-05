@@ -44,11 +44,14 @@ const fs = require("fs");
   });
   await page.goto("file://" + index);
   await page.waitForTimeout(2500);
+  // The welcome carousel (onboarding) covers the app on first launch: skip it like a person would.
+  const skip = await page.$("#onb-skip");
+  if (skip) await skip.click().catch(() => {});
   // Click through the bottom tabs: each screen must render without errors.
   const tabs = await page.$$("[data-tab]");
   for (let i = 0; i < tabs.length; i++) {
     const t = (await page.$$("[data-tab]"))[i];
-    if (t) await t.click().catch(() => {});
+    if (t) await t.click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(400);
   }
   await browser.close();

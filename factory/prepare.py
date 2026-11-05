@@ -461,6 +461,7 @@ def prepare_php(cfg, app, out, version):
     copy_tree(ENGINES / "php", out)
     (out / "assets").mkdir(exist_ok=True)
     shutil.copy2(ENGINES / "html" / "style.css", out / "assets" / "style.css")
+    shutil.copytree(ENGINES / "html" / "fonts", out / "assets" / "fonts", dirs_exist_ok=True)
     raw = json.dumps(runtime_config(cfg), ensure_ascii=False, indent=1)
     if "\nJSON" in raw:
         raise SystemExit("config contains a line starting with JSON")

@@ -74,6 +74,9 @@ flutter:
     - engines/html/app.js
     - engines/html/backend.js
     - engines/html/style.css
+    - engines/html/fonts/
+    # Design-school thumbnails rendered from the HTML engine.
+    - assets/schools/
   fonts:
     - family: Tajawal
       fonts:

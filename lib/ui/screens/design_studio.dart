@@ -26,7 +26,7 @@ class DesignEditor extends StatelessWidget {
   ThemeSpec _copy({String? preset, String? seed, String? accent, String? mode, String? style, double? radius,
           String? hero, String? list, String? nav, String? deco}) =>
       theme.copyWith(preset: preset, seed: seed, accent: accent, mode: mode, style: style, radius: radius,
-          hero: hero, list: list, nav: nav, deco: deco, look: style != null || hero != null || list != null || nav != null || deco != null ? 'custom' : null);
+          hero: hero, list: list, nav: nav, deco: deco);
 
   @override
   Widget build(BuildContext context) {
@@ -43,22 +43,51 @@ class DesignEditor extends StatelessWidget {
             ],
           ),
         ),
-        const SectionTitle('الطابع', subtitle: 'تصميم كامل: الأشكال والبطاقات والقوائم والتنقل معاً'),
-        SizedBox(
-          height: 150,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: looks.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (_, i) => _LookCard(look: looks[i], selected: theme.look == looks[i].id, onTap: () => onChanged(looks[i].apply(theme))),
+        const SectionTitle('مدرسة التصميم', subtitle: '٢٣ مدرسة، كل صورة من التطبيق الحقيقي. اختر واحدة ثم عدّل ما تريد'),
+        for (var g = 0; g < lookGroups.length; g++) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 8),
+            child: Text(lookGroups[g], style: const TextStyle(color: AlphaColors.muted, fontSize: 13, fontWeight: FontWeight.w800)),
           ),
-        ),
-        const SectionTitle('تخصيص الطابع'),
-        _TokenChips(label: 'شكل الرأس', values: heroShapes, value: theme.hero, onPick: (v) => onChanged(_copy(hero: v))),
-        _TokenChips(label: 'البطاقات', values: cardStyles, value: theme.style, onPick: (v) => onChanged(_copy(style: v))),
+          SizedBox(
+            height: 246,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final l in looks.where((l) => l.group == g))
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 10),
+                    child: _LookCard(look: l, selected: (lookById(theme.school.isEmpty ? theme.look : theme.school)?.id) == l.id, onTap: () => onChanged(l.apply(theme))),
+                  ),
+              ],
+            ),
+          ),
+        ],
+        const SectionTitle('التخطيط'),
+        _TokenChips(label: 'الشاشة الرئيسية', values: homeLayouts, value: theme.home, onPick: (v) => onChanged(theme.copyWith(home: v))),
         _TokenChips(label: 'القوائم', values: listStyles, value: theme.list, onPick: (v) => onChanged(_copy(list: v))),
         _TokenChips(label: 'شريط التنقل', values: navStyles, value: theme.nav, onPick: (v) => onChanged(_copy(nav: v))),
-        _TokenChips(label: 'خلفية', values: decoStyles, value: theme.deco, onPick: (v) => onChanged(_copy(deco: v))),
+        _TokenChips(label: 'التفاصيل تفتح في', values: sheetStyles, value: theme.sheet, onPick: (v) => onChanged(theme.copyWith(sheet: v))),
+        _TokenChips(label: 'الخط', values: fontChoices, value: theme.font, onPick: (v) => onChanged(theme.copyWith(font: v))),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: theme.onboarding,
+          onChanged: (v) => onChanged(theme.copyWith(onboarding: v)),
+          title: const Text('شاشات ترحيب عند أول فتح'),
+          subtitle: const Text('Onboarding: صفحات تُسحب جانبياً تعرّف بالتطبيق', style: TextStyle(color: AlphaColors.muted, fontSize: 12)),
+        ),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text('تفاصيل لتطبيقات Flutter و Kotlin و Python', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+            children: [
+              _TokenChips(label: 'شكل الرأس', values: heroShapes, value: theme.hero, onPick: (v) => onChanged(_copy(hero: v))),
+              _TokenChips(label: 'البطاقات', values: cardStyles, value: theme.style, onPick: (v) => onChanged(_copy(style: v))),
+              _TokenChips(label: 'خلفية', values: decoStyles, value: theme.deco, onPick: (v) => onChanged(_copy(deco: v))),
+            ],
+          ),
+        ),
         const SectionTitle('قوالب الألوان'),
         SizedBox(
           height: 86,
@@ -211,7 +240,7 @@ class _DesignStudioScreenState extends State<DesignStudioScreen> {
   }
 }
 
-/// A look as a small visual sample: its colors, header shape and card style.
+/// A school as its real screenshot (rendered from the engine) with its name and one line.
 class _LookCard extends StatelessWidget {
   const _LookCard({required this.look, required this.selected, required this.onTap});
   final Look look;
@@ -219,125 +248,40 @@ class _LookCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final seed = hexColor(look.seed);
-    final accent = hexColor(look.accent, AlphaColors.teal);
-    final dark = look.mode == 'dark';
-    final bg = dark ? const Color(0xFF10121C) : (look.style == 'brutal' ? const Color(0xFFFFF8EC) : const Color(0xFFF2F4F9));
-    final brutal = look.style == 'brutal';
-    final r = look.radius * 0.5;
-    Widget card(double w) => Container(
-          width: w,
-          height: 18,
-          decoration: BoxDecoration(
-            color: look.style == 'outline' ? Colors.transparent : (dark ? Colors.white.withValues(alpha: 0.09) : Colors.white),
-            borderRadius: BorderRadius.circular(r * 0.6),
-            border: brutal
-                ? Border.all(color: Colors.black, width: 1.5)
-                : (look.style == 'outline' ? Border.all(color: dark ? seed.withValues(alpha: 0.6) : Colors.black26) : null),
-            boxShadow: brutal
-                ? const [BoxShadow(color: Colors.black, offset: Offset(2, 2))]
-                : look.style == 'neu'
-                    ? const [BoxShadow(color: Color(0xFFC9D0DC), offset: Offset(3, 3), blurRadius: 5), BoxShadow(color: Colors.white, offset: Offset(-3, -3), blurRadius: 5)]
-                    : look.style == 'soft'
-                        ? [BoxShadow(color: seed.withValues(alpha: 0.18), blurRadius: 8, offset: const Offset(0, 3))]
-                        : null,
-          ),
-        );
-    final header = switch (look.hero) {
-      'minimal' => Padding(
-          padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(width: 50, height: 7, color: dark ? Colors.white70 : Colors.black87),
-            const SizedBox(height: 5),
-            Container(width: 16, height: 2, color: seed),
-          ]),
-        ),
-      'card' => Container(
-          margin: const EdgeInsets.all(7),
-          height: 32,
-          decoration: BoxDecoration(gradient: LinearGradient(colors: [seed, accent]), borderRadius: BorderRadius.circular(r)),
-        ),
-      'block' => Container(height: 40, decoration: BoxDecoration(color: seed, border: const Border(bottom: BorderSide(color: Colors.black, width: 2)))),
-      'glow' => SizedBox(
-          height: 40,
-          child: Stack(children: [
-            Positioned(top: -20, right: -10, child: Container(width: 60, height: 60, decoration: BoxDecoration(shape: BoxShape.circle, color: seed.withValues(alpha: 0.6), boxShadow: [BoxShadow(color: seed, blurRadius: 30)]))),
-          ]),
-        ),
-      _ => ClipPath(
-          clipper: _MiniClipper(look.hero),
-          child: Container(height: 44, decoration: BoxDecoration(gradient: LinearGradient(colors: [seed, accent]))),
-        ),
-    };
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 112,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: selected ? Colors.white : AlphaColors.line, width: selected ? 2.5 : 1),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: ColoredBox(
-            color: bg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                header,
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [card(94), const SizedBox(height: 5), card(70)]),
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: SizedBox(
+          width: 104,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 186,
+                padding: const EdgeInsets.all(2.5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  gradient: selected ? AlphaColors.aurora : null,
+                  color: selected ? null : AlphaColors.line,
+                  boxShadow: selected ? [BoxShadow(color: hexColor(look.seed).withValues(alpha: 0.45), blurRadius: 16, offset: const Offset(0, 6))] : null,
                 ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  color: Colors.black.withValues(alpha: 0.55),
-                  child: Text(look.name, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15.5),
+                  child: Stack(fit: StackFit.expand, children: [
+                    Image.asset(look.thumb, fit: BoxFit.cover, alignment: Alignment.topCenter,
+                        errorBuilder: (_, _, _) => DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: [hexColor(look.seed), hexColor(look.accent, AlphaColors.teal)])))),
+                    if (selected)
+                      const PositionedDirectional(top: 6, end: 6, child: CircleAvatar(radius: 11, backgroundColor: Colors.white, child: Icon(Icons.check_rounded, size: 16, color: Colors.black))),
+                  ]),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 6),
+              Text(look.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
+              Text(look.hint, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AlphaColors.muted, fontSize: 10.5, height: 1.3)),
+            ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _MiniClipper extends CustomClipper<Path> {
-  _MiniClipper(this.shape);
-  final String shape;
-
-  @override
-  Path getClip(Size s) {
-    final p = Path();
-    switch (shape) {
-      case 'wave':
-        p
-          ..lineTo(0, s.height - 8)
-          ..cubicTo(s.width * 0.3, s.height + 4, s.width * 0.6, s.height - 16, s.width, s.height - 6)
-          ..lineTo(s.width, 0);
-      case 'diagonal':
-        p
-          ..lineTo(0, s.height)
-          ..lineTo(s.width, s.height * 0.6)
-          ..lineTo(s.width, 0);
-      case 'curve':
-        p
-          ..lineTo(0, s.height - 10)
-          ..quadraticBezierTo(s.width / 2, s.height + 8, s.width, s.height - 10)
-          ..lineTo(s.width, 0);
-      default:
-        p.addRRect(RRect.fromRectAndCorners(Offset.zero & s, bottomLeft: const Radius.circular(14), bottomRight: const Radius.circular(14)));
-        return p;
-    }
-    return p..close();
-  }
-
-  @override
-  bool shouldReclip(covariant _MiniClipper old) => old.shape != shape;
+      );
 }
 
 /// One design token as a row of chips (e.g. the header shape).

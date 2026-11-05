@@ -133,7 +133,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
 /// The preview page: the HTML engine with the project's design and tables, data on the phone, sample rows.
 Future<String> buildPreviewHtml(Project p, AppUnit app, {required bool admin, int seed = 0}) async {
-  final css = await rootBundle.loadString('engines/html/style.css');
+  final css = (await rootBundle.loadString('engines/html/style.css')).replaceFirst('@import url("fonts/fonts.css");', await _inlineFonts());
   final backend = await rootBundle.loadString('engines/html/backend.js');
   final js = await rootBundle.loadString('engines/html/app.js');
   final cfg = appConfig(p, app);
@@ -153,4 +153,21 @@ try { if (localStorage.getItem("alpha_preview_seed") !== "$seed") { localStorage
 <div id="sheet" class="sheet" hidden><div class="sheet-card"><div class="handle"></div><div id="sheet-body"></div></div></div>
 <div id="toast" class="toast" hidden></div>
 <script>${safe(backend)}</script><script>${safe(js)}</script></body></html>''';
+}
+
+/// The engine's fonts as data URLs (the preview page has no files next to it). Read once.
+String? _fontsCss;
+Future<String> _inlineFonts() async {
+  if (_fontsCss != null) return _fontsCss!;
+  try {
+    var css = await rootBundle.loadString('engines/html/fonts/fonts.css');
+    final files = RegExp(r"url\('([\w.-]+\.woff2)'\)").allMatches(css).map((m) => m.group(1)!).toSet();
+    for (final f in files) {
+      final bytes = await rootBundle.load('engines/html/fonts/$f');
+      css = css.replaceAll("url('$f')", "url('data:font/woff2;base64,${base64Encode(bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes))}')");
+    }
+    return _fontsCss = css;
+  } catch (_) {
+    return _fontsCss = ''; // system fonts
+  }
 }

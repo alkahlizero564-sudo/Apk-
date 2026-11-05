@@ -24,7 +24,8 @@
   "type": "heavy",
   "preset": "soft",
   "look": "soft",
-  "layout": "tabs"
+  "layout": "tabs",
+  "school": "neu"
  },
  "backend": {
   "type": "none",

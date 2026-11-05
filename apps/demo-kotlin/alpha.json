@@ -24,7 +24,8 @@
   "type": "heavy",
   "preset": "neon",
   "look": "neon",
-  "layout": "tabs"
+  "layout": "tabs",
+  "school": "cyber"
  },
  "backend": {
   "type": "none",

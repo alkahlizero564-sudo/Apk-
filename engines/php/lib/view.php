@@ -8,6 +8,7 @@ function e(mixed $v): string
 }
 
 const ICONS = [
+    'search' => 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3',
     'list' => 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
     'shopping_bag' => 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0',
     'receipt' => 'M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5',
@@ -95,11 +96,55 @@ function post_button(string $action, string $label, string $class = 'btn', array
     return $h . '<button class="' . e($class) . '">' . $label . '</button></form>';
 }
 
+// Design schools (same style.css as the HTML engine). Each brings its usual layout; a school chosen in Alpha keeps its own choices.
+const SCHOOLS = [
+    'flat' => ['tiles', 'cards', 'bar'], 'material' => ['tiles', 'cards', 'bar'], 'bento' => ['bento', 'grid', 'floating'], 'cards' => ['tiles', 'cards', 'bar'],
+    'swiss' => ['tiles', 'compact', 'bar'], 'skeuo' => ['tiles', 'cards', 'bar'], 'glass' => ['bento', 'cards', 'floating'], 'neu' => ['tiles', 'cards', 'floating'],
+    'clay' => ['bento', 'grid', 'pill'], 'spatial' => ['tiles', 'cards', 'floating'], 'dark' => ['tiles', 'compact', 'bar'], 'cyber' => ['tiles', 'timeline', 'floating'],
+    'aurora' => ['tiles', 'cards', 'pill'], 'hud' => ['tiles', 'timeline', 'bar'], 'brutal' => ['bento', 'cards', 'bar'], 'retro' => ['tiles', 'compact', 'bar'],
+    'pixel' => ['tiles', 'grid', 'bar'], 'y2k' => ['tiles', 'grid', 'pill'], 'anti' => ['bento', 'cards', 'floating'], 'kinetic' => ['tiles', 'cards', 'pill'],
+    'sketch' => ['tiles', 'cards', 'bar'], 'chat' => ['tiles', 'compact', 'pill'], 'zero' => ['tiles', 'compact', 'pill'],
+];
+const FROM_LOOK = ['aurora' => 'aurora', 'wave' => 'material', 'bold' => 'brutal', 'luxe' => 'swiss', 'soft' => 'neu', 'gallery' => 'bento', 'neon' => 'cyber', 'geo' => 'dark'];
+
+// Generated artwork for rows without a picture (same idea as the HTML engine): a pattern and the table's icon.
+function art_inner(string $key, string $icon): string
+{
+    $h = crc32($key);
+    $n = fn(int $i) => ($h >> ($i * 3)) % 100;
+    $w = 'rgba(255,255,255,';
+    $pats = [
+        '<circle cx="' . $n(1) . '" cy="' . $n(2) . '" r="' . (26 + $n(3) % 30) . '" fill="' . $w . '.22)"/><circle cx="' . $n(4) . '" cy="' . $n(5) . '" r="' . (14 + $n(6) % 20) . '" fill="' . $w . '.16)"/>',
+        implode('', array_map(fn($i) => '<path d="M' . ($i * 16 - 40) . ' 110 L' . ($i * 16 + 20) . ' -10" stroke="' . $w . '.16)" stroke-width="5"/>', range(0, 8))),
+        implode('', array_map(fn($i) => '<circle cx="' . ($n(1) % 60 + 20) . '" cy="' . ($n(2) % 60 + 20) . '" r="' . (52 - $i * 14) . '" fill="none" stroke="' . $w . (0.1 + $i * 0.07) . ')" stroke-width="3"/>', range(0, 3))),
+        implode('', array_map(fn($i) => '<circle cx="' . (($i % 6) * 18 + 5) . '" cy="' . (intdiv($i, 6) * 18 + 5) . '" r="2" fill="' . $w . '.3)"/>', range(0, 35))),
+    ];
+    return '<svg class="bg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">' . $pats[$h % 4] . '</svg><span style="position:relative">' . icon($icon, 24) . '</span>';
+}
+
+function theme_tokens(array $C): array
+{
+    $t = $C['theme'] ?? [];
+    $own = isset(SCHOOLS[$t['school'] ?? '']);
+    $school = $own ? $t['school'] : (FROM_LOOK[$t['look'] ?? ''] ?? 'material');
+    [$home, $list, $nav] = SCHOOLS[$school];
+    $pick = fn($v, array $ok, string $d) => $own && in_array($v, $ok, true) ? $v : $d;
+    return [
+        'school' => $school,
+        'home' => $pick($t['home'] ?? '', ['tiles', 'bento'], $home), // the server-made pages have the tile homes
+        'list' => $pick($t['list'] ?? '', ['cards', 'compact', 'grid', 'timeline'], $list),
+        'nav' => $pick($t['nav'] ?? '', ['bar', 'floating', 'pill'], $nav),
+    ];
+}
+
 function theme_attrs(array $C): string
 {
     $t = $C['theme'] ?? [];
-    $classes = trim((($t['mode'] ?? 'dark') === 'light' ? 'light ' : '') . ($t['style'] ?? 'glass'));
-    $style = '--seed:' . e($t['seed'] ?? '#6E4BFF') . ';--accent:' . e($t['accent'] ?? '#2DD4BF') . ';--r:' . (int)($t['radius'] ?? 18) . 'px';
+    $k = theme_tokens($C);
+    $classes = trim((($t['mode'] ?? 'light') === 'light' ? 'light ' : '') . 's-' . $k['school'] . ' home-' . $k['home'] . ' list-' . $k['list'] . ' nav-' . $k['nav']);
+    $style = '--seed:' . e($t['seed'] ?? '#6750A4') . ';--accent:' . e($t['accent'] ?? '#7D5260');
+    if (isset(SCHOOLS[$t['school'] ?? '']) && isset($t['radius'])) $style .= ';--r:' . (int)$t['radius'] . 'px';
+    if (preg_match('/^[a-z]+$/', $t['font'] ?? '')) $style .= ";--font:'A-" . $t['font'] . "',system-ui,sans-serif";
     $dir = ($C['app']['rtl'] ?? true) === false ? 'ltr' : 'rtl';
     return 'class="' . $classes . '" style="' . $style . '" dir="' . $dir . '" lang="' . ($dir === 'rtl' ? 'ar' : 'en') . '"';
 }
@@ -107,7 +152,7 @@ function theme_attrs(array $C): string
 function head(array $C): string
 {
     return '<!doctype html><html ' . theme_attrs($C) . '><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' .
-        '<title>' . e($C['app']['title'] ?? 'Alpha') . '</title><link rel="stylesheet" href="assets/style.css"></head><body>';
+        '<title>' . e($C['app']['title'] ?? 'Alpha') . '</title><link rel="stylesheet" href="assets/style.css"></head><body><div class="deco"></div>';
 }
 
 function flash(): string
@@ -130,8 +175,8 @@ function render_login(array $C, Backend $B, string $mode): void
     $code = $mode === 'code' && !empty($_SESSION['pending']);
     $sub = $code ? 'تأكيد البريد الإلكتروني' : ($signup ? 'أنشئ حسابك' : ($role === 'admin' ? 'لوحة الإدارة' : 'مرحباً بعودتك'));
     $hidden = fn(string $action, string $back) => '<input type="hidden" name="csrf" value="' . e(csrf()) . '"><input type="hidden" name="action" value="' . $action . '"><input type="hidden" name="back" value="' . $back . '">';
-    echo head($C) . '<div class="login"><div class="hero"><div class="avatar" style="margin:0 auto 12px;background:rgba(255,255,255,.2)">' . icon($role === 'admin' ? 'lock' : 'person', 30) .
-        '</div><h1>' . e($C['app']['title'] ?? '') . '</h1><p>' . $sub . '</p></div>';
+    echo head($C) . '<div class="login"><header class="hero"><i class="o o1"></i><i class="o o2"></i><div class="avatar" style="margin:0 auto 12px;background:rgba(255,255,255,.2)">' . icon($role === 'admin' ? 'lock' : 'person', 30) .
+        '</div><h1>' . e($C['app']['title'] ?? '') . '</h1><p>' . $sub . '</p></header>';
     if ($code) {
         echo '<form class="card" method="post">' . $hidden('verify', '?mode=code') .
             '<p style="text-align:center;line-height:1.8">أدخل الرمز المكوّن من 6 أرقام الذي أرسلناه إلى <b>' . e($_SESSION['pending']['email']) . '</b></p>' .
@@ -174,13 +219,22 @@ function home_page(array $C, Backend $B, array $tables, array $stats): string
 {
     $app = $C['app'] ?? [];
     $hello = $B->name ? 'أهلاً ' . $B->name : 'أهلاً بك';
-    $h = '<div class="hero"><h1>' . e(($app['headline'] ?? '') ?: ($app['title'] ?? '')) . '</h1><p>' . e(($app['subtitle'] ?? '') ?: ($B->isAdmin ? 'لوحة التحكم' : $hello)) . '</p></div>';
-    $h .= '<div class="wrap"><div class="section">' . ($B->isAdmin ? 'نظرة عامة' : 'الأقسام') . '</div><div class="grid">';
-    foreach ($tables as $t) {
-        $h .= '<a class="card stat" style="text-decoration:none;color:inherit" href="?p=table&t=' . rawurlencode($t['name']) . '"><div class="ic">' . icon($t['icon'] ?? 'list') .
-            '</div><b>' . e($stats[$t['name']] ?? '›') . '</b><span>' . e($t['label'] ?? $t['name']) . '</span></a>';
+    $title = ($app['headline'] ?? '') ?: ($app['title'] ?? '');
+    $h = '<header class="hero"><i class="o o1"></i><i class="o o2"></i><div class="hb">' . icon($B->isAdmin ? 'dashboard' : 'home', 14) . e($B->isAdmin ? 'لوحة الإدارة' : ($app['title'] ?? '')) . '</div><h1>' . e($title) . '</h1><p>' .
+        e(($app['subtitle'] ?? '') ?: ($B->isAdmin ? 'لوحة التحكم' : $hello)) . '</p>';
+    $words = implode(' ✦ ', array_fill(0, 6, e($title))) . ' ✦ ';
+    $h .= '<div class="marq" aria-hidden="true"><span>' . $words . '</span><span>' . $words . '</span></div></header>';
+    $h .= '<div class="wrap"><div class="section"><h3>' . ($B->isAdmin ? 'نظرة عامة' : 'الأقسام') . '</h3></div><div class="grid">';
+    $tiles = [];
+    foreach (array_values($tables) as $i => $t) {
+        $n = $stats[$t['name']] ?? null;
+        if ($n === null) { try { $n = count($B->list($t)); } catch (Throwable $e) { $n = '›'; } }
+        $tiles[] = '<a class="card tile tap' . ($i === 0 ? ' hl' : '') . '" style="text-decoration:none;color:inherit" href="?p=table&t=' . rawurlencode($t['name']) . '"><div class="ic">' . icon($t['icon'] ?? 'list') .
+            '</div><b>' . e((string)$n) . '</b><span>' . e($t['label'] ?? $t['name']) . '</span></a>';
     }
-    if (isset($stats['_customers'])) $h .= '<div class="card stat"><div class="ic">' . icon('person') . '</div><b>' . (int)$stats['_customers'] . '</b><span>العملاء</span></div>';
+    if (isset($stats['_customers'])) $tiles[] = '<div class="card tile"><div class="ic">' . icon('person') . '</div><b>' . (int)$stats['_customers'] . '</b><span>العملاء</span></div>';
+    if (count($tiles) % 2 && theme_tokens($C)['home'] !== 'bento') $tiles[count($tiles) - 1] = str_replace('card tile', 'card tile wide', $tiles[count($tiles) - 1]);
+    $h .= implode('', $tiles);
     return $h . '</div></div>';
 }
 
@@ -197,7 +251,7 @@ function table_page(Backend $B, array $t, string $q, ?string $filter): string
     $price = col_of($t, 'decimal');
     $base = '?p=table&t=' . rawurlencode($t['name']);
     $h = '<div class="wrap"><form method="get"><input type="hidden" name="p" value="table"><input type="hidden" name="t" value="' . e($t['name']) . '">' .
-        '<input class="input" name="q" value="' . e($q) . '" placeholder="بحث في ' . e($t['label'] ?? '') . '"></form>';
+        '<div class="search">' . icon('search', 18) . '<input class="input" name="q" value="' . e($q) . '" placeholder="بحث في ' . e($t['label'] ?? '') . '"></div></form>';
     if ($badge && !empty($badge['options'])) {
         $h .= '<div class="chips"><a class="chip ' . ($filter === null ? 'on' : '') . '" href="' . $base . '">الكل</a>';
         foreach ($badge['options'] as $o) $h .= '<a class="chip ' . ($filter === $o ? 'on' : '') . '" href="' . $base . '&f=' . rawurlencode($o) . '">' . e($o) . '</a>';
@@ -221,8 +275,9 @@ function table_page(Backend $B, array $t, string $q, ?string $filter): string
             if ($v !== '' && count($details) < 3) $details[] = e($c['label'] ?? $c['name']) . ': ' . e($v);
         }
         $url = $image ? (string)($r[$image['name']] ?? '') : '';
-        $thumb = preg_match('#^https?://#', $url) ? '<img src="' . e($url) . '" alt="">' : icon($t['icon'] ?? 'list');
-        $h .= '<a class="card row" style="text-decoration:none;color:inherit" href="?p=row&t=' . rawurlencode($t['name']) . '&id=' . rawurlencode((string)$r['id']) . '"><div class="thumb">' . $thumb .
+        $thumb = art_inner($t['name'] . $r['id'], $t['icon'] ?? 'list') . (preg_match('#^https?://#', $url) ? '<img src="' . e($url) . '" alt="">' : '');
+        $hue = (crc32($t['name'] . $r['id'] . 'h') % 50) - 25;
+        $h .= '<a class="card row tap" style="text-decoration:none;color:inherit" href="?p=row&t=' . rawurlencode($t['name']) . '&id=' . rawurlencode((string)$r['id']) . '"><div class="thumb art" style="--hue:' . $hue . 'deg">' . $thumb .
             '</div><div class="grow"><div class="title">' . e($title ? fmt($title, $r[$title['name']] ?? null) : $t['label']) . '</div>' .
             ($details ? '<div class="sub">' . implode('  •  ', $details) . '</div>' : '') . '<div class="meta">' .
             ($badge && !empty($r[$badge['name']]) ? '<span class="pill ' . pill_class((string)$r[$badge['name']]) . '">' . e($r[$badge['name']]) . '</span>' : '') .

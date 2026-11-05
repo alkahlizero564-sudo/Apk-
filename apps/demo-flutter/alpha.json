@@ -24,7 +24,8 @@
   "type": "heavy",
   "preset": "gallery",
   "look": "gallery",
-  "layout": "tabs"
+  "layout": "tabs",
+  "school": "clay"
  },
  "backend": {
   "type": "none",
