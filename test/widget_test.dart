@@ -97,19 +97,28 @@ void main() {
     expect(roundTrip.apps.map((a) => a.slug), ['bakery-customer', 'bakery-admin']);
   });
 
-  test('understanding: parsed from the AI answer and turned into the brief', () {
+  test('understanding: a checklist (like APK Fact); the brief keeps the owner\'s words first, then the approved list', () {
     final u = Understanding.fromJson({
       'title': 'مخبز الأمل', 'slug': 'amal-bakery', 'summary': 'طلبات توصيل خبز', 'kind': 'pair', 'lang': 'kotlin',
-      'screens_customer': ['المنتجات: يختار', ''], 'screens_admin': ['الطلبات: يغيّر الحالة'],
-      'data': ['المنتجات: الاسم، السعر'], 'notifications': ['طلب جديد → الإدارة'], 'auth': 'email_code',
+      'screens': ['الزبون: المنتجات بالصور والأسعار', 'الإدارة: الطلبات وتغيير الحالة', ''],
+      'features': ['الاثنين: إشعار عند كل تغيير في الطلب'],
+      'data': ['المنتجات: الاسم، السعر بالجنيه'], 'texts': ['الرغيف بـ 50 جنيه'], 'auth': 'email_code',
+      'questions': [{'q': 'التوصيل مجاني؟', 'options': ['نعم', 'لا', 'فوق مبلغ معيّن']}],
     });
     expect(u.kind, ProjectKind.pair);
     expect(u.lang, Lang.kotlin);
     expect(u.auth, AuthMode.emailCode);
-    expect(u.screensCustomer, ['المنتجات: يختار']);
-    final brief = u.toBrief();
-    expect(brief, contains('شاشات الإدارة:'));
-    expect(brief, contains('بريد + رمز تأكيد'));
+    expect(u.screens.length, 2);
+    expect(u.questions.single.options.length, 3);
+    final brief = u.toBrief('مخبز يستقبل طلبات الرغيف بـ 50 جنيه');
+    expect(brief.indexOf('مخبز يستقبل طلبات'), lessThan(brief.indexOf('=== المواصفات')));
+    expect(brief, contains('- الرغيف بـ 50 جنيه'));
+    // Each app of a pair reads its own items and the shared ones.
+    final admin = forApp(brief, 'admin');
+    expect(admin, contains('الإدارة: الطلبات'));
+    expect(admin, isNot(contains('الزبون: المنتجات')));
+    expect(admin, contains('الاثنين: إشعار'));
+    expect(() => Understanding.fromJson({'title': 'x'}), throwsException);
   });
 
   test('pasted code: language, file and packages', () {

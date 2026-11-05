@@ -40,6 +40,7 @@ class _WizardScreenState extends State<WizardScreen> {
   ThemeSpec _theme = lookById('material')!.apply(ThemeSpec());
   DbSchema _schema = schemaPresets.first.build();
   String _schemaPreset = schemaPresets.first.id;
+  bool _schemaTouched = false; // the owner chose the tables themself (a ready-made start, or edits)
   BackendType _backend = BackendType.none;
   AuthMode _auth = AuthMode.none;
   bool _push = false;
@@ -82,28 +83,59 @@ class _WizardScreenState extends State<WizardScreen> {
     }
   }
 
-  String get _briefText => _brief.text.trim().isNotEmpty ? _brief.text.trim() : _desc.text.trim();
+  /// What every later step works from: the owner's own words always first, then the approved checklist.
+  String get _briefText {
+    final words = _hasCode ? '${_desc.text.trim()}\n(بناء الكود الذي ألصقه صاحب التطبيق)' : _desc.text.trim();
+    final u = _understood;
+    final base = u == null ? words : u.toBrief(words);
+    final notes = _brief.text.trim();
+    return notes.isEmpty ? base : '$base\n\nملاحظات صاحب التطبيق (طبّقها):\n$notes';
+  }
+
+  final Map<String, String> _answers = {}; // question → chosen answer
+  bool _refineBusy = false;
 
   /// Step "الفهم": the AI only understands the description (and the pasted code).
   Future<void> _understand() async {
     final s = context.read<AppState>();
     final ai = await s.ai();
     if (!ai.available) {
-      if (_brief.text.trim().isEmpty) _brief.text = _desc.text.trim();
-      if (mounted) showMessage(context, 'بدون مفتاح ذكاء اصطناعي: اكتب الفهم بنفسك أو أضف مفتاحاً في الإعدادات', error: true);
+      if (mounted) showMessage(context, 'أضف مفتاح Claude أو Gemini في الإعدادات ليفهم الذكاء الاصطناعي فكرتك', error: true);
       return;
     }
     setState(() => _understandBusy = true);
     try {
-      final u = await ai.understand(_desc.text.trim(), code: _hasCode ? _code.text : '');
+      final u = await ai.understand(_desc.text.trim(), code: _hasCode ? _code.text : '', kind: _kind, lang: _lang);
       setState(() {
         _understood = u;
-        _brief.text = u.toBrief();
+        _answers.clear();
       });
     } catch (e) {
       if (mounted) showMessage(context, '$e', error: true);
     } finally {
       if (mounted) setState(() => _understandBusy = false);
+    }
+  }
+
+  /// The owner's answers and corrections applied to the checklist (APK Fact's «حدّث الفهم»).
+  Future<void> _refine() async {
+    final u = _understood;
+    if (u == null) return;
+    final ai = await context.read<AppState>().ai();
+    setState(() => _refineBusy = true);
+    try {
+      final v = await ai.refine(_desc.text.trim(), u,
+          answers: [for (final e in _answers.entries) (e.key, e.value)], notes: _brief.text.trim(), kind: _kind);
+      setState(() {
+        _understood = v;
+        _answers.clear();
+        _brief.clear();
+      });
+      if (mounted) showMessage(context, 'تحدّث الفهم');
+    } catch (e) {
+      if (mounted) showMessage(context, '$e', error: true);
+    } finally {
+      if (mounted) setState(() => _refineBusy = false);
     }
   }
 
@@ -150,6 +182,10 @@ class _WizardScreenState extends State<WizardScreen> {
       case 1:
         if (_desc.text.trim().length < 8 && !(_hasCode && _code.text.trim().isNotEmpty)) return 'اكتب وصفاً لما تريد، أو الصق الكود';
         return null;
+      case 2:
+        if (_understood == null && !_understandBusy) return 'اضغط «افهم فكرتي» أولاً: التصميم والكود يُبنون على هذا الفهم';
+        if (_understandBusy || _refineBusy) return 'انتظر حتى ينتهي الفهم';
+        return null;
       case 3:
         if (_title.text.trim().isEmpty) return 'اكتب اسم التطبيق';
         final slug = slugApp(_slug.text);
@@ -178,6 +214,12 @@ class _WizardScreenState extends State<WizardScreen> {
     if (_step < _steps.length - 1) setState(() => _step++);
     // Entering "الفهم" starts the understanding by itself the first time.
     if (_step == 2 && _understood == null && _brief.text.isEmpty) _understand();
+    // Entering «البيانات»: the tables come from the approved understanding (not a ready-made store).
+    if (_step == 4 && !_schemaTouched && !_aiBusy) {
+      context.read<AppState>().ai().then((ai) {
+        if (mounted && ai.available) _designWithAi();
+      });
+    }
   }
 
   Project _build() {
@@ -272,6 +314,7 @@ class _WizardScreenState extends State<WizardScreen> {
       setState(() {
         _schema = schema;
         _schemaPreset = 'ai';
+        _schemaTouched = true;
       });
     } catch (e) {
       if (mounted) showMessage(context, '$e', error: true);
@@ -283,11 +326,29 @@ class _WizardScreenState extends State<WizardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.clientName.isEmpty ? 'جديد: ${_kind.label}' : '${_kind.label} لـ ${widget.clientName}')),
       body: AuroraBackground(
         child: SafeArea(
           child: Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 10, 14, 4),
+                child: Row(children: [
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(_pair ? 'تطبيقين متصلين' : 'تطبيق جديد', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+                      Text(
+                        widget.clientName.isEmpty ? 'لي (المشروع الأساسي)' : 'للزبون: ${widget.clientName}',
+                        style: const TextStyle(color: AlphaColors.muted, fontSize: 13),
+                      ),
+                    ]),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.maybePop(context),
+                    icon: const Icon(Icons.close_rounded),
+                    style: IconButton.styleFrom(backgroundColor: AlphaColors.surface, side: const BorderSide(color: AlphaColors.line), fixedSize: const Size(46, 46)),
+                  ),
+                ]),
+              ),
               _Stepper(steps: _steps, current: _step, onTap: (i) => i < _step ? setState(() => _step = i) : null),
               Expanded(
                 child: AnimatedSwitcher(
@@ -444,30 +505,26 @@ class _WizardScreenState extends State<WizardScreen> {
 
   Widget _understandStep() {
     final u = _understood;
-    Widget list(String title, IconData icon, List<String> items) => items.isEmpty
-        ? const SizedBox.shrink()
-        : GlassCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [Icon(icon, color: AlphaColors.teal, size: 20), const SizedBox(width: 8), Text(title, style: const TextStyle(fontWeight: FontWeight.w800))]),
-                const SizedBox(height: 8),
-                for (final i in items)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    child: Text('•  $i', style: const TextStyle(height: 1.5)),
-                  ),
-              ],
-            ),
-          );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SectionTitle('الفهم', subtitle: 'هذه الخطوة للفهم فقط: تأكد أن هذا ما تريده قبل التصميم والبيانات'),
+        const SectionTitle('فهمتك صح؟',
+            subtitle: 'هذا ما فهمه الذكاء الاصطناعي من فكرتك. احذف أي بند غلط بـ ✕، جاوب الأسئلة، واكتب أي تصحيح ثم «حدّث الفهم». '
+                'التصميم والبيانات والكود يُبنون على هذه القائمة بنداً بنداً.'),
         if (_understandBusy)
           const GlassCard(
             padding: EdgeInsets.all(26),
-            child: Column(children: [CircularProgressIndicator(), SizedBox(height: 14), Text('يقرأ وصفك ويفهمه…')]),
+            child: Column(children: [CircularProgressIndicator(), SizedBox(height: 14), Text('يقرأ فكرتك ويفهمها…')]),
+          ),
+        if (u == null && !_understandBusy)
+          GlassCard(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const Text('لم يصل الفهم بعد.', style: TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              const Text('تأكد من مفتاح الذكاء الاصطناعي في الإعدادات ثم اضغط:', style: TextStyle(color: AlphaColors.muted)),
+              const SizedBox(height: 10),
+              GradientButton(label: 'افهم فكرتي', icon: Icons.psychology_rounded, onPressed: _understand),
+            ]),
           ),
         if (u != null && !_understandBusy) ...[
           GlassCard(
@@ -475,7 +532,7 @@ class _WizardScreenState extends State<WizardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(u.title.isEmpty ? 'تطبيقك' : u.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                Text(u.title.isEmpty ? 'تطبيقك' : u.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 6),
                 Text(u.summary, style: const TextStyle(height: 1.6)),
                 const SizedBox(height: 10),
@@ -489,20 +546,71 @@ class _WizardScreenState extends State<WizardScreen> {
           ),
           const SectionTitle('لمن التطبيق؟'),
           KindPicker(value: _kind, suggested: u.kind, onPick: (k) => setState(() => _setKind(k))),
-          list('شاشات العميل', Icons.phone_android_rounded, u.screensCustomer),
-          list('شاشات الإدارة', Icons.admin_panel_settings_rounded, u.screensAdmin),
-          list('البيانات', Icons.table_chart_rounded, u.data),
-          list('الإشعارات', Icons.notifications_active_rounded, u.notifications),
-          list('أسئلة تحتاج قرارك', Icons.help_outline_rounded, u.questions),
+          for (final e in Understanding.sections.entries)
+            if (u.list(e.key).isNotEmpty)
+              GlassCard(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(e.value, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  for (final item in List.of(u.list(e.key)))
+                    Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Padding(padding: EdgeInsets.only(top: 9), child: Icon(Icons.check_rounded, size: 16, color: AlphaColors.teal)),
+                      const SizedBox(width: 6),
+                      Expanded(child: Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Text(item, style: const TextStyle(height: 1.5)))),
+                      IconButton(
+                        tooltip: 'احذف هذا البند',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => setState(() => u.list(e.key).remove(item)),
+                        icon: const Icon(Icons.close_rounded, size: 18, color: AlphaColors.muted),
+                      ),
+                    ]),
+                ]),
+              ),
+          if (u.questions.isNotEmpty) ...[
+            const SectionTitle('أسئلة تحتاج قرارك'),
+            for (final q in u.questions)
+              GlassCard(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(q.q, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.5)),
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 6, runSpacing: 6, children: [
+                    for (final o in q.options)
+                      ChoiceChip(
+                        label: Text(o),
+                        selected: _answers[q.q] == o,
+                        onSelected: (on) => setState(() => on ? _answers[q.q] = o : _answers.remove(q.q)),
+                      ),
+                  ]),
+                ]),
+              ),
+          ],
         ],
-        const SectionTitle('الفهم المعتمد', subtitle: 'عدّله بحرية: التصميم والبيانات والكود يُبنى عليه'),
-        TextField(controller: _brief, minLines: 6, maxLines: 16, decoration: const InputDecoration(alignLabelWithHint: true, hintText: 'اكتب الفهم هنا…')),
-        const SizedBox(height: 10),
-        OutlinedButton.icon(
-          onPressed: _understandBusy ? null : _understand,
-          icon: const Icon(Icons.psychology_rounded, color: AlphaColors.amber),
-          label: Text(u == null ? 'افهم الوصف بالذكاء الاصطناعي' : 'أعد الفهم'),
+        const SectionTitle('تصحيح أو إضافة', subtitle: 'اكتب أي شيء ناقص أو غلط، ثم «حدّث الفهم»'),
+        TextField(
+          controller: _brief,
+          minLines: 2,
+          maxLines: 8,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(alignLabelWithHint: true, hintText: 'مثلاً: الأسعار بالجنيه، أضف شاشة للعروض، اللون الأساسي أخضر…'),
         ),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: u == null || _refineBusy || (_answers.isEmpty && _brief.text.trim().isEmpty) ? null : _refine,
+              icon: _refineBusy
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.sync_rounded, color: AlphaColors.teal),
+              label: Text(_refineBusy ? 'يحدّث…' : 'حدّث الفهم'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: _understandBusy ? null : _understand,
+            icon: const Icon(Icons.refresh_rounded, color: AlphaColors.amber),
+            label: const Text('أعد الفهم'),
+          ),
+        ]),
       ],
     );
   }
@@ -533,7 +641,7 @@ class _WizardScreenState extends State<WizardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(l.label, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                        Text(l.label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
                         const SizedBox(height: 2),
                         Text(l.stack, style: const TextStyle(color: AlphaColors.muted, fontSize: 13)),
                         const SizedBox(height: 4),
@@ -648,6 +756,7 @@ class _WizardScreenState extends State<WizardScreen> {
                   selected: _schemaPreset == pr.id,
                   onSelected: (_) => setState(() {
                     _schemaPreset = pr.id;
+                    _schemaTouched = true;
                     _schema = pr.build();
                   }),
                 ),
@@ -848,67 +957,46 @@ class _WizardScreenState extends State<WizardScreen> {
       );
 }
 
-class _Stepper extends StatefulWidget {
+/// Progress as segments with the step names under them (APK Fact's design language): done = violet, now = gradient.
+class _Stepper extends StatelessWidget {
   const _Stepper({required this.steps, required this.current, required this.onTap});
   final List<String> steps;
   final int current;
   final void Function(int) onTap;
 
   @override
-  State<_Stepper> createState() => _StepperState();
-}
-
-class _StepperState extends State<_Stepper> {
-  late final _keys = List.generate(widget.steps.length, (_) => GlobalKey());
-
-  @override
-  void didUpdateWidget(covariant _Stepper old) {
-    super.didUpdateWidget(old);
-    if (old.current != widget.current) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final ctx = _keys[widget.current].currentContext;
-        if (ctx != null) Scrollable.ensureVisible(ctx, alignment: 0.5, duration: const Duration(milliseconds: 300));
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-        height: 64,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          child: Row(
-            children: [
-              for (var i = 0; i < widget.steps.length; i++) ...[
-                if (i > 0) const SizedBox(width: 6),
-                GestureDetector(
-                  key: _keys[i],
-                  onTap: () => widget.onTap(i),
-                  child: AnimatedContainer(
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 8),
+        child: Row(children: [
+          for (var i = 0; i < steps.length; i++) ...[
+            if (i > 0) const SizedBox(width: 5),
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onTap(i),
+                child: Column(children: [
+                  AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    alignment: Alignment.center,
+                    height: 4,
                     decoration: BoxDecoration(
-                      gradient: i == widget.current ? AlphaColors.aurora : null,
-                      color: i == widget.current
-                          ? null
-                          : (i < widget.current ? AlphaColors.violet.withValues(alpha: 0.18) : Colors.white.withValues(alpha: 0.05)),
+                      gradient: i == current ? AlphaColors.aurora : null,
+                      color: i == current ? null : (i < current ? AlphaColors.violet.withValues(alpha: 0.55) : AlphaColors.line),
                       borderRadius: BorderRadius.circular(99),
                     ),
-                    child: Row(
-                      children: [
-                        if (i < widget.current) const Icon(Icons.check_rounded, size: 16, color: AlphaColors.teal),
-                        if (i < widget.current) const SizedBox(width: 4),
-                        Text('${i + 1}. ${widget.steps[i]}',
-                            style: TextStyle(fontWeight: FontWeight.w700, color: i == widget.current ? Colors.white : AlphaColors.muted)),
-                      ],
-                    ),
                   ),
-                ),
-              ],
-            ],
-          ),
-        ),
+                  const SizedBox(height: 6),
+                  FittedBox(
+                    child: Text(steps[i],
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: i == current ? FontWeight.w800 : FontWeight.w500,
+                          color: i == current ? AlphaColors.text : AlphaColors.muted,
+                        )),
+                  ),
+                ]),
+              ),
+            ),
+          ],
+        ]),
       );
 }

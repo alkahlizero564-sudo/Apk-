@@ -116,7 +116,7 @@ Look? lookById(String id) {
 
 const homeLayouts = {'': 'حسب المدرسة', 'tiles': 'مربعات', 'bento': 'Bento', 'carousel': 'عروض متحركة', 'feed': 'Reels', 'chat': 'محادثة', 'focus': 'زر واحد'};
 const sheetStyles = {'sheet': 'نافذة سفلية تُسحب', 'page': 'صفحة كاملة'};
-const fontChoices = {'': 'حسب المدرسة', 'cairo': 'Cairo', 'tajawal': 'Tajawal', 'plex': 'IBM Plex', 'readex': 'Readex', 'messiri': 'المسيري', 'kufi': 'كوفي', 'changa': 'Changa', 'lalezar': 'لاله‌زار'};
+const fontChoices = {'': 'حسب المدرسة', 'cairo': 'Cairo', 'tajawal': 'Plex', 'plex': 'IBM Plex', 'readex': 'Readex', 'messiri': 'المسيري', 'kufi': 'كوفي', 'changa': 'Changa', 'lalezar': 'لاله‌زار'};
 const heroShapes = {'blob': 'فقاعات', 'wave': 'موجة', 'curve': 'منحنى', 'diagonal': 'مائل', 'card': 'بطاقة عائمة', 'minimal': 'بسيط', 'block': 'كتلة', 'glow': 'توهج'};
 const cardStyles = {'glass': 'زجاجي', 'soft': 'ظل ناعم', 'flat': 'مسطّح', 'outline': 'إطار', 'neu': 'بارز', 'brutal': 'جريء'};
 const listStyles = {'cards': 'بطاقات', 'compact': 'مضغوطة', 'grid': 'شبكة', 'timeline': 'خط زمني', 'reels': 'Reels'};
