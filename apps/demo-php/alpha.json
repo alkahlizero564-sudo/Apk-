@@ -12,13 +12,20 @@
   "subtitle": "تطبيق تجريبي بلغة php"
  },
  "theme": {
-  "preset": "custom",
-  "seed": "#7C3AED",
-  "accent": "#EAB308",
-  "mode": "dark",
-  "style": "glass",
-  "radius": 18,
-  "layout": "tabs"
+  "seed": "#1C1917",
+  "accent": "#B45309",
+  "mode": "light",
+  "style": "outline",
+  "radius": 14,
+  "hero": "minimal",
+  "list": "compact",
+  "nav": "bar",
+  "deco": "none",
+  "type": "light",
+  "preset": "luxe",
+  "look": "luxe",
+  "layout": "tabs",
+  "school": "swiss"
  },
  "backend": {
   "type": "none",

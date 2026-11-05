@@ -12,13 +12,20 @@
   "subtitle": "تطبيق تجريبي بلغة flutter"
  },
  "theme": {
-  "preset": "custom",
-  "seed": "#6E4BFF",
-  "accent": "#2DD4BF",
-  "mode": "dark",
-  "style": "glass",
+  "seed": "#E11D48",
+  "accent": "#F59E0B",
+  "mode": "light",
+  "style": "flat",
   "radius": 18,
-  "layout": "tabs"
+  "hero": "card",
+  "list": "grid",
+  "nav": "pill",
+  "deco": "none",
+  "type": "heavy",
+  "preset": "gallery",
+  "look": "gallery",
+  "layout": "tabs",
+  "school": "clay"
  },
  "backend": {
   "type": "none",

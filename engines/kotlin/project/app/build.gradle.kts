@@ -73,5 +73,12 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    // Design libraries (factory/libraries.json): Lottie, glass blur, Material shapes, free layouts, SVG, splash.
+    implementation("com.airbnb.android:lottie-compose:6.6.2")
+    implementation("dev.chrisbanes.haze:haze:1.1.1")
+    implementation("androidx.graphics:graphics-shapes:1.0.1")
+    implementation("androidx.constraintlayout:constraintlayout-compose:1.1.0")
+    implementation("io.coil-kt:coil-svg:2.7.0")
+    implementation("androidx.core:core-splashscreen:1.0.1")
     //ALPHA_PUSH_DEPS
 }

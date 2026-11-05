@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'alpha/config.dart';
+import 'alpha/ui/look.dart';
 import 'alpha/ui/shell.dart';
 import 'alpha/ui/theme.dart';
 
@@ -28,6 +29,7 @@ class AlphaApp extends StatelessWidget {
       locale: Locale(c.rtl ? 'ar' : 'en'),
       supportedLocales: const [Locale('ar'), Locale('en')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      builder: (context, child) => DecoBackground(config: c, child: child ?? const SizedBox()),
       home: AppShell(config: c, messenger: messenger),
     );
   }

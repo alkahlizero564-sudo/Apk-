@@ -12,13 +12,22 @@
   "subtitle": "تطبيق تجريبي بلغة html"
  },
  "theme": {
-  "preset": "custom",
-  "seed": "#F97316",
-  "accent": "#F43F5E",
-  "mode": "light",
-  "style": "soft",
-  "radius": 18,
-  "layout": "tabs"
+  "seed": "#7C3AED",
+  "accent": "#22D3EE",
+  "mode": "dark",
+  "style": "brutal",
+  "radius": 6,
+  "hero": "block",
+  "list": "cards",
+  "nav": "pill",
+  "deco": "dots",
+  "type": "heavy",
+  "preset": "bold",
+  "look": "bold",
+  "layout": "tabs",
+  "school": "aurora",
+  "home": "carousel",
+  "onboarding": true
  },
  "backend": {
   "type": "none",

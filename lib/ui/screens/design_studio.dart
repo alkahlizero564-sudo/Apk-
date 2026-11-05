@@ -23,15 +23,10 @@ class DesignEditor extends StatelessWidget {
   final bool pair;
   final ValueChanged<ThemeSpec> onChanged;
 
-  ThemeSpec _copy({String? preset, String? seed, String? accent, String? mode, String? style, double? radius, String? layout}) => ThemeSpec(
-        preset: preset ?? theme.preset,
-        seed: seed ?? theme.seed,
-        accent: accent ?? theme.accent,
-        mode: mode ?? theme.mode,
-        style: style ?? theme.style,
-        radius: radius ?? theme.radius,
-        layout: layout ?? theme.layout,
-      );
+  ThemeSpec _copy({String? preset, String? seed, String? accent, String? mode, String? style, double? radius,
+          String? hero, String? list, String? nav, String? deco}) =>
+      theme.copyWith(preset: preset, seed: seed, accent: accent, mode: mode, style: style, radius: radius,
+          hero: hero, list: list, nav: nav, deco: deco);
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +43,51 @@ class DesignEditor extends StatelessWidget {
             ],
           ),
         ),
+        const SectionTitle('مدرسة التصميم', subtitle: '٢٣ مدرسة، كل صورة من التطبيق الحقيقي. اختر واحدة ثم عدّل ما تريد'),
+        for (var g = 0; g < lookGroups.length; g++) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 8),
+            child: Text(lookGroups[g], style: const TextStyle(color: AlphaColors.muted, fontSize: 13, fontWeight: FontWeight.w800)),
+          ),
+          SizedBox(
+            height: 246,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final l in looks.where((l) => l.group == g))
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 10),
+                    child: _LookCard(look: l, selected: (lookById(theme.school.isEmpty ? theme.look : theme.school)?.id) == l.id, onTap: () => onChanged(l.apply(theme))),
+                  ),
+              ],
+            ),
+          ),
+        ],
+        const SectionTitle('التخطيط'),
+        _TokenChips(label: 'الشاشة الرئيسية', values: homeLayouts, value: theme.home, onPick: (v) => onChanged(theme.copyWith(home: v))),
+        _TokenChips(label: 'القوائم', values: listStyles, value: theme.list, onPick: (v) => onChanged(_copy(list: v))),
+        _TokenChips(label: 'شريط التنقل', values: navStyles, value: theme.nav, onPick: (v) => onChanged(_copy(nav: v))),
+        _TokenChips(label: 'التفاصيل تفتح في', values: sheetStyles, value: theme.sheet, onPick: (v) => onChanged(theme.copyWith(sheet: v))),
+        _TokenChips(label: 'الخط', values: fontChoices, value: theme.font, onPick: (v) => onChanged(theme.copyWith(font: v))),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: theme.onboarding,
+          onChanged: (v) => onChanged(theme.copyWith(onboarding: v)),
+          title: const Text('شاشات ترحيب عند أول فتح'),
+          subtitle: const Text('Onboarding: صفحات تُسحب جانبياً تعرّف بالتطبيق', style: TextStyle(color: AlphaColors.muted, fontSize: 12)),
+        ),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text('تفاصيل لتطبيقات Flutter و Kotlin و Python', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+            children: [
+              _TokenChips(label: 'شكل الرأس', values: heroShapes, value: theme.hero, onPick: (v) => onChanged(_copy(hero: v))),
+              _TokenChips(label: 'البطاقات', values: cardStyles, value: theme.style, onPick: (v) => onChanged(_copy(style: v))),
+              _TokenChips(label: 'خلفية', values: decoStyles, value: theme.deco, onPick: (v) => onChanged(_copy(deco: v))),
+            ],
+          ),
+        ),
         const SectionTitle('قوالب الألوان'),
         SizedBox(
           height: 86,
@@ -59,7 +99,7 @@ class DesignEditor extends StatelessWidget {
               final p = themePresets[i];
               final on = theme.preset == p.id;
               return GestureDetector(
-                onTap: () => onChanged(p.toSpec(radius: theme.radius, layout: theme.layout)),
+                onTap: () => onChanged(theme.copyWith(preset: p.id, seed: p.seed, accent: p.accent, mode: p.mode)),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   width: 78,
@@ -89,16 +129,6 @@ class DesignEditor extends StatelessWidget {
           ],
           selected: {theme.mode},
           onSelectionChanged: (v) => onChanged(_copy(mode: v.first)),
-        ),
-        const SectionTitle('أسلوب البطاقات'),
-        SegmentedButton<String>(
-          segments: const [
-            ButtonSegment(value: 'glass', label: Text('زجاجي')),
-            ButtonSegment(value: 'soft', label: Text('ناعم بظل')),
-            ButtonSegment(value: 'flat', label: Text('مسطّح')),
-          ],
-          selected: {theme.style},
-          onSelectionChanged: (v) => onChanged(_copy(style: v.first)),
         ),
         SectionTitle('استدارة الزوايا', trailing: Text('${theme.radius.round()}', style: const TextStyle(color: AlphaColors.muted))),
         Slider(value: theme.radius, min: 4, max: 32, divisions: 28, onChanged: (v) => onChanged(_copy(radius: v))),
@@ -208,4 +238,73 @@ class _DesignStudioScreenState extends State<DesignStudioScreen> {
       ),
     );
   }
+}
+
+/// A school as its real screenshot (rendered from the engine) with its name and one line.
+class _LookCard extends StatelessWidget {
+  const _LookCard({required this.look, required this.selected, required this.onTap});
+  final Look look;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: SizedBox(
+          width: 104,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 186,
+                padding: const EdgeInsets.all(2.5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  gradient: selected ? AlphaColors.aurora : null,
+                  color: selected ? null : AlphaColors.line,
+                  boxShadow: selected ? [BoxShadow(color: hexColor(look.seed).withValues(alpha: 0.45), blurRadius: 16, offset: const Offset(0, 6))] : null,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15.5),
+                  child: Stack(fit: StackFit.expand, children: [
+                    Image.asset(look.thumb, fit: BoxFit.cover, alignment: Alignment.topCenter,
+                        errorBuilder: (_, _, _) => DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: [hexColor(look.seed), hexColor(look.accent, AlphaColors.teal)])))),
+                    if (selected)
+                      const PositionedDirectional(top: 6, end: 6, child: CircleAvatar(radius: 11, backgroundColor: Colors.white, child: Icon(Icons.check_rounded, size: 16, color: Colors.black))),
+                  ]),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(look.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
+              Text(look.hint, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AlphaColors.muted, fontSize: 10.5, height: 1.3)),
+            ],
+          ),
+        ),
+      );
+}
+
+/// One design token as a row of chips (e.g. the header shape).
+class _TokenChips extends StatelessWidget {
+  const _TokenChips({required this.label, required this.values, required this.value, required this.onPick});
+  final String label;
+  final Map<String, String> values;
+  final String value;
+  final ValueChanged<String> onPick;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(color: AlphaColors.muted, fontSize: 13, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (final e in values.entries)
+                ChoiceChip(label: Text(e.value), selected: value == e.key, onSelected: (_) => onPick(e.key), visualDensity: VisualDensity.compact),
+            ]),
+          ],
+        ),
+      );
 }

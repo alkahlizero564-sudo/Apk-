@@ -12,13 +12,20 @@
   "subtitle": "تطبيق تجريبي بلغة python"
  },
  "theme": {
-  "preset": "custom",
-  "seed": "#0EA5E9",
-  "accent": "#22D3EE",
-  "mode": "dark",
-  "style": "glass",
-  "radius": 18,
-  "layout": "tabs"
+  "seed": "#6366F1",
+  "accent": "#EC4899",
+  "mode": "light",
+  "style": "neu",
+  "radius": 24,
+  "hero": "curve",
+  "list": "cards",
+  "nav": "floating",
+  "deco": "none",
+  "type": "heavy",
+  "preset": "soft",
+  "look": "soft",
+  "layout": "tabs",
+  "school": "neu"
  },
  "backend": {
   "type": "none",

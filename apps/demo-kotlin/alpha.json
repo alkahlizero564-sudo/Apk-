@@ -12,13 +12,20 @@
   "subtitle": "تطبيق تجريبي بلغة kotlin"
  },
  "theme": {
-  "preset": "custom",
-  "seed": "#10B981",
-  "accent": "#84CC16",
-  "mode": "light",
-  "style": "soft",
-  "radius": 18,
-  "layout": "tabs"
+  "seed": "#A855F7",
+  "accent": "#22D3EE",
+  "mode": "dark",
+  "style": "outline",
+  "radius": 16,
+  "hero": "glow",
+  "list": "timeline",
+  "nav": "floating",
+  "deco": "glow",
+  "type": "heavy",
+  "preset": "neon",
+  "look": "neon",
+  "layout": "tabs",
+  "school": "cyber"
  },
  "backend": {
   "type": "none",

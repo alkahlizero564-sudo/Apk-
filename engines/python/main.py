@@ -87,10 +87,13 @@ def main(page: ft.Page):
         return ft.LinearGradient(colors=[seed, accent], begin=ft.Alignment.TOP_RIGHT, end=ft.Alignment.BOTTOM_LEFT)
 
     def card(content, on_click=None, padding=14):
+        style = theme.get("style")
+        border = (ft.Border.all(2.5, "#0B0B0F") if style == "brutal"
+                  else ft.Border.all(1.5, ft.Colors.with_opacity(0.45, seed)) if style == "outline" else None)
         return ft.Card(
-            content=ft.Container(content=content, padding=padding, on_click=on_click, border_radius=radius),
+            content=ft.Container(content=content, padding=padding, on_click=on_click, border_radius=radius, border=border),
             shape=ft.RoundedRectangleBorder(radius=radius),
-            elevation=0 if theme.get("style") in ("glass", "flat") else 1,
+            elevation=4 if style in ("soft", "neu") else 0,
         )
 
     def hero(title, subtitle):

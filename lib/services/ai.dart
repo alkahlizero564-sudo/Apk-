@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/project.dart';
+import '../generator/presets.dart';
 import '../models/schema.dart';
 
 /// AI on the phone (Claude or Gemini, with the user's own keys): designs a database from a description.
@@ -158,20 +159,33 @@ You are the UI designer of Alpha. Your ONLY job now is the visual identity of th
 The approved understanding of the app:
 $brief
 
-Pick colors that fit the business and its customers (premium, modern, good contrast). Reply with JSON only:
-{"seed": "#RRGGBB" (main color), "accent": "#RRGGBB" (second color of the gradient), "mode": "dark|light",
- "style": "glass|soft|flat", "radius": 8-28, "headline": "big Arabic title of the home screen",
- "subtitle": "short Arabic line under it", "reason": "one Arabic sentence: why this look"}
+Pick ONE design school (the complete visual language) that fits the business and its customers. Be bold and specific:
+a kids or food brand suits clay/brutal/sketch, luxury suits swiss/spatial, tech suits glass/cyber/hud/aurora, a content or media app
+suits kinetic or a reels feed, an assistant suits chat, a single-action app (timer, panic button, quick order) suits zero.
+${looks.map((l) => '- ${l.id}: ${l.name}: ${l.hint}').join('\n')}
+Layouts you can change: home = tiles|bento|carousel|feed (full-screen vertical reels)|chat|focus; list = cards|compact|grid|timeline|reels;
+nav = bar|floating|pill; sheet = sheet|page. Fonts: cairo, tajawal, plex, readex, messiri, kufi, changa, lalezar (display).
+Then pick colors that fit (premium, modern, good contrast). Reply with JSON only:
+{"look": one of the ids above, "seed": "#RRGGBB" (main color), "accent": "#RRGGBB" (second color), "mode": "dark|light",
+ "home": optional layout, "list": optional, "nav": optional, "font": optional font id, "onboarding": true if a welcome carousel helps,
+ "headline": "big Arabic title of the home screen",
+ "subtitle": "short Arabic line under it", "reason": "one Arabic sentence: why this school"}
 """;
     final j = _json(await ask(prompt));
     String hex(Object? v, String d) => RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch('$v') ? '$v'.toUpperCase() : d;
-    final theme = ThemeSpec(
+    final look = lookById('${j['look']}') ?? lookById('material')!;
+    String? one(Object? v, Map<String, String> ok) => v != null && '$v'.isNotEmpty && ok.containsKey('$v') ? '$v' : null;
+    // The school sets shapes, cards, lists and navigation; the AI's colors and layout choices are kept on top of it.
+    final theme = look.apply(ThemeSpec()).copyWith(
       preset: 'ai',
-      seed: hex(j['seed'], '#6E4BFF'),
-      accent: hex(j['accent'], '#2DD4BF'),
-      mode: j['mode'] == 'light' ? 'light' : 'dark',
-      style: ['glass', 'soft', 'flat'].contains(j['style']) ? '${j['style']}' : 'glass',
-      radius: ((j['radius'] as num?)?.toDouble() ?? 18).clamp(4, 32),
+      seed: hex(j['seed'], look.seed),
+      accent: hex(j['accent'], look.accent),
+      mode: j['mode'] == 'light' ? 'light' : (j['mode'] == 'dark' ? 'dark' : look.mode),
+      home: one(j['home'], homeLayouts),
+      list: one(j['list'], listStyles),
+      nav: one(j['nav'], navStyles),
+      font: one(j['font'], fontChoices),
+      onboarding: j['onboarding'] == true,
     );
     return (theme: theme, headline: '${j['headline'] ?? ''}', subtitle: '${j['subtitle'] ?? ''}', reason: '${j['reason'] ?? ''}');
   }

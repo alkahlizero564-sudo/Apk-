@@ -46,25 +46,83 @@
     logout: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9",
     lock: "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4",
     cloud: "M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 1 1 0 9z",
+    heart: "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z",
+    share: "M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4",
+    sparkle: "M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9zM19 3v4M17 5h4M5 17v4M3 19h4",
+    arrow: "M19 12H5M12 19l-7-7 7-7",
   };
   const ic = (n, size) => '<svg width="' + (size || 22) + '" height="' + (size || 22) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="' + (P[n] || P.list) + '"/></svg>';
 
   // ---------- theme ----------
-  (function theme() {
+  // A design school sets everything (see style.css); its usual layout comes with it and each part can be changed alone.
+  const SCHOOLS = {
+    flat: ["tiles", "cards", "bar"], material: ["tiles", "cards", "bar"], bento: ["bento", "grid", "floating"], cards: ["carousel", "cards", "bar"],
+    swiss: ["tiles", "compact", "bar", "page"], skeuo: ["tiles", "cards", "bar"], glass: ["bento", "cards", "floating"], neu: ["tiles", "cards", "floating"],
+    clay: ["bento", "grid", "pill"], spatial: ["carousel", "cards", "floating"], dark: ["tiles", "compact", "bar"], cyber: ["tiles", "timeline", "floating"],
+    aurora: ["carousel", "cards", "pill"], hud: ["tiles", "timeline", "bar"], brutal: ["bento", "cards", "bar"], retro: ["tiles", "compact", "bar"],
+    pixel: ["tiles", "grid", "bar"], y2k: ["carousel", "grid", "pill"], anti: ["bento", "cards", "floating"], kinetic: ["tiles", "cards", "pill"],
+    sketch: ["tiles", "cards", "bar"], chat: ["chat", "compact", "pill"], zero: ["focus", "compact", "pill"],
+  };
+  // Apps made before the schools: their look maps to the nearest school.
+  const FROM_LOOK = { aurora: "aurora", wave: "material", bold: "brutal", luxe: "swiss", soft: "neu", gallery: "bento", neon: "cyber", geo: "dark" };
+  const T = (function theme() {
     const t = C.theme || {};
     const root = document.documentElement;
-    const mode = t.mode === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : t.mode || "dark";
+    const mode = t.mode === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : t.mode || "light";
+    const school = SCHOOLS[t.school] ? t.school : FROM_LOOK[t.look] || "material";
+    const d = SCHOOLS[school];
+    const own = !!t.school; // a school chosen in Alpha: its own layout choices count; older apps take the school's
+    const pick = (v, ok, def) => (own && ok.includes(v) ? v : def);
+    const tok = {
+      home: pick(t.home, ["tiles", "bento", "carousel", "feed", "chat", "focus"], d[0]),
+      list: pick(t.list, ["cards", "compact", "grid", "timeline", "reels"], d[1]),
+      nav: pick(t.nav, ["bar", "floating", "pill", "none"], d[2]),
+      sheet: pick(t.sheet, ["sheet", "page"], d[3] || "sheet"),
+    };
+    if (tok.home === "focus" && tok.nav === "none") tok.nav = "pill"; // the focus home needs a way back
     root.classList.toggle("light", mode === "light");
-    root.classList.add(t.style || "glass");
-    root.style.setProperty("--seed", t.seed || "#6E4BFF");
-    root.style.setProperty("--accent", t.accent || "#2DD4BF");
-    root.style.setProperty("--r", (t.radius || 18) + "px");
+    root.classList.add("s-" + school);
+    Object.entries(tok).forEach(([k, v]) => root.classList.add(k + "-" + v));
+    if (!document.querySelector(".deco")) document.body.insertAdjacentHTML("afterbegin", '<div class="deco"></div>');
+    root.style.setProperty("--seed", t.seed || "#6750A4");
+    root.style.setProperty("--accent", t.accent || "#7D5260");
+    if (own && t.radius != null) root.style.setProperty("--r", t.radius + "px");
+    if (t.font) root.style.setProperty("--font", "'A-" + t.font + "', system-ui, sans-serif");
+    if (t.display) root.style.setProperty("--display", "'A-" + t.display + "', system-ui, sans-serif");
     root.dir = C.app.rtl === false ? "ltr" : "rtl";
     root.lang = C.app.rtl === false ? "en" : "ar";
     document.title = C.app.title || "Alpha";
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = mode === "light" ? "#F5F6FB" : "#0B0D16";
+    if (meta) meta.content = getComputedStyle(root).getPropertyValue("--bg").trim() || (mode === "light" ? "#F6F5FA" : "#0E0E14");
+    return Object.assign({ school, mode }, tok);
   })();
+
+  // Generated artwork for rows without a picture: a pattern and the table's icon, different for every row.
+  function hash(s) { let h = 2166136261; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function artInner(key, icon, size) {
+    const h = hash(key), w = "rgba(255,255,255,", n = (i) => ((h >>> (i * 3)) % 100);
+    const pats = [
+      () => '<circle cx="' + n(1) + '" cy="' + n(2) + '" r="' + (26 + n(3) % 30) + '" fill="' + w + '.22)"/><circle cx="' + n(4) + '" cy="' + n(5) + '" r="' + (14 + n(6) % 20) + '" fill="' + w + '.16)"/><circle cx="' + n(7) + '" cy="' + n(8) + '" r="10" fill="' + w + '.3)"/>',
+      () => Array.from({ length: 9 }, (_, i) => '<path d="M' + (i * 16 - 40) + ' 110 L' + (i * 16 + 20) + ' -10" stroke="' + w + '.16)" stroke-width="5"/>').join(""),
+      () => [0, 1, 2, 3].map((i) => '<path d="M-5 ' + (30 + i * 18) + ' Q 25 ' + (14 + i * 18 + n(i) % 12) + ' 50 ' + (30 + i * 18) + ' T 105 ' + (30 + i * 18) + '" fill="none" stroke="' + w + (0.12 + i * 0.06) + ')" stroke-width="4"/>').join(""),
+      () => [52, 38, 24, 10].map((r, i) => '<circle cx="' + (n(1) % 60 + 20) + '" cy="' + (n(2) % 60 + 20) + '" r="' + r + '" fill="none" stroke="' + w + (0.1 + i * 0.07) + ')" stroke-width="3"/>').join(""),
+      () => Array.from({ length: 36 }, (_, i) => '<circle cx="' + ((i % 6) * 18 + 5) + '" cy="' + (Math.floor(i / 6) * 18 + 5) + '" r="' + (i % 7 === h % 7 ? 4 : 2) + '" fill="' + w + '.3)"/>').join(""),
+      () => '<rect x="' + (n(1) % 40) + '" y="' + (n(2) % 40) + '" width="60" height="60" rx="14" transform="rotate(' + (n(3) % 45) + ' 50 50)" fill="' + w + '.18)"/><rect x="' + (n(4) % 50 + 20) + '" y="' + (n(5) % 50 + 20) + '" width="34" height="34" rx="8" transform="rotate(' + (n(6) % 45) + ' 50 50)" fill="' + w + '.12)"/>',
+    ];
+    return '<svg class="bg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">' + pats[h % pats.length]() + "</svg>" + (icon ? '<span style="position:relative;opacity:.95">' + ic(icon, size || 26) + "</span>" : "");
+  }
+  function art(cls, key, icon, img, size) {
+    const hue = (hash(key + "h") % 50) - 25;
+    return '<div class="' + cls + ' art" style="--hue:' + hue + 'deg">' + artInner(key, icon, size) + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "</div>";
+  }
+
+  // Kinetic schools reveal cards as they scroll in.
+  let io;
+  function reveal() {
+    if (!["kinetic", "anti", "spatial"].includes(T.school) || !("IntersectionObserver" in window)) return;
+    io = io || new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: 0.12 });
+    document.querySelectorAll(".wrap .card:not(.rv), .feat:not(.rv)").forEach((el) => { el.classList.add("rv"); io.observe(el); });
+  }
 
   // ---------- helpers ----------
   let toastTimer;
@@ -73,9 +131,23 @@
     el.textContent = text; el.className = "toast" + (bad ? " bad" : ""); el.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => (el.hidden = true), 3200);
   }
-  function openSheet(html) { $("#sheet-body").innerHTML = html; $("#sheet").hidden = false; }
-  function closeSheet() { $("#sheet").hidden = true; $("#sheet-body").innerHTML = ""; }
+  function openSheet(html) {
+    $("#sheet-body").innerHTML = (T.sheet === "page" ? '<button class="iconbtn" id="sheet-x" style="margin-bottom:12px">' + ic("back", 20) + "</button>" : "") + html;
+    $("#sheet").hidden = false;
+    const x = $("#sheet-x"); if (x) x.onclick = closeSheet;
+  }
+  function closeSheet() { $("#sheet").hidden = true; $("#sheet-body").innerHTML = ""; $(".sheet-card").style.transform = ""; }
   $("#sheet").addEventListener("click", (e) => { if (e.target.id === "sheet") closeSheet(); });
+  // Drag the handle down to close the sheet.
+  (function drag() {
+    const card = $(".sheet-card"), handle = $(".handle");
+    if (!card || !handle) return;
+    let y0 = null, dy = 0;
+    handle.addEventListener("pointerdown", (e) => { y0 = e.clientY; dy = 0; card.style.transition = "none"; handle.setPointerCapture(e.pointerId); });
+    handle.addEventListener("pointermove", (e) => { if (y0 == null) return; dy = Math.max(0, e.clientY - y0); card.style.transform = "translateY(" + dy + "px)"; });
+    const end = () => { if (y0 == null) return; y0 = null; card.style.transition = ""; if (dy > 90) closeSheet(); else card.style.transform = ""; };
+    handle.addEventListener("pointerup", end); handle.addEventListener("pointercancel", end);
+  })();
 
   const titleCol = (t) => (t.columns || []).find((c) => c.type === "text" || c.type === "choice") || (t.columns || [])[0];
   const imageCol = (t) => (t.columns || []).find((c) => c.type === "image");
@@ -136,6 +208,7 @@
       (t.id === "notes" && S.unread ? '<span class="badge">' + S.unread + "</span>" : "") + "</button>").join("") + "</nav>";
     app.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => go(b.dataset.tab)));
     bind();
+    reveal();
   }
 
   function go(tab) {
@@ -144,7 +217,7 @@
     render();
     if (tab.startsWith("t:")) loadRows(S.table);
     if (tab === "notes") loadNotes();
-    if (tab === "home") loadStats();
+    if (tab === "home") { loadStats(); loadHome(); }
     window.scrollTo(0, 0);
   }
 
@@ -172,8 +245,8 @@
       const links = mode === "code"
         ? '<button class="linkbtn" id="l_resend">أرسل الرمز مرة أخرى</button><button class="linkbtn" id="l_back">رجوع لتسجيل الدخول</button>'
         : '<button class="linkbtn" id="l_switch">' + (mode === "signup" ? "عندي حساب، سجّل دخولي" : "ما عندي حساب؟ أنشئ واحداً") + "</button>";
-      app.innerHTML = '<div class="login"><div class="hero"><div class="avatar" style="margin:0 auto 12px;background:rgba(255,255,255,.2)">' + ic(role === "admin" ? "lock" : "person", 30) +
-        '</div><h1>' + esc(C.app.title) + "</h1><p>" + sub + '</p></div><div class="card">' + fields + '<button class="btn" id="l_go">' + label + "</button>" + links + "</div></div>";
+      app.innerHTML = '<div class="login"><header class="hero"><i class="o o1"></i><i class="o o2"></i><div class="avatar" style="margin:0 auto 12px;background:rgba(255,255,255,.2)">' + ic(role === "admin" ? "lock" : "person", 30) +
+        '</div><h1>' + esc(C.app.title) + "</h1><p>" + sub + '</p></header><div class="card">' + fields + '<button class="btn" id="l_go">' + label + "</button>" + links + "</div></div>";
       const sw = $("#l_switch"); if (sw) sw.onclick = () => { keep(); mode = mode === "signup" ? "login" : "signup"; draw(); };
       const back = $("#l_back"); if (back) back.onclick = () => { mode = "login"; draw(); };
       const resend = $("#l_resend"); if (resend) resend.onclick = async () => {
@@ -227,25 +300,114 @@
     } catch (e) { /* offline: try next time */ }
   }
 
+  // The home header: badge, title, a line, numbers, and the school's own shapes (.o) / wave / moving title.
+  function heroHtml(title, subtitle, icon, badge, stats) {
+    const wave = '<svg class="wave" viewBox="0 0 400 40" preserveAspectRatio="none"><path d="M0,24 C80,48 160,0 240,18 C300,32 350,34 400,14 L400,40 L0,40 Z" fill="var(--bg)"/></svg>';
+    const hs = stats && stats.length ? '<div class="hs">' + stats.map((s) => "<div><b>" + esc(s[0]) + "</b><span>" + esc(s[1]) + "</span></div>").join("") + "</div>" : "";
+    const words = Array(6).fill(esc(title)).join(" ✦ ") + " ✦ ";
+    return '<header class="hero"><i class="o o1"></i><i class="o o2"></i><div class="hb">' + ic(icon, 14) + esc(badge || "") + "</div><h1>" + esc(title) + "</h1><p>" + esc(subtitle) + "</p>" + hs +
+      '<div class="marq" aria-hidden="true"><span>' + words + "</span><span>" + words + "</span></div>" + wave + "</header>";
+  }
+
+  // The table whose rows the home shows (featured / feed): the first one the person can see, preferring pictures or prices.
+  const homeTable = (tables) => tables.find((x) => imageCol(x) && x.owner !== "admin") || tables.find((x) => priceCol(x)) || tables[0];
+
+  function tilesHtml(tables) {
+    let list = tables.map((x, i) => '<div class="card tile tap' + (i === 0 ? " hl" : "") + '" data-open="' + esc(x.name) + '"><div class="ic">' + ic(x.icon) + "</div><b>" +
+      (S.stats && S.stats[x.name] != null ? S.stats[x.name] : S.rows[x.name] ? S.rows[x.name].length : "…") + "</b><span>" + esc(x.label) + "</span>" +
+      (i === 0 && T.home === "bento" ? '<svg class="spark" width="90" height="34" viewBox="0 0 90 34"><path d="M2 28 L16 20 L28 24 L42 10 L56 16 L70 6 L88 12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/></svg>' : "") + "</div>");
+    if (S.stats && S.stats._customers != null) list.push('<div class="card tile tap"><div class="ic">' + ic("person") + "</div><b>" + S.stats._customers + "</b><span>العملاء</span></div>");
+    if (list.length % 2 && T.home !== "bento") list[list.length - 1] = list[list.length - 1].replace("card tile", "card tile wide");
+    return '<div class="grid">' + list.join("") + "</div>";
+  }
+
   function homeView(tables) {
-    const t = C.app;
+    const a = C.app;
     const hello = B.name ? "أهلاً " + B.name : "أهلاً بك";
-    let tiles = tables.map((x) => '<div class="card stat" data-open="' + esc(x.name) + '"><div class="ic">' + ic(x.icon) + "</div><b>" +
-      (S.stats && S.stats[x.name] != null ? S.stats[x.name] : "›") + "</b><span>" + esc(x.label) + "</span></div>").join("");
-    if (S.stats && S.stats._customers != null) tiles += '<div class="card stat"><div class="ic">' + ic("person") + "</div><b>" + S.stats._customers + "</b><span>العملاء</span></div>";
-    return '<div class="hero"><h1>' + esc(t.headline || t.title) + "</h1><p>" + esc(t.subtitle || (B.isAdmin ? "لوحة التحكم" : hello)) + "</p></div>" +
-      '<div class="wrap"><div class="section">' + (B.isAdmin ? "نظرة عامة" : "الأقسام") + '</div><div class="grid">' + tiles + "</div></div>";
+    const first = homeTable(tables);
+    const head = B.isAdmin ? "نظرة عامة" : "الأقسام";
+    const stats = S.stats ? tables.slice(0, 3).filter((x) => S.stats[x.name] != null).map((x) => [S.stats[x.name], x.label]) : null;
+    const hero = heroHtml(a.headline || a.title, a.subtitle || (B.isAdmin ? "لوحة التحكم" : hello), B.isAdmin ? "dashboard" : "sparkle", B.isAdmin ? "لوحة الإدارة" : a.title, stats);
+    const rail = first ? '<div class="section"><h3>' + (B.isAdmin ? "الأحدث في " : "مميز في ") + esc(first.label) + '</h3><button data-open="' + esc(first.name) + '">الكل</button></div><div class="rail" id="feat"><div class="spinner" style="margin:30px auto"></div></div>' : "";
+    if (T.home === "feed" && first) {
+      S.table = first;
+      return '<div class="reel-top">' + esc(a.title) + '</div><div class="reels" id="rows"><div class="boot"><div class="spinner"></div></div></div>';
+    }
+    if (T.home === "chat") {
+      return hero + '<div class="wrap"><div class="chat" id="chat"><div class="bubble ai"><div class="bi">' + ic("sparkle", 18) + esc(a.title) + "</div>" + esc(hello) + "، ماذا تريد اليوم؟ اكتب ما تبحث عنه أو اختر قسماً.</div>" +
+        '<div class="suggest">' + tables.map((x) => '<span class="chip" data-open="' + esc(x.name) + '">' + ic(x.icon, 16) + esc(x.label) + "</span>").join("") + "</div></div>" + '<div style="height:90px"></div></div>' +
+        '<div class="composer"><input id="cq" placeholder="ابحث أو اسأل…" autocomplete="off"><button id="cs" aria-label="إرسال">' + ic("send", 18) + "</button></div>";
+    }
+    if (T.home === "focus") {
+      return '<div class="focus"><button class="orb" id="orb" aria-label="' + esc(first ? first.label : "") + '">' + ic(first && canAdd(first) ? "plus" : (first || {}).icon || "sparkle", 56) + "</button><h1>" + esc(hello) + "</h1><p>" +
+        esc(a.subtitle || (first && canAdd(first) ? "اضغط للإضافة إلى " + first.label : a.title)) + '</p><div class="quick">' +
+        tables.map((x) => '<span class="chip" data-open="' + esc(x.name) + '">' + ic(x.icon, 16) + esc(x.label) + "</span>").join("") + "</div></div>";
+    }
+    if (T.home === "carousel") return hero + '<div class="wrap">' + rail + '<div class="section"><h3>' + head + "</h3></div>" + tilesHtml(tables) + "</div>";
+    return hero + '<div class="wrap"><div class="section"><h3>' + head + "</h3></div>" + tilesHtml(tables) + rail + "</div>";
+  }
+
+  // Rows for the home's featured rail (and the feed home).
+  async function loadHome() {
+    const tables = visibleTables(), t = homeTable(tables);
+    if (!t) return;
+    // Tiles show how many items each table has (the admin's numbers come from stats).
+    if (!S.stats) tables.slice(0, 6).forEach(async (x) => {
+      try { const n = (S.rows[x.name] = await B.list(x)).length; const b = document.querySelector('.tile[data-open="' + x.name + '"] b'); if (b && S.tab === "home") b.textContent = n; } catch (e) {}
+    });
+    let rows;
+    try { rows = S.rows[t.name] = await B.list(t); } catch (e) { rows = []; }
+    if (S.tab !== "home") return;
+    if (T.home === "feed") return drawRows(t);
+    const el = $("#feat");
+    if (!el) return;
+    const title = titleCol(t), image = imageCol(t), price = priceCol(t), badge = badgeCol(t);
+    el.innerHTML = rows.length ? rows.slice(0, 8).map((r) =>
+      '<div class="card feat tap" data-hit="' + esc(t.name) + "|" + esc(r.id) + '">' + art("cv", t.name + r.id, t.icon, image && /^https?:/.test(r[image.name] || "") ? r[image.name] : "", 40) +
+      '<div class="fb"><div class="title">' + esc(title ? fmt(title, r[title.name]) : t.label) + '</div><div class="meta">' +
+      (badge && r[badge.name] ? '<span class="pill ' + pillClass(r[badge.name]) + '">' + esc(r[badge.name]) + "</span>" : "") +
+      (price && r[price.name] != null ? '<span class="price">' + esc(fmt(price, r[price.name])) + "</span>" : "") + "</div></div></div>").join("")
+      : '<div class="empty" style="padding:20px;width:100%">لا يوجد شيء في ' + esc(t.label) + " بعد</div>";
+    el.querySelectorAll("[data-hit]").forEach((x) => (x.onclick = () => details(t, rows.find((r) => t.name + "|" + r.id === x.dataset.hit))));
+    reveal();
+  }
+
+  // Chat home: what you type is searched in every table; answers come back as bubbles.
+  async function ask(text) {
+    const box = $("#chat");
+    if (!box || !text.trim()) return;
+    box.insertAdjacentHTML("beforeend", '<div class="bubble me">' + esc(text) + "</div>");
+    const q = text.trim().toLowerCase();
+    const tables = visibleTables();
+    const named = tables.find((x) => q.includes(String(x.label).toLowerCase()));
+    let html = "", hits = [];
+    for (const t of tables) {
+      try {
+        const rows = S.rows[t.name] || (S.rows[t.name] = await B.list(t));
+        rows.filter((r) => (t.columns || []).some((c) => String(r[c.name] == null ? "" : r[c.name]).toLowerCase().includes(q))).slice(0, 3).forEach((r) => hits.push([t, r]));
+      } catch (e) {}
+    }
+    if (hits.length) {
+      html = "وجدت " + hits.length + " نتيجة:" + hits.map(([t, r]) => { const tc = titleCol(t); return '<div class="row" data-hit="' + esc(t.name) + "|" + esc(r.id) + '" style="margin-top:10px;cursor:pointer">' + art("thumb", t.name + r.id, t.icon, "", 18) + '<div class="grow"><div class="title" style="font-size:14px">' + esc(tc ? fmt(tc, r[tc.name]) : t.label) + '</div><div class="sub">' + esc(t.label) + "</div></div></div>"; }).join("");
+    } else html = named ? "افتح «" + esc(named.label) + "» من هنا:" : "لم أجد شيئاً بهذا. جرّب كلمة أخرى أو افتح قسماً:";
+    const open = named || (!hits.length && tables[0]);
+    box.insertAdjacentHTML("beforeend", '<div class="bubble ai"><div class="bi">' + ic("sparkle", 18) + esc(C.app.title) + "</div>" + html +
+      (open ? '<div class="suggest" style="margin-top:10px"><span class="chip on" data-open="' + esc(open.name) + '">' + esc(open.label) + "</span></div>" : "") + "</div>");
+    box.querySelectorAll("[data-hit]").forEach((x) => (x.onclick = () => { const [tn] = x.dataset.hit.split("|"); const t = tables.find((y) => y.name === tn); details(t, (S.rows[tn] || []).find((r) => tn + "|" + r.id === x.dataset.hit)); }));
+    bind();
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   }
 
   function tableView(t) {
     if (!t) return '<div class="wrap"><div class="empty">لا يوجد</div></div>';
+    const add = canAdd(t) ? '<button class="fab" id="add">' + ic("plus", 18) + " إضافة</button>" : "";
+    if (T.list === "reels" && !B.isAdmin) return '<div class="reel-top">' + esc(t.label) + '</div><div class="reels" id="rows"><div class="boot"><div class="spinner"></div></div></div>' + add;
     const badge = badgeCol(t);
     const chips = badge && badge.options && badge.options.length
       ? '<div class="chips"><span class="chip ' + (S.filter == null ? "on" : "") + '" data-f="">الكل</span>' +
         badge.options.map((o) => '<span class="chip ' + (S.filter === o ? "on" : "") + '" data-f="' + esc(o) + '">' + esc(o) + "</span>").join("") + "</div>" : "";
-    return '<div class="topbar"><h2>' + esc(t.label) + '</h2></div><div class="wrap"><input class="input" id="q" placeholder="بحث في ' + esc(t.label) + '" value="' + esc(S.query) + '">' +
-      chips + '<div id="rows"><div class="boot" style="height:30vh"><div class="spinner"></div></div></div></div>' +
-      (canAdd(t) ? '<button class="fab" id="add">' + ic("plus", 18) + " إضافة</button>" : "");
+    return '<div class="topbar"><h2>' + esc(t.label) + '</h2></div><div class="wrap"><div class="search">' + ic("search", 18) + '<input class="input" id="q" placeholder="بحث في ' + esc(t.label) + '" value="' + esc(S.query) + '"></div>' +
+      chips + '<div id="rows"><div class="boot" style="height:30vh"><div class="spinner"></div></div></div></div>' + add;
   }
 
   function meView() {
@@ -276,12 +438,16 @@
       drawRows(S.table);
     }));
     const add = $("#add"); if (add) add.onclick = () => form(S.table);
+    const cq = $("#cq"), cs = $("#cs");
+    if (cq && cs) { const send = () => { const v = cq.value; cq.value = ""; ask(v); }; cs.onclick = send; cq.onkeydown = (e) => { if (e.key === "Enter") send(); }; }
+    const orb = $("#orb");
+    if (orb) orb.onclick = () => { const t = homeTable(visibleTables()); if (!t) return; if (canAdd(t)) { S.table = t; form(t); } else go("t:" + t.name); };
     const out = $("#out"); if (out) out.onclick = async () => { await B.signOut(); go("home"); };
   }
 
   async function loadStats() {
     try { S.stats = B.isAdmin ? await B.stats() : null; } catch (e) { S.stats = null; }
-    if (S.tab === "home" && S.stats) render();
+    if (S.tab === "home" && S.stats) { render(); loadHome(); }
   }
 
   async function loadRows(t, quiet) {
@@ -298,31 +464,45 @@
     const q = S.query.trim().toLowerCase();
     const rows = all.filter((r) => (S.filter == null || !badge || r[badge.name] === S.filter) &&
       (!q || (t.columns || []).some((c) => String(r[c.name] == null ? "" : r[c.name]).toLowerCase().includes(q))));
+    const reels = el.classList.contains("reels");
     if (!rows.length) {
-      el.innerHTML = '<div class="empty"><span class="big">' + ic(t.icon, 46) + "</span>" + (all.length ? "لا نتائج" : "لا يوجد شيء في " + esc(t.label) + " بعد") + "</div>";
+      el.innerHTML = '<div class="empty"' + (reels ? ' style="color:#fff;padding-top:40vh"' : "") + '><span class="big">' + ic(t.icon, 46) + "</span>" + (all.length ? "لا نتائج" : "لا يوجد شيء في " + esc(t.label) + " بعد") + "</div>";
       return;
     }
-    el.innerHTML = rows.map((r) => {
-      const details = (t.columns || []).filter((c) => c.show !== false && c !== title && c !== image && c !== badge && c !== price && r[c.name] != null && r[c.name] !== "")
-        .slice(0, 3).map((c) => esc(c.label) + ": " + esc(fmt(c, r[c.name]))).join("  •  ");
-      const img = image && /^https?:/.test(r[image.name] || "") ? '<img src="' + esc(r[image.name]) + '" alt="" onerror="this.remove()">' : ic(t.icon);
-      return '<div class="card row" data-row="' + esc(r.id) + '"><div class="thumb">' + img + '</div><div class="grow"><div class="title">' +
-        esc(title ? fmt(title, r[title.name]) : t.label) + "</div>" + (details ? '<div class="sub">' + details + "</div>" : "") + '<div class="meta">' +
-        (badge && r[badge.name] ? '<span class="pill ' + pillClass(r[badge.name]) + '">' + esc(r[badge.name]) + "</span>" : "") +
-        (price && r[price.name] != null ? '<span class="price">' + esc(fmt(price, r[price.name])) + "</span>" : "") + "</div></div></div>";
-    }).join("");
+    const pic = (r) => (image && /^https?:/.test(r[image.name] || "") ? r[image.name] : "");
+    const detailsOf = (r) => (t.columns || []).filter((c) => c.show !== false && c !== title && c !== image && c !== badge && c !== price && r[c.name] != null && r[c.name] !== "")
+      .slice(0, 3).map((c) => esc(c.label) + ": " + esc(fmt(c, r[c.name]))).join("  •  ");
+    const meta = (r) => '<div class="meta">' + (badge && r[badge.name] ? '<span class="pill ' + pillClass(r[badge.name]) + '">' + esc(r[badge.name]) + "</span>" : "") +
+      (price && r[price.name] != null ? '<span class="price">' + esc(fmt(price, r[price.name])) + "</span>" : "") + "</div>";
+    if (reels) {
+      el.innerHTML = rows.map((r) => '<section class="reel" data-row="' + esc(r.id) + '">' + art("rbg", t.name + r.id, t.icon, pic(r), 90) +
+        '<div class="rb"><div class="title">' + esc(title ? fmt(title, r[title.name]) : t.label) + "</div>" + (detailsOf(r) ? '<div class="sub">' + detailsOf(r) + "</div>" : "") + meta(r) + "</div>" +
+        '<div class="side"><button data-like aria-label="إعجاب">' + ic("heart", 22) + '</button><button data-share aria-label="مشاركة">' + ic("share", 22) + '</button><button aria-label="المزيد">' + ic("more", 22) + "</button></div></section>").join("");
+      el.querySelectorAll("[data-like]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); b.style.color = b.style.color ? "" : "#FF3B6B"; }));
+      el.querySelectorAll("[data-share]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); const r = rows.find((x) => String(x.id) === b.closest("[data-row]").dataset.row); const text = title ? fmt(title, r[title.name]) : t.label; if (navigator.share) navigator.share({ title: C.app.title, text }).catch(() => {}); else toast(text); }));
+    } else {
+      el.innerHTML = rows.map((r) => {
+        const d = detailsOf(r);
+        return '<div class="card row tap" data-row="' + esc(r.id) + '">' + art("thumb", t.name + r.id, t.icon, pic(r), T.list === "grid" ? 40 : 24) + '<div class="grow">' +
+          (r.created_at ? '<div class="when">' + ago(new Date(r.created_at)) + "</div>" : "") + '<div class="title">' +
+          esc(title ? fmt(title, r[title.name]) : t.label) + "</div>" + (d ? '<div class="sub">' + d + "</div>" : "") + meta(r) + "</div></div>";
+      }).join("");
+    }
     el.querySelectorAll("[data-row]").forEach((x) => (x.onclick = () => details(t, rows.find((r) => String(r.id) === x.dataset.row))));
+    reveal();
   }
 
   function details(t, row) {
     if (!row) return;
     const image = imageCol(t);
     const quick = B.isAdmin ? (t.columns || []).filter((c) => c.type === "choice" && c.adminOnly) : [];
-    openSheet((image && /^https?:/.test(row[image.name] || "") ? '<img src="' + esc(row[image.name]) + '" style="width:100%;max-height:210px;object-fit:cover;border-radius:18px;margin-bottom:10px" onerror="this.remove()">' : "") +
+    const tc = titleCol(t);
+    openSheet(art("cover", t.name + row.id, t.icon, image && /^https?:/.test(row[image.name] || "") ? row[image.name] : "", 64) +
+      (tc && row[tc.name] ? "<h3>" + esc(fmt(tc, row[tc.name])) + "</h3>" : "") +
       (t.columns || []).filter((c) => c.type !== "image" && row[c.name] != null && row[c.name] !== "").map((c) =>
         '<div class="kv"><span>' + esc(c.label) + "</span><span>" + esc(fmt(c, row[c.name])) + "</span></div>").join("") +
       (row.created_at ? '<p class="sub">أُضيف ' + ago(new Date(row.created_at)) + "</p>" : "") +
-      quick.map((c) => '<div class="section" style="font-size:15px">تغيير ' + esc(c.label) + '</div><div class="chips" style="flex-wrap:wrap">' +
+      quick.map((c) => '<div class="section"><h3 style="font-size:15px">تغيير ' + esc(c.label) + '</h3></div><div class="chips" style="flex-wrap:wrap">' +
         (c.options || []).map((o) => '<span class="chip ' + (row[c.name] === o ? "on" : "") + '" data-set="' + esc(c.name) + '" data-v="' + esc(o) + '">' + esc(o) + "</span>").join("") + "</div>").join("") +
       (canEdit(t, row) ? '<div class="row" style="margin-top:18px;cursor:default"><button class="btn" id="ed">' + ic("edit", 18) + ' تعديل</button><button class="iconbtn" id="del" style="color:var(--bad)">' + ic("trash", 18) + "</button></div>" : ""));
     document.querySelectorAll("[data-set]").forEach((el) => (el.onclick = async () => {
@@ -428,7 +608,28 @@
     setInterval(() => { if (S.tab.startsWith("t:") && $("#sheet").hidden) loadRows(S.table, true); }, 20000);
   }
 
+  // Onboarding carousel, shown once: slides from Alpha (app.onboarding), or made from the app when theme.onboarding is on.
+  function onboarding() {
+    const key = "alpha_onb_" + (C.app.slug || "app");
+    let slides = Array.isArray(C.app.onboarding) ? C.app.onboarding : null;
+    if (!slides && (C.theme || {}).onboarding) {
+      slides = [{ title: C.app.title, text: C.app.subtitle || "كل ما تحتاجه في مكان واحد", icon: "sparkle" }]
+        .concat((C.tables || []).filter((t) => t.owner !== "admin").slice(0, 2).map((t) => ({ title: t.label, text: "تصفّح " + t.label + " وتابع كل جديد", icon: t.icon })));
+    }
+    try { if (!slides || !slides.length || localStorage.getItem(key)) return; } catch (e) { return; }
+    document.body.insertAdjacentHTML("beforeend", '<div class="onb" id="onb"><div class="slides">' + slides.map((x, i) => '<div class="slide">' + art("", "onb" + i + x.title, x.icon || "sparkle", x.image || "", 84) +
+      "<h2>" + esc(x.title) + "</h2><p>" + esc(x.text || "") + "</p></div>").join("") + '</div><div class="foot"><div class="dots">' + slides.map((_, i) => "<i" + (i ? "" : ' class="on"') + "></i>").join("") +
+      '</div><button class="linkbtn" id="onb-skip" style="width:auto">تخطي</button><button class="btn" id="onb-next">التالي</button></div></div>');
+    const box = $("#onb"), track = $("#onb .slides"), dots = box.querySelectorAll(".dots i");
+    const at = () => Math.round(Math.abs(track.scrollLeft) / track.clientWidth);
+    const done = () => { try { localStorage.setItem(key, "1"); } catch (e) {} box.remove(); };
+    track.addEventListener("scroll", () => { const i = at(); dots.forEach((d, j) => d.classList.toggle("on", i === j)); $("#onb-next").textContent = i === slides.length - 1 ? "ابدأ" : "التالي"; });
+    $("#onb-skip").onclick = done;
+    $("#onb-next").onclick = () => { const i = at(); if (i >= slides.length - 1) return done(); track.scrollTo({ left: (document.documentElement.dir === "rtl" ? -1 : 1) * (i + 1) * track.clientWidth, behavior: "smooth" }); };
+  }
+
   (async function start() {
+    onboarding();
     try {
       await B.init();
       if (B.signedIn) afterSignIn();
