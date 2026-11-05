@@ -106,7 +106,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "alpha-v$VERSION" alpha.apk --title "Alpha 1.0.$VERSION" --notes "Alpha app built from ${GITHUB_SHA::7}" --target "$GITHUB_SHA"
+          # Only main publishes a version (branch builds just check that Alpha builds); two builds of the same minute
+          # share a version number: the second one keeps the first release instead of failing.
+          if [ "$GITHUB_REF_NAME" != "${{ github.event.repository.default_branch }}" ]; then
+            echo "::notice::branch build: not published (the APK is in the run's artifacts)"
+          elif gh release view "alpha-v$VERSION" >/dev/null 2>&1; then
+            echo "::notice::alpha-v$VERSION is already published by a build of the same minute"
+          else
+            gh release create "alpha-v$VERSION" alpha.apk --title "Alpha 1.0.$VERSION" --notes "Alpha app built from ${GITHUB_SHA::7}" --target "$GITHUB_SHA"
+          fi
           git config user.name "alpha-bot"
           git config user.email "alpha-bot@users.noreply.github.com"
           if [ -n "$(git status --porcelain signing)" ]; then
