@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>حاسبة المعادلات الجامعية</title>
+  <style>
+    /* ==================== DESIGN TOKENS & VARIABLES ==================== */
+    :root {
+      --primary: #4F46E5;
+      --primary-hover: #4338CA;
+      --primary-light: #EEF2FF;
+      --primary-tint: rgba(79, 70, 229, 0.08);
+      
+      --secondary: #0EA5E9;
+      --secondary-light: #F0F9FF;
+      
+      --accent: #8B5CF6;
+      --accent-light: #F5F3FF;
+      
+      --success: #10B981;
+      --success-light: #ECFDF5;
+      --warning: #F59E0B;
+      --warning-light: #FFFBEB;
+      --danger: #EF4444;
+      --danger-light: #FEF2F2;
+
+      --bg-app: #F8FAFC;
+      --bg-surface: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-subtle: #F1F5F9;
+      
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --text-light: #94A3B8;
+      --text-on-primary: #FFFFFF;
+      
+      --border-color: #E2E8F0;
+      --border-focus: #818CF8;
+
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+      --shadow-up: 0 -4px 12px rgba(0, 0, 0, 0.05);
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+      --radius-full: 9999px;
+
+      --font-stack: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans Arabic", Tahoma, sans-serif;
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Dark theme support */
+    [data-theme="dark"] {
+      --bg-app: #0F172A;
+      --bg-surface: #1E293B;
+      --bg-card: #1E293B;
+      --bg-subtle: #334155;
+      
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-light: #64748B;
+      
+      --border-color: #334155;
+      --primary-light: rgba(79, 70, 229, 0.2);
+    }
+
+    /* Reset & Global */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-stack);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #0b0f19;
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      overflow-x: hidden;
+      direction: rtl;
+    }
+
+    /* ==================== TOP SCREEN SWITCHER (REQUIREMENT) ==================== */
+    #alpha-screens {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    #alpha-screens::-webkit-scrollbar { display: none; }
+    #alpha-screens .title-tag {
+      color: #38BDF8;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      padding-left: 6px;
+      border-left: 1px solid rgba(255,255,255,0.2);
+    }
+    .screen-pill {
+      background: rgba(255, 255, 255, 0.1);
+      color: #CBD5E1;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius-full);
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition);
+    }
+    .screen-pill:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: #FFF;
+    }
+    .screen-pill.active {
+      background: var(--primary);
+      color: #FFF;
+      border-color: var(--primary-hover);
+      box-shadow: 0 0 10px rgba(79, 70, 229, 0.5);
+    }
+
+    /* ==================== APP CONTAINER & FRAME ==================== */
+    .device-container {
+      margin-top: 52px;
+      width: 100%;
+      max-width: 420px;
+      height: calc(100vh - 52px);
+      background-color: var(--bg-app);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+
+    @media (min-width: 440px) {
+      .device-container {
+        height: 844px;
+        margin-top: 60px;
+        border-radius: 36px;
+        border: 8px solid #1E293B;
+      }
+    }
+
+    /* Status Bar Simulation */
+    .status-bar {
+      height: 44px;
+      background: var(--bg-surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      z-index: 10;
+      border-bottom: 1px solid rgba(0,0,0,0.03);
+    }
+    .status-icons {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    /* Top App Bar */
+    .app-bar {
+      height: 56px;
+      background: var(--bg-surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border-color);
+      z-index: 10;
+    }
+    .app-bar .bar-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .app-bar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-full);
+      border: none;
+      background: var(--bg-subtle);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+    }
+    .icon-btn:active {
+      transform: scale(0.92);
+      background: var(--border-color);
+    }
+    .badge-dot {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+      border: 2px solid var(--bg-surface);
+    }
+
+    /* App Views Wrapper */
+    .view-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding-bottom: 90px; /* space for bottom nav */
+    }
+    .view-content::-webkit-scrollbar { width: 4px; }
+    .view-content::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+    /* Screen Views */
+    .app-screen {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      animation: fadeIn 0.25s ease-out;
+    }
+    .app-screen.active {
+      display: flex;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Bottom Navigation Bar */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 70px;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 0 8px;
+      z-index: 50;
+      box-shadow: var(--shadow-up);
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 600;
+      background: none;
+      border: none;
+      cursor: pointer;
+      width: 20%;
+      padding: 6px 0;
+      border-radius: var(--radius-md);
+      transition: var(--transition);
+    }
+    .nav-item svg {
+      width: 22px;
+      height: 22px;
+      stroke-width: 2;
+    }
+    .nav-item.active {
+      color: var(--primary);
+    }
+    .nav-item.active svg {
+      stroke: var(--primary);
+    }
+    .nav-item .scan-fab-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-full);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #FFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+      margin-top: -24px;
+      border: 3px solid var(--bg-surface);
+    }
+
+    /* ==================== COMMON COMPONENTS ==================== */
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 48px;
+      padding: 0 20px;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+      width: 100%;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: var(--text-on-primary);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+    .btn-primary:active {
+      background: var(--primary-hover);
+      transform: translateY(1px);
+    }
+    .btn-secondary {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid var(--border-color);
+      color: var(--text-main);
+    }
+    .btn-sm {
+      height: 36px;
+      padding: 0 12px;
+      font-size: 13px;
+      border-radius: var(--radius-sm);
+    }
+
+    /* Inputs */
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+    }
+    .input-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .input-field {
+      height: 48px;
+      border-radius: var(--radius-md);
+      border: 1.5px solid var(--border-color);
+      background: var(--bg-surface);
+      padding: 0 14px;
+      font-size: 14px;
+      color: var(--text-main);
+      outline: none;
+      transition: var(--transition);
+      width: 100%;
+    }
+    .input-field:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+
+    /* Chips & Tags */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .chip.active {
+      background: var(--primary-light);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+    .category-scroll {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .category-scroll::-webkit-scrollbar { display: none; }
+
+    /* Math Render Boxes */
+    .math-display {
+      direction: ltr;
+      font-family: 'Cambria Math', 'Times New Roman', serif;
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      border: 1px dashed var(--primary);
+      text-align: center;
+      letter-spacing: 1px;
+      overflow-x: auto;
+    }
+
+    /* Banner / Hero */
+    .hero-banner {
+      background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      color: #FFF;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+    }
+    .hero-banner::after {
+      content: '';
+      position: absolute;
+      top: -30%;
+      left: -20%;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      pointer-events: none;
+    }
+
+    /* Step Item in Solution */
+    .step-item {
+      display: flex;
+      gap: 12px;
+      position: relative;
+      padding-bottom: 16px;
+    }
+    .step-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      top: 28px;
+      right: 14px;
+      bottom: 0;
+      width: 2px;
+      background: var(--border-color);
+    }
+    .step-number {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #FFF;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      z-index: 2;
+    }
+
+    /* Skeleton Loading */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--border-color) 50%, var(--bg-subtle) 75%);
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+      border-radius: var(--radius-sm);
+    }
+    @keyframes skeleton-loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Modal / Bottom Sheet */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 900;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    .modal-overlay.active { display: flex; }
+    .bottom-sheet {
+      width: 100%;
+      max-width: 420px;
+      background: var(--bg-surface);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      animation: slideUp 0.3s ease-out;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .sheet-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--border-color);
+      border-radius: var(--radius-full);
+      margin: 0 auto 8px auto;
+    }
+
+    /* Toast Notification */
+    .toast-container {
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      width: 90%;
+      max-width: 380px;
+    }
+    .toast {
+      background: var(--text-main);
+      color: #FFF;
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: toastIn 0.3s ease;
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Virtual Math Keyboard */
+    .math-keyboard {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      background: var(--bg-subtle);
+      padding: 10px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+    }
+    .key-btn {
+      height: 44px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-family: 'Cambria Math', serif;
+      font-size: 16px;
+      font-weight: bold;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      transition: var(--transition);
+    }
+    .key-btn:active {
+      transform: scale(0.95);
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+    .key-btn.action-key {
+      background: #E2E8F0;
+      color: #334155;
+    }
+    .key-btn.primary-key {
+      background: var(--primary);
+      color: #FFF;
+      grid-column: span 2;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== TOP FIXED SWITCHER (TECHNICAL SPEC) ==================== -->
+  <div id="alpha-screens">
+    <span class="title-tag">الشاشات:</span>
+    <button class="screen-pill active" onclick="switchScreen('home-screen', this)">الرئيسية</button>
+    <button class="screen-pill" onclick="switchScreen('input-screen', this)">إدخال معادلة</button>
+    <button class="screen-pill" onclick="switchScreen('solution-screen', this)">عرض الحل والبيان</button>
+    <button class="screen-pill" onclick="switchScreen('history-screen', this)">المحفوظات</button>
+    <button class="screen-pill" onclick="switchScreen('formulas-screen', this)">مكتبة القوانين</button>
+    <button class="screen-pill" onclick="switchScreen('profile-screen', this)">الملف الشخصي</button>
+    <button class="screen-pill" onclick="switchScreen('auth-screen', this)">تسجيل الدخول</button>
+    <button class="screen-pill" onclick="switchScreen('loading-screen', this)">حالة التحميل</button>
+    <button class="screen-pill" onclick="switchScreen('empty-screen', this)">حالة فارغة</button>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-box"></div>
+
+  <!-- ==================== MOBILE APP CONTAINER ==================== -->
+  <div class="device-container">
+    
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span>09:41</span>
+      <div class="status-icons">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.22 19.54 10.57 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98C20.93 5.9 16.69 4 12 4z"/></svg>
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M17 4h-3V2h-4v2H7c-.55 0-1 .45-1 1v16c0 .55.45 1 1 1h10c.55 0 1-.45 1-1V5c0-.55-.45-1-1-1z"/></svg>
+      </div>
+    </div>
+
+    <!-- App Header Bar -->
+    <div class="app-bar">
+      <div class="bar-title">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19L19 4"/><path d="M14 20h6v-6"/><path d="M4 10V4h6"/><circle cx="8" cy="16" r="2"/></svg>
+        <span id="app-bar-title-text">حاسبة المعادلات</span>
+      </div>
+      <div class="app-bar-actions">
+        <button class="icon-btn" onclick="triggerNotificationToast()" title="الإشعارات">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="badge-dot"></span>
+        </button>
+        <button class="icon-btn" onclick="toggleDarkMode()" title="الوضع الليلي">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN VIEW AREA -->
+    <div class="view-content">
+
+      <!-- ==================== 1. HOME SCREEN ==================== -->
+      <div id="home-screen" class="app-screen active">
+        <!-- Student Greeting Banner -->
+        <div class="hero-banner">
+          <div style="font-size: 13px; opacity: 0.9; margin-bottom: 4px;">أهلاً بك، أحمد المالكي 👋</div>
+          <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 8px;">جاهز لحل معضلتك الرياضية اليوم؟</h2>
+          <p style="font-size: 12px; opacity: 0.85; line-height: 1.4; margin-bottom: 14px;">السنة الثالثة • هندسة حاسب وتفاضل وتكامل متقدم</p>
+          <button class="btn btn-secondary btn-sm" onclick="switchScreen('input-screen')" style="width: auto; background: #FFF; color: var(--primary);">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            حل معادلة جديدة
+          </button>
+        </div>
+
+        <!-- Quick Branch Selector -->
+        <div>
+          <div class="card-header" style="margin-bottom: 10px;">
+            <span class="card-title">اختر الفرع الرياضي</span>
+            <span style="font-size: 12px; color: var(--primary); font-weight: 600; cursor: pointer;">عرض الكل</span>
+          </div>
+          <div class="category-scroll">
+            <div class="chip active" onclick="filterBranch('Calculus')">📐 التفاضل والتكامل (Calculus)</div>
+            <div class="chip" onclick="filterBranch('Linear Algebra')">📊 الجبر الخطي (Linear Alg)</div>
+            <div class="chip" onclick="filterBranch('Differential')">⚡ المعادلات التفاضلية</div>
+            <div class="chip" onclick="filterBranch('Statistics')">📈 الإحصاء والاحتمالات</div>
+          </div>
+        </div>
+
+        <!-- Quick Input Action Cards -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="card" style="cursor: pointer; background: linear-gradient(180deg, var(--bg-card), var(--primary-light)); border-color: rgba(79,70,229,0.2);" onclick="openCameraScanner()">
+            <div style="width: 40px; height: 40px; border-radius: 12px; background: var(--primary); color: #FFF; display: flex; align-items: center; justify-content: center;">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <div>
+              <div style="font-size: 14px; font-weight: 700;">مسح بالكاميرا</div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">التقط صورة المعادلة بخط اليد</div>
+            </div>
+          </div>
+
+          <div class="card" style="cursor: pointer;" onclick="switchScreen('input-screen')">
+            <div style="width: 40px; height: 40px; border-radius: 12px; background: var(--secondary-light); color: var(--secondary); display: flex; align-items: center; justify-content: center;">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M8 16h8"/></svg>
+            </div>
+            <div>
+              <div style="font-size: 14px; font-weight: 700;">لوحة الرموز</div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">كتابة معادلة معقدة دقيقة</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formula of the day -->
+        <div class="card" style="border-right: 4px solid var(--accent);">
+          <div class="card-header">
+            <span class="chip" style="background: var(--accent-light); color: var(--accent); border: none;">💡 قانون اليوم للمراجعة</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Calculus</span>
+          </div>
+          <div style="font-weight: 700; font-size: 15px; color: var(--text-main);">قاعدة اشتقاق دالة القوة (Power Rule)</div>
+          <div class="math-display" style="font-size: 18px; padding: 8px;">\frac{d}{dx}[x^n] = n \cdot x^{n-1}</div>
+          <p style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">يتم إنزال الأس ليصبح معاملاً ويطرح 1 من الأس الأصلي لكل x.</p>
+        </div>
+
+        <!-- Recent Solved Equations -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">آخر المعادلات المحلولة</span>
+            <span style="font-size: 12px; color: var(--primary); font-weight: 600; cursor: pointer;" onclick="switchScreen('history-screen')">السجل الكامل</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-radius: var(--radius-md); background: var(--bg-subtle); cursor: pointer;" onclick="switchScreen('solution-screen')">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 11px; color: var(--primary); font-weight: 700;">Calculus • تكامل محدود</span>
+                <span style="font-family: serif; font-weight: bold; font-size: 15px; direction: ltr;">∫(0 to π) x·sin(x) dx</span>
+              </div>
+              <span style="font-size: 13px; font-weight: 800; color: var(--success); font-family: serif;">= π</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-radius: var(--radius-md); background: var(--bg-subtle); cursor: pointer;" onclick="switchScreen('solution-screen')">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 11px; color: var(--secondary); font-weight: 700;">Linear Algebra • مصفوفات</span>
+                <span style="font-family: serif; font-weight: bold; font-size: 15px; direction: ltr;">det([[3,2],[1,4]])</span>
+              </div>
+              <span style="font-size: 13px; font-weight: 800; color: var(--success); font-family: serif;">= 10</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ==================== 2. EQUATION INPUT SCREEN ==================== -->
+      <div id="input-screen" class="app-screen">
+        <!-- Input Mode Tabs -->
+        <div style="display: flex; background: var(--bg-subtle); border-radius: var(--radius-md); padding: 4px;">
+          <button id="tab-keyboard-btn" class="btn btn-sm btn-primary" style="flex: 1;" onclick="switchInputMode('keyboard')">⌨️ لوحة المفاتيح</button>
+          <button id="tab-camera-btn" class="btn btn-sm btn-outline" style="flex: 1; border: none;" onclick="switchInputMode('camera')">📷 التماثل والتصوير</button>
+        </div>
+
+        <!-- KEYBOARD INPUT CONTAINER -->
+        <div id="input-mode-keyboard" style="display: flex; flex-direction: column; gap: 14px;">
+          <div class="card" style="border: 2px solid var(--primary-light);">
+            <div class="card-header">
+              <span class="input-label">المعادلة المدخلة الحالية:</span>
+              <button class="chip" style="color: var(--danger);" onclick="clearEquationInput()">مسح 🗑️</button>
+            </div>
+            <div id="equation-live-input" class="math-display" style="min-height: 64px; display: flex; align-items: center; justify-content: center;">
+              \int_{0}^{\pi} x \cdot \sin(x) \, dx
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); text-align: center;">اضغط الرموز بالأسفل للتعديل مباشرة</div>
+          </div>
+
+          <!-- Virtual Keyboard Tabs -->
+          <div class="category-scroll">
+            <span class="chip active">أساسي</span>
+            <span class="chip">تفاضل/تكامل</span>
+            <span class="chip">مصفوفات</span>
+            <span class="chip">رموز إغريقية</span>
+          </div>
+
+          <!-- Virtual Keypad Matrix -->
+          <div class="math-keyboard">
+            <button class="key-btn" onclick="typeKey('∫')">∫</button>
+            <button class="key-btn" onclick="typeKey('d/dx')">d/dx</button>
+            <button class="key-btn" onclick="typeKey('lim')">lim</button>
+            <button class="key-btn" onclick="typeKey('∑')">∑</button>
+            <button class="key-btn action-key" onclick="backspaceInput()">⌫</button>
+
+            <button class="key-btn" onclick="typeKey('x')">x</button>
+            <button class="key-btn" onclick="typeKey('y')">y</button>
+            <button class="key-btn" onclick="typeKey('x²')">x²</button>
+            <button class="key-btn" onclick="typeKey('xⁿ')">xⁿ</button>
+            <button class="key-btn" onclick="typeKey('√')">√</button>
+
+            <button class="key-btn" onclick="typeKey('sin(')">sin</button>
+            <button class="key-btn" onclick="typeKey('cos(')">cos</button>
+            <button class="key-btn" onclick="typeKey('tan(')">tan</button>
+            <button class="key-btn" onclick="typeKey('π')">π</button>
+            <button class="key-btn" onclick="typeKey('θ')">θ</button>
+
+            <button class="key-btn" onclick="typeKey('7')">7</button>
+            <button class="key-btn" onclick="typeKey('8')">8</button>
+            <button class="key-btn" onclick="typeKey('9')">9</button>
+            <button class="key-btn action-key" onclick="typeKey('÷')">÷</button>
+            <button class="key-btn action-key" onclick="typeKey('×')">×</button>
+
+            <button class="key-btn" onclick="typeKey('4')">4</button>
+            <button class="key-btn" onclick="typeKey('5')">5</button>
+            <button class="key-btn" onclick="typeKey('6')">6</button>
+            <button class="key-btn action-key" onclick="typeKey('-')">-</button>
+            <button class="key-btn action-key" onclick="typeKey('+')">+</button>
+
+            <button class="key-btn" onclick="typeKey('1')">1</button>
+            <button class="key-btn" onclick="typeKey('2')">2</button>
+            <button class="key-btn" onclick="typeKey('3')">3</button>
+            <button class="key-btn" onclick="typeKey('(')">(</button>
+            <button class="key-btn" onclick="typeKey(')')">)</button>
+
+            <button class="key-btn" onclick="typeKey('0')">0</button>
+            <button class="key-btn" onclick="typeKey('.')">.</button>
+            <button class="key-btn" onclick="typeKey('=')">=</button>
+            <button class="key-btn primary-key" onclick="switchScreen('solution-screen')">حل المعادلة 🚀</button>
+          </div>
+        </div>
+
+        <!-- CAMERA SCANNER CONTAINER (Hidden by default) -->
+        <div id="input-mode-camera" style="display: none; flex-direction: column; gap: 14px;">
+          <div class="card" style="position: relative; height: 320px; background: #000; color: #FFF; padding: 0; overflow: hidden; justify-content: center; align-items: center;">
+            <div style="position: absolute; inset: 24px; border: 2px dashed rgba(255,255,255,0.6); border-radius: 16px; pointer-events: none; display: flex; align-items: center; justify-content: center;">
+              <span style="background: rgba(0,0,0,0.6); padding: 6px 12px; border-radius: 20px; font-size: 12px;">ضع المعادلة داخل الإطار</span>
+            </div>
+            <!-- Mock Scanning beam animation -->
+            <div style="position: absolute; width: 100%; height: 2px; background: var(--secondary); box-shadow: 0 0 15px var(--secondary); top: 30%;"></div>
+            
+            <div style="text-align: center; color: rgba(255,255,255,0.7); font-size: 13px;">
+              <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom: 8px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <div>معاينة الكاميرا الحية...</div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <button class="btn btn-outline" style="flex: 1;" onclick="triggerToast('تم فتح المعرض لاختيار صورة')">📁 من الكاميرا/الصور</button>
+            <button class="btn btn-primary" style="flex: 2;" onclick="switchScreen('solution-screen')">📸 التقاط وتحليل المعادلة</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ==================== 3. SOLUTION & GRAPH SCREEN ==================== -->
+      <div id="solution-screen" class="app-screen">
+        <div class="card" style="background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); color: #FFF; border: none;">
+          <div class="card-header">
+            <span class="chip" style="background: rgba(255,255,255,0.15); color: #FFF; border: none;">النتيجة النهائية 🎯</span>
+            <button class="icon-btn" style="background: rgba(255,255,255,0.15); color: #FFF;" onclick="triggerToast('تم حفظ المعادلة بالمفضلة')">⭐</button>
+          </div>
+          <div style="font-size: 12px; opacity: 0.8; margin-top: 6px;">المعادلة: ∫(0 to π) x·sin(x) dx</div>
+          <div style="font-size: 32px; font-weight: 900; margin: 12px 0; color: #38BDF8; font-family: serif; text-shadow: 0 2px 10px rgba(56,189,248,0.3);">
+            = π ≈ 3.14159
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: #FFF; border: none; flex: 1;" onclick="openFolderSheet()">📁 تنظيم بمجلد</button>
+            <button class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: #FFF; border: none; flex: 1;" onclick="triggerToast('تم نسخ خطوات الحل كـ PDF')">📤 مشاركة الحل</button>
+          </div>
+        </div>
+
+        <!-- Graph Section (SVG plot rendering) -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📈 التمثيل البياني (Graphing)</span>
+            <span style="font-size: 11px; color: var(--primary); font-weight: 700;">f(x) = x·sin(x)</span>
+          </div>
+          <div style="width: 100%; height: 160px; background: var(--bg-subtle); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; border: 1px solid var(--border-color);">
+            <!-- Axis lines -->
+            <svg width="100%" height="100%" viewBox="0 0 300 150" style="position: absolute;">
+              <line x1="20" y1="120" x2="280" y2="120" stroke="var(--border-color)" stroke-width="2"/>
+              <line x1="50" y1="10" x2="50" y2="140" stroke="var(--border-color)" stroke-width="2"/>
+              <!-- Curve f(x) = x * sin(x) plot simulation -->
+              <path d="M 50 120 Q 90 20, 140 70 T 230 120" fill="none" stroke="var(--primary)" stroke-width="3"/>
+              <!-- Shaded Area under integral -->
+              <path d="M 50 120 Q 90 20, 140 70 T 230 120 L 230 120 L 50 120 Z" fill="rgba(79, 70, 229, 0.15)"/>
+            </svg>
+            <div style="position: absolute; bottom: 8px; right: 12px; font-size: 10px; color: var(--text-muted); background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">المساحة المحصورة = π</div>
+          </div>
+        </div>
+
+        <!-- Step by Step Detailed Solution -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">خطوات الحل التفصيلية</span>
+            <span class="chip" style="background: var(--success-light); color: var(--success);">تم التحقق 100%</span>
+          </div>
+
+          <div style="margin-top: 8px;">
+            <!-- Step 1 -->
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-weight: 700; font-size: 14px;">تطبيق التكامل بالتجزئة (Integration by Parts)</span>
+                <p style="font-size: 12px; color: var(--text-muted);">القانون: ∫ u dv = u·v - ∫ v du</p>
+                <div class="math-display" style="font-size: 14px; padding: 6px;">u = x \implies du = dx, \quad dv = \sin(x)dx \implies v = -\cos(x)</div>
+              </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-weight: 700; font-size: 14px;">التعويض في صيغة التكامل والتجميع</span>
+                <div class="math-display" style="font-size: 14px; padding: 6px;">\int x \sin(x) dx = -x \cos(x) - \int (-\cos(x)) dx</div>
+                <div class="math-display" style="font-size: 14px; padding: 6px; color: var(--success); font-weight: bold;">= -x \cos(x) + \sin(x)</div>
+              </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="step-item">
+              <div class="step-number">3</div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-weight: 700; font-size: 14px;">تطبيق حدود التكامل المحدد من 0 إلى π</span>
+                <div class="math-display" style="font-size: 14px; padding: 6px;">[-\pi \cos(\pi) + \sin(\pi)] - [-0 \cos(0) + \sin(0)]</div>
+                <div class="math-display" style="font-size: 15px; padding: 6px; color: var(--primary);">[-\pi(-1) + 0] - [0] = \pi</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ==================== 4. HISTORY & BOOKMARKS SCREEN ==================== -->
+      <div id="history-screen" class="app-screen">
+        <div style="display: flex; gap: 8px;">
+          <input type="text" class="input-field" placeholder="ابحث في سجل معادلاتك..." onkeyup="filterHistory(this.value)">
+          <button class="btn btn-outline" style="width: auto; padding: 0 14px;" onclick="openFolderSheet()">📁 المجلدات</button>
+        </div>
+
+        <!-- Folder Filter Bar -->
+        <div class="category-scroll">
+          <span class="chip active">الكل (14)</span>
+          <span class="chip">⭐ المفضلة (5)</span>
+          <span class="chip">📁 تفاضل وتكامل 101</span>
+          <span class="chip">📁 جبر خطي</span>
+          <span class="chip">📁 مراجعة الفاينل</span>
+        </div>
+
+        <!-- History Records List -->
+        <div id="history-list" style="display: flex; flex-direction: column; gap: 12px;">
+          
+          <!-- Record Item 1 -->
+          <div class="card" style="cursor: pointer;" onclick="switchScreen('solution-screen')">
+            <div class="card-header">
+              <span class="chip" style="background: var(--primary-light); color: var(--primary);">📐 Calculus • لوحة المفاتيح</span>
+              <span style="font-size: 18px;" onclick="event.stopPropagation(); toggleStar(this)">⭐</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-family: serif; font-size: 16px; font-weight: bold; direction: ltr; text-align: right;">∫ x · sin(x) dx</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">مجلد: مراجعة الفاينل • منذ ساعتين</div>
+              </div>
+              <div style="font-size: 16px; font-weight: 800; color: var(--primary); font-family: serif;">= π</div>
+            </div>
+          </div>
+
+          <!-- Record Item 2 -->
+          <div class="card" style="cursor: pointer;" onclick="switchScreen('solution-screen')">
+            <div class="card-header">
+              <span class="chip" style="background: var(--secondary-light); color: var(--secondary);">📷 صورة كاميرا • Linear Algebra</span>
+              <span style="font-size: 18px;" onclick="event.stopPropagation(); toggleStar(this)">☆</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-family: serif; font-size: 16px; font-weight: bold; direction: ltr; text-align: right;">det(A) = 3(4) - 2(1)</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">مجلد: جبر خطي • أمس</div>
+              </div>
+              <div style="font-size: 16px; font-weight: 800; color: var(--primary); font-family: serif;">= 10</div>
+            </div>
+          </div>
+
+          <!-- Record Item 3 -->
+          <div class="card" style="cursor: pointer;" onclick="switchScreen('solution-screen')">
+            <div class="card-header">
+              <span class="chip" style="background: var(--accent-light); color: var(--accent);">⚡ المعادلات التفاضلية</span>
+              <span style="font-size: 18px;" onclick="event.stopPropagation(); toggleStar(this)">⭐</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-family: serif; font-size: 15px; font-weight: bold; direction: ltr; text-align: right;">y'' + 4y = 0</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">مجلد: تفاضل وتكامل 101 • منذ 3 أيام</div>
+              </div>
+              <div style="font-size: 13px; font-weight: 700; color: var(--primary); font-family: serif;">C₁cos2x + C₂sin2x</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================== 5. FORMULA REFERENCE LIBRARY ==================== -->
+      <div id="formulas-screen" class="app-screen">
+        <div class="input-group">
+          <input type="text" class="input-field" placeholder="ابحث عن قانون رياضى (مثال: اشتقاق، مصفوفات)..." onkeyup="searchFormulas(this.value)">
+        </div>
+
+        <!-- Formula Categories -->
+        <div class="category-scroll">
+          <span class="chip active">الكل</span>
+          <span class="chip">Calculus</span>
+          <span class="chip">Linear Algebra</span>
+          <span class="chip">Differential Equations</span>
+          <span class="chip">Algebra</span>
+          <span class="chip">Statistics</span>
+        </div>
+
+        <!-- Formula List -->
+        <div id="formulas-list" style="display: flex; flex-direction: column; gap: 12px;">
+          
+          <div class="card">
+            <div class="card-header">
+              <span style="font-weight: 700; font-size: 15px;">قاعدة الاشتقاق بالضرب (Product Rule)</span>
+              <span class="chip" style="background: var(--warning-light); color: var(--warning); border: none;">قانون رئيسي 🌟</span>
+            </div>
+            <div class="math-display" style="font-size: 16px;">\frac{d}{dx}[u \cdot v] = u \frac{dv}{dx} + v \frac{du}{dx}</div>
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">مشتقة حاصل ضرب دالتين هي: الأول في مشتقة الثاني + الثاني في مشتقة الأول.</p>
+            <button class="btn btn-sm btn-outline" onclick="typeFormulaIntoInput('\\frac{d}{dx}[u \\cdot v]')">إدراج في الحاسبة 📝</button>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span style="font-weight: 700; font-size: 15px;">محدد مصفوفة 2x2 (Determinant)</span>
+              <span class="chip" style="background: var(--secondary-light); color: var(--secondary);">Linear Algebra</span>
+            </div>
+            <div class="math-display" style="font-size: 16px;">\det\begin{pmatrix}a & b \\ c & d\end{pmatrix} = ad - bc</div>
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">حاصل ضرب عناصر القطر الرئيسي مطروحاً منه حاصل ضرب عناصر القطر الفرعي.</p>
+            <button class="btn btn-sm btn-outline" onclick="typeFormulaIntoInput('det([[a,b],[c,d]])')">إدراج في الحاسبة 📝</button>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span style="font-weight: 700; font-size: 15px;">نظرية القيمة المتوسطة (MVT)</span>
+              <span class="chip" style="background: var(--primary-light); color: var(--primary);">Calculus</span>
+            </div>
+            <div class="math-display" style="font-size: 16px;">f'(c) = \frac{f(b) - f(a)}{b - a}</div>
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">تضمن وجود نقطة c على الأقل يكون عندها ميل المماس مساوياً لميل القاطع للفترة [a, b].</p>
+            <button class="btn btn-sm btn-outline" onclick="typeFormulaIntoInput('f\'(c) = (f(b)-f(a))/(b-a)')">إدراج في الحاسبة 📝</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================== 6. PROFILE & SETTINGS SCREEN ==================== -->
+      <div id="profile-screen" class="app-screen">
+        <!-- Student Card -->
+        <div class="card" style="align-items: center; text-align: center; padding: 24px;">
+          <div style="width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #FFF; font-size: 28px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(79,70,229,0.3);">
+            أم
+          </div>
+          <h3 style="font-size: 18px; font-weight: 800; margin-top: 10px;">أحمد محمد المالكي</h3>
+          <p style="font-size: 13px; color: var(--text-muted);">ahmed.malki@university.edu.sa</p>
+          <div style="display: flex; gap: 6px; margin-top: 10px;">
+            <span class="chip" style="background: var(--primary-light); color: var(--primary);">السنة الثالثة</span>
+            <span class="chip" style="background: var(--secondary-light); color: var(--secondary);">هندسة حاسب</span>
+          </div>
+        </div>
+
+        <!-- Student Profile Data Options -->
+        <div class="card">
+          <div class="card-title" style="margin-bottom: 6px;">بيانات الحساب والجامعة</div>
+          
+          <div class="input-group">
+            <label class="input-label">الاسم الكامل</label>
+            <input type="text" class="input-field" value="أحمد محمد المالكي">
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">المستوى الجامعي</label>
+            <select class="input-field">
+              <option>السنة الأولى</option>
+              <option>السنة الثانية</option>
+              <option selected>السنة الثالثة</option>
+              <option>السنة الرابعة</option>
+              <option>دراسات عليا</option>
+            </select>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">التخصص الجامعي</label>
+            <input type="text" class="input-field" value="هندسة الحاسب والذكاء الاصطناعي">
+          </div>
+        </div>
+
+        <!-- Preferences & Reminders -->
+        <div class="card">
+          <div class="card-title">إعدادات والتنبيهات</div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+            <div>
+              <div style="font-size: 14px; font-weight: 700;">التذكير اليومي للمراجعة 🔔</div>
+              <div style="font-size: 11px; color: var(--text-muted);">تنبيه يومي لاستعراض قانون رياضي جديد</div>
+            </div>
+            <input type="checkbox" checked style="width: 20px; height: 20px; accent-color: var(--primary);">
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0;">
+            <div>
+              <div style="font-size: 14px; font-weight: 700;">إشعارات المكتبة والحدث 📚</div>
+              <div style="font-size: 11px; color: var(--text-muted);">عند إضافة قوانين جديدة للمكتبة</div>
+            </div>
+            <input type="checkbox" checked style="width: 20px; height: 20px; accent-color: var(--primary);">
+          </div>
+        </div>
+
+        <button class="btn btn-outline" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);" onclick="switchScreen('auth-screen')">تسجيل الخروج 🚪</button>
+      </div>
+
+      <!-- ==================== 7. AUTH / SIGN IN & SIGN UP SCREEN ==================== -->
+      <div id="auth-screen" class="app-screen">
+        <div style="text-align: center; margin: 10px 0 20px 0;">
+          <div style="width: 60px; height: 60px; border-radius: 18px; background: var(--primary); color: #FFF; font-size: 28px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; box-shadow: 0 10px 20px rgba(79,70,229,0.3);">
+            ∑
+          </div>
+          <h2 style="font-size: 22px; font-weight: 800;">حاسبة المعادلات الجامعية</h2>
+          <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">منصتك التفاعلية لحل المسائل المعقدة خطوة بخطوة</p>
+        </div>
+
+        <div class="card">
+          <!-- Auth Mode Toggle -->
+          <div style="display: flex; background: var(--bg-subtle); border-radius: var(--radius-md); padding: 4px; margin-bottom: 12px;">
+            <button id="auth-tab-signin" class="btn btn-sm btn-primary" style="flex: 1;" onclick="toggleAuthForm('signin')">تسجيل الدخول</button>
+            <button id="auth-tab-signup" class="btn btn-sm btn-outline" style="flex: 1; border: none;" onclick="toggleAuthForm('signup')">حساب جديد</button>
+          </div>
+
+          <!-- SIGN IN FORM -->
+          <div id="form-signin" style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="input-group">
+              <label class="input-label">البريد الإلكتروني الجامعي</label>
+              <input type="email" class="input-field" placeholder="student@university.edu.sa">
+            </div>
+
+            <div class="input-group">
+              <label class="input-label">كلمة المرور</label>
+              <input type="password" class="input-field" placeholder="••••••••">
+            </div>
+
+            <button class="btn btn-primary" style="margin-top: 8px;" onclick="switchScreen('home-screen')">دخول للحساب 🔑</button>
+          </div>
+
+          <!-- SIGN UP FORM (Hidden by default) -->
+          <div id="form-signup" style="display: none; flex-direction: column; gap: 12px;">
+            <div class="input-group">
+              <label class="input-label">الاسم الكامل</label>
+              <input type="text" class="input-field" placeholder="أحمد محمد">
+            </div>
+
+            <div class="input-group">
+              <label class="input-label">رقم الجوال</label>
+              <input type="tel" class="input-field" placeholder="0501234567">
+            </div>
+
+            <div class="input-group">
+              <label class="input-label">البريد الإلكتروني الجامعي</label>
+              <input type="email" class="input-field" placeholder="student@university.edu.sa">
+            </div>
+
+            <div class="input-group">
+              <label class="input-label">كلمة المرور</label>
+              <input type="password" class="input-field" placeholder="••••••••">
+            </div>
+
+            <button class="btn btn-primary" style="margin-top: 8px;" onclick="switchScreen('home-screen')">إنشاء حساب جديد 🎓</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 8. LOADING SKELETON STATE ==================== -->
+      <div id="loading-screen" class="app-screen">
+        <div class="card">
+          <div class="skeleton" style="height: 20px; width: 60%;"></div>
+          <div class="skeleton" style="height: 60px; width: 100%;"></div>
+          <div class="skeleton" style="height: 14px; width: 40%;"></div>
+        </div>
+        <div class="card">
+          <div class="skeleton" style="height: 120px; width: 100%;"></div>
+        </div>
+        <div class="card">
+          <div class="skeleton" style="height: 40px; width: 100%;"></div>
+          <div class="skeleton" style="height: 40px; width: 100%;"></div>
+          <div class="skeleton" style="height: 40px; width: 100%;"></div>
+        </div>
+      </div>
+
+      <!-- ==================== 9. EMPTY STATE ==================== -->
+      <div id="empty-screen" class="app-screen">
+        <div class="card" style="text-align: center; padding: 40px 20px; align-items: center; justify-content: center;">
+          <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 36px; margin-bottom: 16px;">
+            🔍
+          </div>
+          <h3 style="font-size: 18px; font-weight: 800; color: var(--text-main);">لا يوجد نتائج أو معادلات محفوظة</h3>
+          <p style="font-size: 13px; color: var(--text-muted); max-width: 260px; margin: 8px 0 20px 0; line-height: 1.5;">
+            لم تقم بحفظ أي معادلة في هذا المجلد بعد، أو أن البحث لا يطابق أي قانون في المكتبة.
+          </p>
+          <button class="btn btn-primary" style="width: auto;" onclick="switchScreen('input-screen')">حل معادلة جديدة الان</button>
+        </div>
+      </div>
+
+    </div> <!-- View Content End -->
+
+    <!-- ==================== BOTTOM NAVIGATION BAR ==================== -->
+    <div class="bottom-nav">
+      <button class="nav-item active" onclick="switchScreen('home-screen', this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        <span>الرئيسية</span>
+      </button>
+
+      <button class="nav-item" onclick="switchScreen('history-screen', this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>السجل</span>
+      </button>
+
+      <!-- Center Camera FAB Button -->
+      <button class="nav-item" onclick="switchScreen('input-screen', this)">
+        <div class="scan-fab-btn">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+        <span style="margin-top: 18px; color: var(--primary);">إدخال</span>
+      </button>
+
+      <button class="nav-item" onclick="switchScreen('formulas-screen', this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        <span>القوانين</span>
+      </button>
+
+      <button class="nav-item" onclick="switchScreen('profile-screen', this)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <span>حسابي</span>
+      </button>
+    </div>
+
+  </div> <!-- Device Container End -->
+
+  <!-- ==================== MODAL BOTTOM SHEET (FOLDER ORGANIZER) ==================== -->
+  <div class="modal-overlay" id="folder-sheet" onclick="closeFolderSheet(event)">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <h3 style="font-size: 16px; font-weight: 800; text-align: center;">تنظيم المعادلة في مجلد 📁</h3>
+      <p style="font-size: 12px; color: var(--text-muted); text-align: center;">اختر مجلداً حفظ المعادلة به لسرعة الرجوع لها لاحقاً</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 8px; margin: 10px 0;">
+        <label style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: var(--radius-md); background: var(--bg-subtle); cursor: pointer;">
+          <span style="font-size: 14px; font-weight: 700;">📁 مراجعة الاختبار النهائي</span>
+          <input type="radio" name="folder" checked style="accent-color: var(--primary);">
+        </label>
+
+        <label style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: var(--radius-md); background: var(--bg-subtle); cursor: pointer;">
+          <span style="font-size: 14px; font-weight: 700;">📁 تفاضل وتكامل 101</span>
+          <input type="radio" name="folder" style="accent-color: var(--primary);">
+        </label>
+
+        <label style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: var(--radius-md); background: var(--bg-subtle); cursor: pointer;">
+          <span style="font-size: 14px; font-weight: 700;">📁 واجبات الجبر الخطي</span>
+          <input type="radio" name="folder" style="accent-color: var(--primary);">
+        </label>
+      </div>
+
+      <button class="btn btn-primary" onclick="closeFolderSheet(); triggerToast('تم حفظ المعادلة بالمجلد بنجاح 🎉');">حفظ والتأكيد</button>
+    </div>
+  </div>
+
+  <!-- ==================== INTERACTIVE JAVASCRIPT ==================== -->
+  <script>
+    // SCREEN NAVIGATION LOGIC
+    function switchScreen(screenId, clickedBtn) {
+      // Hide all screens
+      const screens = document.querySelectorAll('.app-screen');
+      screens.forEach(screen => screen.classList.remove('active'));
+
+      // Show targeted screen
+      const targetScreen = document.getElementById(screenId);
+      if (targetScreen) {
+        targetScreen.classList.add('active');
+      }
+
+      // Update Alpha Screens bar pills
+      const pills = document.querySelectorAll('#alpha-screens .screen-pill');
+      pills.forEach(pill => pill.classList.remove('active'));
+      if (clickedBtn && clickedBtn.classList.contains('screen-pill')) {
+        clickedBtn.classList.add('active');
+      }
+
+      // Sync Bottom Nav Active Class
+      const navItems = document.querySelectorAll('.bottom-nav .nav-item');
+      navItems.forEach(item => item.classList.remove('active'));
+
+      // Update Top Bar Title dynamically
+      const titleMap = {
+        'home-screen': 'حاسبة المعادلات الجامعية',
+        'input-screen': 'إدخال وصياغة المعادلة',
+        'solution-screen': 'خطوات الحل والتمثيل البياني',
+        'history-screen': 'سجل المحفوظات والمجلدات',
+        'formulas-screen': 'مكتبة القوانين الرياضية',
+        'profile-screen': 'الملف الشخصي للطالب',
+        'auth-screen': 'تسجيل الدخول / إنشاء حساب',
+        'loading-screen': 'جاري التحليل...',
+        'empty-screen': 'لا توجد بيانات'
+      };
+      if (titleMap[screenId]) {
+        document.getElementById('app-bar-title-text').innerText = titleMap[screenId];
+      }
+    }
+
+    // MATH KEYBOARD TYPING SIMULATION
+    let currentInput = "\\int_{0}^{\\pi} x \\cdot \\sin(x) \\, dx";
+    
+    function typeKey(val) {
+      if (currentInput === "0" || currentInput === "") {
+        currentInput = val;
+      } else {
+        currentInput += " " + val;
+      }
+      document.getElementById('equation-live-input').innerText = currentInput;
+    }
+
+    function clearEquationInput() {
+      currentInput = "";
+      document.getElementById('equation-live-input').innerText = "أدخل المعادلة هنا...";
+    }
+
+    function backspaceInput() {
+      if (currentInput.length > 0) {
+        currentInput = currentInput.substring(0, currentInput.length - 2);
+        document.getElementById('equation-live-input').innerText = currentInput || "0";
+      }
+    }
+
+    function typeFormulaIntoInput(formulaStr) {
+      currentInput = formulaStr;
+      switchScreen('input-screen');
+      document.getElementById('equation-live-input').innerText = currentInput;
+      triggerToast('تم نسخ صيغة القانون للإدخال 👍');
+    }
+
+    // INPUT MODE TOGGLE (KEYBOARD / CAMERA)
+    function switchInputMode(mode) {
+      const kbContainer = document.getElementById('input-mode-keyboard');
+      const camContainer = document.getElementById('input-mode-camera');
+      const kbBtn = document.getElementById('tab-keyboard-btn');
+      const camBtn = document.getElementById('tab-camera-btn');
+
+      if (mode === 'keyboard') {
+        kbContainer.style.display = 'flex';
+        camContainer.style.display = 'none';
+        kbBtn.className = 'btn btn-sm btn-primary';
+        camBtn.className = 'btn btn-sm btn-outline';
+        camBtn.style.border = 'none';
+      } else {
+        kbContainer.style.display = 'none';
+        camContainer.style.display = 'flex';
+        camBtn.className = 'btn btn-sm btn-primary';
+        kbBtn.className = 'btn btn-sm btn-outline';
+        kbBtn.style.border = 'none';
+      }
+    }
+
+    function openCameraScanner() {
+      switchScreen('input-screen');
+      switchInputMode('camera');
+    }
+
+    // AUTH FORM TOGGLE (SIGN IN / SIGN UP)
+    function toggleAuthForm(type) {
+      const formSignIn = document.getElementById('form-signin');
+      const formSignUp = document.getElementById('form-signup');
+      const tabSignIn = document.getElementById('auth-tab-signin');
+      const tabSignUp = document.getElementById('auth-tab-signup');
+
+      if (type === 'signin') {
+        formSignIn.style.display = 'flex';
+        formSignUp.style.display = 'none';
+        tabSignIn.className = 'btn btn-sm btn-primary';
+        tabSignUp.className = 'btn btn-sm btn-outline';
+        tabSignUp.style.border = 'none';
+      } else {
+        formSignIn.style.display = 'none';
+        formSignUp.style.display = 'flex';
+        tabSignUp.className = 'btn btn-sm btn-primary';
+        tabSignIn.className = 'btn btn-sm btn-outline';
+        tabSignIn.style.border = 'none';
+      }
+    }
+
+    // DARK MODE TOGGLE
+    function toggleDarkMode() {
+      const body = document.body;
+      if (body.getAttribute('data-theme') === 'dark') {
+        body.removeAttribute('data-theme');
+        triggerToast('تم تفعيل الوضع الفاتح ☀️');
+      } else {
+        body.setAttribute('data-theme', 'dark');
+        triggerToast('تم تفعيل الوضع الليلي 🌙');
+      }
+    }
+
+    // TOAST NOTIFICATIONS SYSTEM
+    function triggerToast(message) {
+      const toastBox = document.getElementById('toast-box');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `<span>ℹ️</span> <span>${message}</span>`;
+      toastBox.appendChild(toast);
+
+      setTimeout(() => {
+        toast.remove();
+      }, 2500);
+    }
+
+    function triggerNotificationToast() {
+      triggerToast('🔔 تذكير: تم إيضاح قانون جديد في مكتبة تفاضل وتكامل اليوم!');
+    }
+
+    // MODAL BOTTOM SHEET LOGIC
+    function openFolderSheet() {
+      document.getElementById('folder-sheet').classList.add('active');
+    }
+    function closeFolderSheet(e) {
+      document.getElementById('folder-sheet').classList.remove('active');
+    }
+
+    // INTERACTIVE BOOKMARK STAR TOGGLE
+    function toggleStar(el) {
+      if (el.innerText === '⭐') {
+        el.innerText = '☆';
+        triggerToast('تم إزالة المعادلة من المفضلة');
+      } else {
+        el.innerText = '⭐';
+        triggerToast('تم إضافة المعادلة للمفضلة ⭐');
+      }
+    }
+
+    // SEARCH & FILTER SIMULATION
+    function filterHistory(query) {
+      if (query.trim() === 'empty') {
+        switchScreen('empty-screen');
+      }
+    }
+
+    function searchFormulas(query) {
+      if (query.trim() === 'empty') {
+        switchScreen('empty-screen');
+      }
+    }
+
+    function filterBranch(branchName) {
+      triggerToast(`تم التصفية حسب الفرع: ${branchName}`);
+    }
+
+    // On Load Toast Greeting
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        triggerToast('مرحباً بك في حاسبة المعادلات الجامعية ✨');
+      }, 500);
+    });
+  </script>
+
+</body>
+</html>
