@@ -9,7 +9,7 @@ class _Scripted extends AiDesigner {
   final List<String> replies;
   final prompts = <String>[];
   @override
-  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 1024}) async {
+  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 0, Duration perCall = const Duration(seconds: 50), Duration budget = const Duration(seconds: 100)}) async {
     prompts.add(prompt);
     return replies.removeAt(0);
   }

@@ -10,7 +10,7 @@ class _FakeAi extends AiDesigner {
   final prompts = <String>[];
 
   @override
-  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 1024}) async {
+  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 0, Duration perCall = const Duration(seconds: 50), Duration budget = const Duration(seconds: 100)}) async {
     prompts.add(prompt);
     final body = List.filled(80, '<div class="card">منتج</div>').join();
     return 'Here it is:\n```html\n<!doctype html><html dir="rtl"><body><nav id="alpha-screens"></nav>$body</body></html>\n```';
@@ -65,5 +65,5 @@ void main() {
 class _BadAi extends AiDesigner {
   _BadAi() : super(claudeKey: 'x', geminiKeys: const []);
   @override
-  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 1024}) async => 'sorry';
+  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 0, Duration perCall = const Duration(seconds: 50), Duration budget = const Duration(seconds: 100)}) async => 'sorry';
 }

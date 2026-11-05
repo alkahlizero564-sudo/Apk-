@@ -59,7 +59,7 @@ class AiDesigner {
   static const claudeModels = ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-5-5'];
   static const geminiFallbacks = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
 
-  Future<String> _claude(String model, String prompt, {int maxTokens = 8000}) async {
+  Future<String> _claude(String model, String prompt, {int maxTokens = 8000, Duration timeout = const Duration(seconds: 90)}) async {
     final res = await http
         .post(Uri.parse('https://api.anthropic.com/v1/messages'),
             headers: {'x-api-key': claudeKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
@@ -70,7 +70,7 @@ class AiDesigner {
                 {'role': 'user', 'content': prompt}
               ],
             }))
-        .timeout(const Duration(minutes: 6));
+        .timeout(timeout);
     if (res.statusCode >= 300) throw AiCallError('Claude', res.statusCode, res.body);
     final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map;
     final text = ((j['content'] as List).where((b) => b['type'] == 'text').map((b) => b['text'])).join();
@@ -78,19 +78,19 @@ class AiDesigner {
     return text;
   }
 
-  Future<String> _gemini(String model, String prompt, String geminiKey, {bool json = true, double temperature = 0.3, int? thinking}) async {
+  Future<String> _gemini(String model, String prompt, String geminiKey, {bool json = true, double temperature = 0.3, int? thinking, Duration timeout = const Duration(seconds: 90)}) async {
     try {
-      return await _geminiOnce(model, prompt, geminiKey, json: json, temperature: temperature, thinking: thinking);
+      return await _geminiOnce(model, prompt, geminiKey, json: json, temperature: temperature, thinking: thinking, timeout: timeout);
     } on AiCallError catch (e) {
       // A model that does not take a thinking budget: the same call without it.
       if (thinking != null && e.status == 400 && e.body.toLowerCase().contains('thinking')) {
-        return _geminiOnce(model, prompt, geminiKey, json: json, temperature: temperature);
+        return _geminiOnce(model, prompt, geminiKey, json: json, temperature: temperature, timeout: timeout);
       }
       rethrow;
     }
   }
 
-  Future<String> _geminiOnce(String model, String prompt, String geminiKey, {bool json = true, double temperature = 0.3, int? thinking}) async {
+  Future<String> _geminiOnce(String model, String prompt, String geminiKey, {bool json = true, double temperature = 0.3, int? thinking, Duration timeout = const Duration(seconds: 90)}) async {
     final res = await http
         .post(Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent'),
             headers: {'x-goog-api-key': geminiKey, 'content-type': 'application/json'},
@@ -114,7 +114,7 @@ class AiDesigner {
                   {'category': c, 'threshold': 'BLOCK_ONLY_HIGH'},
               ],
             }))
-        .timeout(const Duration(minutes: 6));
+        .timeout(timeout);
     if (res.statusCode >= 300) throw AiCallError('Gemini', res.statusCode, res.body);
     final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map;
     final cands = (j['candidates'] as List?) ?? const [];
@@ -127,16 +127,27 @@ class AiDesigner {
   /// Asks the AI. Every model and every key is tried in turn (a busy model, a key out of quota or a model that
   /// is not available does not stop the work), then everything once more after a short wait.
   /// [json]: the answer is JSON (default); otherwise free text such as fenced code files.
-  /// [thinking]: Gemini's thinking budget in tokens (null: the model's default, slow but deep).
-  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 1024}) async {
+  /// [thinking]: Gemini's thinking budget (null = the model's default, slow but deep; 0 = fastest).
+  /// [perCall]: timeout of one request. [budget]: the whole step never runs longer than this — attempts stop when it
+  /// passes, so understanding and design can never pile up to many minutes.
+  Future<String> ask(String prompt,
+      {bool json = true,
+      double temperature = 0.3,
+      int maxTokens = 8000,
+      int? thinking = 0,
+      Duration perCall = const Duration(seconds: 50),
+      Duration budget = const Duration(seconds: 100)}) async {
     if (!available) throw Exception('أضف مفتاح Claude أو Gemini في الإعدادات.');
     AiCallError? last;
+    final watch = Stopwatch()..start();
+    bool over() => watch.elapsed >= budget;
     final gModels = [geminiModel, ...geminiFallbacks.where((m) => m != geminiModel)];
     Future<String?> tryClaude() async {
       if (claudeKey.isEmpty) return null;
       for (final m in claudeModels) {
+        if (over()) return null;
         try {
-          return await _claude(m, prompt, maxTokens: maxTokens);
+          return await _claude(m, prompt, maxTokens: maxTokens, timeout: perCall);
         } on AiCallError catch (e) {
           last = e;
           if (e.badKey) return null; // a wrong key: the other provider
@@ -150,11 +161,13 @@ class AiDesigner {
     Future<String?> tryGemini() async {
       for (final m in gModels) {
         for (final key in geminiKeys) {
+          if (over()) return null;
           try {
-            return await _gemini(m, prompt, key, json: json, temperature: temperature, thinking: thinking);
+            return await _gemini(m, prompt, key, json: json, temperature: temperature, thinking: thinking, timeout: perCall);
           } on AiCallError catch (e) {
             last = e;
             if (e.status == 404) break; // this model is not available: the next model
+            if (e.badKey) break; // a wrong key: the next model won't help this key loop, try next model
           } catch (e) {
             last = AiCallError('Gemini', 0, '$e');
           }
@@ -164,14 +177,15 @@ class AiDesigner {
     }
 
     final order = geminiFirst ? [tryGemini, tryClaude] : [tryClaude, tryGemini];
-    for (var round = 0; round < 2; round++) {
+    for (var round = 0; round < 2 && !over(); round++) {
       for (final attempt in order) {
         final text = await attempt();
         if (text != null) return text;
+        if (over()) break;
       }
-      if (round == 0) await Future<void>.delayed(const Duration(seconds: 4));
+      if (round == 0 && !over()) await Future<void>.delayed(const Duration(seconds: 3));
     }
-    throw Exception(last?.arabic ?? 'لم يرد الذكاء الاصطناعي، حاول بعد قليل.');
+    throw Exception(last?.arabic ?? 'لم يرد الذكاء الاصطناعي خلال الوقت المحدّد، حاول مرة أخرى.');
   }
 
 
@@ -244,7 +258,7 @@ briefly. Your job is to understand EXACTLY what they have in mind, not to invent
   Future<Understanding> _understanding(String prompt, String description) async {
     String? answer;
     try {
-      answer = await ask(prompt, json: false, maxTokens: 8000, thinking: 1024);
+      answer = await ask(prompt, json: false, maxTokens: 8000, thinking: 256, perCall: const Duration(seconds: 45), budget: const Duration(seconds: 75));
       return Understanding.fromJson(_json(answer));
     } catch (e) {
       if (answer == null) rethrow; // no answer at all (key, network): the owner must see why
@@ -252,7 +266,7 @@ briefly. Your job is to understand EXACTLY what they have in mind, not to invent
     try {
       final repair = '$prompt\n\nYour previous answer could not be read:\n${answer.length > 6000 ? answer.substring(0, 6000) : answer}\n\n'
           'Reply again with ONLY the JSON object in the exact format above (double quotes, no comments, no markdown).';
-      return Understanding.fromJson(_json(await ask(repair, json: true, maxTokens: 8000, thinking: 0)));
+      return Understanding.fromJson(_json(await ask(repair, json: true, maxTokens: 8000, thinking: 0, perCall: const Duration(seconds: 45), budget: const Duration(seconds: 60))));
     } catch (_) {
       return Understanding.fromOwnerWords(description, answer);
     }
@@ -386,7 +400,7 @@ high-fidelity, clickable prototype of the WHOLE app:
         'Mobile-first full-height layout, no external resources (inline SVG or emoji icons), working navigation, '
         'buttons, forms and lists with realistic sample data, localStorage for state. RTL Arabic when the request is Arabic.\n\n'
         '${await designBrief()}\nReply with ONLY the file inside a single ```html code block.\n\nApp description:\n$description';
-    final html = _extractHtml(await ask(prompt, json: false, temperature: 0.5, maxTokens: 32000, thinking: 2048));
+    final html = _extractHtml(await ask(prompt, json: false, temperature: 0.5, maxTokens: 32000, thinking: 1024, perCall: const Duration(seconds: 120), budget: const Duration(seconds: 200)));
     await prefs.setString(key, html);
     return html;
   }
@@ -407,7 +421,7 @@ high-fidelity, clickable prototype of the WHOLE app:
           '${brandFrom.isEmpty ? '' : '\nThis app belongs to the same business as the design below. Use the SAME brand: palette, fonts, corner radius, icon style and component look, so the two apps feel like one product:\n```html\n${brandFrom.length > 40000 ? brandFrom.substring(0, 40000) : brandFrom}\n```\n'}'
           '${change.isEmpty ? '' : '\nThe owner also wants: $change\n'}';
     }
-    return _extractHtml(await ask(prompt, json: false, temperature: current.isEmpty ? 0.7 : 0.5, maxTokens: 32000, thinking: 2048));
+    return _extractHtml(await ask(prompt, json: false, temperature: current.isEmpty ? 0.7 : 0.5, maxTokens: 32000, thinking: 1024, perCall: const Duration(seconds: 120), budget: const Duration(seconds: 200)));
   }
 
   /// Step "التصميم": the AI itself designs the whole interface of the app from its description, as a senior UI designer:
@@ -461,7 +475,7 @@ Rules:
   Only the listed libraries (they exist as globals only if you use them by name).
 ${native ? '- The spec matters most: the real app is ${p.lang.label} code written from it; the CSS is its instant preview.' : '- The CSS and JS ARE the real app (${p.lang.label}); the spec documents it.'}
 """;
-    final text = await ask(prompt, json: false, temperature: 0.85, maxTokens: 16000);
+    final text = await ask(prompt, json: false, temperature: 0.85, maxTokens: 16000, thinking: 512, perCall: const Duration(seconds: 120), budget: const Duration(seconds: 200));
     final files = codeFiles(text);
     final css = files['design.css'] ?? files['css'] ?? '';
     if (css.trim().length < 400) throw Exception('لم يكتمل التصميم من الذكاء الاصطناعي، جرّب مرة أخرى');
@@ -566,7 +580,7 @@ Every data item in the approved checklist must have its table and fields, with t
 Rules: 2 to 6 tables, 3 to 8 columns each, never columns named id, created_at, updated_at, customer_id.
 Orders/bookings: notify admin on insert and the owner on update, with a status choice column that is adminOnly.
 ''';
-    final j = _json(await ask(prompt));
+    final j = _json(await ask(prompt, thinking: 256, perCall: const Duration(seconds: 50), budget: const Duration(seconds: 80)));
     final schema = DbSchema.fromJson(j['tables'] as List?);
     // Choice columns without options would break the SQL: fix them instead of failing.
     for (final t in schema.tables) {
