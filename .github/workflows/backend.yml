@@ -13,6 +13,10 @@ on:
         description: "true: build every app of the project afterwards"
         required: false
         default: "true"
+      ref:
+        description: "A client's own Supabase project (its token is the secret SUPABASE_TOKEN_<REF>); empty: the main project"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -27,6 +31,8 @@ jobs:
     env:
       BASE: ${{ inputs.base }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      CLIENT_REF: ${{ inputs.ref }}
+      SUPABASE_CLIENT_TOKEN: ${{ inputs.ref != '' && secrets[format('SUPABASE_TOKEN_{0}', inputs.ref)] || '' }}
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_REF }}
       SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

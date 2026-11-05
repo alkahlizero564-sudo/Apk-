@@ -331,20 +331,28 @@ class AppState extends ChangeNotifier {
 
   /// Full server setup in GitHub Actions (tables, sign-in, push), then builds the apps.
   Future<void> setupServer(Project p, {bool buildAfter = true}) async {
-    if (p.backend == BackendType.supabase && (!hasSupabase || supabaseRef.isEmpty && p.supabaseRef.isEmpty)) {
+    if (p.backend == BackendType.supabase && !p.forClient && (!hasSupabase || supabaseRef.isEmpty && p.supabaseRef.isEmpty)) {
       throw Exception('أضف توكن Supabase ومعرّف المشروع (Project ref) في الإعدادات.');
+    }
+    if (p.backend == BackendType.supabase && p.forClient && (await tokenFor(p.supabaseRef)).isEmpty) {
+      throw Exception('مفتاح قاعدة بيانات الزبون غير محفوظ على هذا الهاتف: أضفها من جديد (لمين ← لزبون).');
     }
     if (p.backend == BackendType.firebase && !hasFirebase) throw Exception('أضف ملف Firebase Service Account في الإعدادات.');
     final gh = await github();
-    await gh.dispatch('backend.yml', await _branch(gh), {'base': p.base, 'build': '$buildAfter'});
+    await gh.dispatch('backend.yml', await _branch(gh), {
+      'base': p.base,
+      'build': '$buildAfter',
+      // A client's database: the workflow uses that client's token (secret SUPABASE_TOKEN_<REF>).
+      if (p.forClient && p.supabaseRef.isNotEmpty) 'ref': p.supabaseRef,
+    });
     await Future<void>.delayed(const Duration(seconds: 3));
     await refreshRuns();
   }
 
   /// Runs the project's SQL on Supabase right now from the phone (no workflow), and saves the keys.
   Future<String> applySqlNow(Project p) async {
-    final token = await Storage.secret(Storage.supabaseToken);
     final ref = p.supabaseRef.isNotEmpty ? p.supabaseRef : supabaseRef;
+    final token = await tokenFor(ref);
     if (token.isEmpty || ref.isEmpty) throw Exception('أضف توكن Supabase ومعرّف المشروع في الإعدادات.');
     final admin = SupabaseAdmin(token);
     await admin.sql(ref, projectSql(p));
@@ -359,12 +367,83 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> sendTestNotification(Project p, {required String toRole, required String title, required String body}) async {
-    final token = await Storage.secret(Storage.supabaseToken);
     final ref = p.supabaseRef.isNotEmpty ? p.supabaseRef : supabaseRef;
+    final token = await tokenFor(ref);
     if (token.isEmpty || ref.isEmpty) throw Exception('أضف توكن Supabase ومعرّف المشروع في الإعدادات.');
     String q(String s) => "'${s.replaceAll("'", "''")}'";
     await SupabaseAdmin(token).sql(ref,
         'insert into public.${p.prefix}_notifications (to_role, title, body, created_by) values (${q(toRole)}, ${q(title)}, ${q(body)}, null);');
+  }
+
+  // ---------- client databases ----------
+  // Besides the main Supabase project (settings), each client can have its own database: a project in the client's
+  // own Supabase account (its ref + that account's access token) or one Alpha creates in the owner's account.
+  // The token stays on the phone and goes to the repository as SUPABASE_TOKEN_<REF> (backend.yml reads it).
+
+  static const supabaseRegions = {
+    'eu-central-1': 'فرانكفورت (الأقرب للشرق الأوسط)',
+    'ap-south-1': 'مومباي',
+    'eu-west-2': 'لندن',
+    'us-east-1': 'أمريكا (شرق)',
+  };
+
+  static bool validRef(String ref) => RegExp(r'^[a-z]{20}$').hasMatch(ref);
+
+  Future<List<ClientDb>> clientDbs() async {
+    try {
+      return (jsonDecode(await Storage.get('client_dbs', '[]')) as List)
+          .map((e) => ClientDb.fromJson((e as Map).cast<String, dynamic>()))
+          .where((c) => validRef(c.ref))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// The access token that manages a Supabase project: the client's own one when it was added, else the main one.
+  Future<String> tokenFor(String ref) async {
+    if (ref.isNotEmpty) {
+      final own = await Storage.secret('supabase_token_$ref');
+      if (own.isNotEmpty) return own;
+    }
+    return Storage.secret(Storage.supabaseToken);
+  }
+
+  Future<ClientDb> _remember(ClientDb c, String token) async {
+    await Storage.setSecret('supabase_token_${c.ref}', token);
+    if (hasGitHub) await (await github()).setSecret('SUPABASE_TOKEN_${c.ref.toUpperCase()}', token);
+    final list = (await clientDbs()).where((x) => x.ref != c.ref).toList()..add(c);
+    await Storage.set('client_dbs', jsonEncode(list.map((x) => x.toJson()).toList()));
+    notifyListeners();
+    return c;
+  }
+
+  /// A project in the client's own Supabase account: checked with Supabase before it is saved.
+  Future<ClientDb> addClientDb(String label, String ref, String token) async {
+    ref = ref.trim().toLowerCase();
+    token = token.trim();
+    if (!validRef(ref)) throw Exception('رمز المشروع (Project Ref) 20 حرفاً إنجليزياً صغيراً، من رابط المشروع: supabase.com/dashboard/project/<الرمز>');
+    if (!token.startsWith('sbp_')) throw Exception('مفتاح الوصول يبدأ بـ sbp_ (من حساب الزبون: Account ← Access Tokens)، وليس مفتاح anon.');
+    final info = await SupabaseAdmin(token).project(ref);
+    final name = label.trim().isNotEmpty ? label.trim() : (info.name.isNotEmpty ? info.name : ref);
+    return _remember(ClientDb(ref: ref, label: name, inClientAccount: true, region: info.region), token);
+  }
+
+  /// A new project in the owner's account (the main token), for a client.
+  Future<ClientDb> createClientDb(String label, String region, {void Function(String step)? onStep}) async {
+    final token = await Storage.secret(Storage.supabaseToken);
+    if (token.isEmpty) throw Exception('أضف توكن Supabase الخاص بك في الإعدادات أولاً.');
+    final name = label.trim().replaceAll(RegExp('[<>"\'`\\\\]'), '');
+    final p = await SupabaseAdmin(token).createProject(name.isEmpty ? 'alpha-client' : name, region, onStep: onStep);
+    return _remember(ClientDb(ref: p.ref, label: name.isEmpty ? p.ref : name, inClientAccount: false, region: region), token);
+  }
+
+  /// Removes it from Alpha only; the project and its data stay in Supabase.
+  Future<void> removeClientDb(String ref) async {
+    final list = (await clientDbs()).where((x) => x.ref != ref).toList();
+    await Storage.set('client_dbs', jsonEncode(list.map((x) => x.toJson()).toList()));
+    await Storage.setSecret('supabase_token_$ref', '');
+    notifyListeners();
   }
 
   // ---------- AI edits of an existing app ----------
@@ -475,4 +554,17 @@ class AppState extends ChangeNotifier {
       p.backend == BackendType.none ||
       serverStatus[p.base]?['ready'] == true ||
       (p.backend == BackendType.supabase && p.supabaseAnonKey.isNotEmpty);
+}
+
+/// A client's database (a Supabase project).
+class ClientDb {
+  ClientDb({required this.ref, required this.label, required this.inClientAccount, this.region = ''});
+  final String ref;
+  final String label;
+  final bool inClientAccount; // true: the client's own Supabase account; false: created in the owner's account
+  final String region;
+
+  Map<String, dynamic> toJson() => {'ref': ref, 'label': label, 'client': inClientAccount, 'region': region};
+  factory ClientDb.fromJson(Map<String, dynamic> j) =>
+      ClientDb(ref: '${j['ref'] ?? ''}', label: '${j['label'] ?? ''}', inClientAccount: j['client'] != false, region: '${j['region'] ?? ''}');
 }

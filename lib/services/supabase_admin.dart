@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
@@ -35,6 +36,56 @@ class SupabaseAdmin {
       throw Exception(res.statusCode == 401 ? 'توكن Supabase غير صحيح.' : 'Supabase (${res.statusCode}): $msg');
     }
     return res.body.isEmpty ? null : jsonDecode(utf8.decode(res.bodyBytes));
+  }
+
+  /// One project (checks the ref and that this token may manage it).
+  Future<SupabaseProject> project(String ref) async {
+    try {
+      return SupabaseProject(((await _req('GET', '/projects/$ref')) as Map).cast<String, dynamic>());
+    } catch (e) {
+      if ('$e'.contains('(403)') || '$e'.contains('(404)')) throw Exception('المشروع غير موجود أو هذا المفتاح لا يملك صلاحية عليه.');
+      rethrow;
+    }
+  }
+
+  /// Creates a project in this token's first organization and waits until it is ready (about 2 minutes).
+  Future<SupabaseProject> createProject(String name, String region, {void Function(String step)? onStep}) async {
+    onStep?.call('قراءة حسابك في Supabase');
+    final orgs = (await _req('GET', '/organizations')) as List;
+    if (orgs.isEmpty) throw Exception('حسابك في Supabase بدون منظمة (Organization). أنشئ واحدة في supabase.com أولاً.');
+    final org = (orgs.first as Map).cast<String, dynamic>();
+    onStep?.call('إنشاء المشروع');
+    const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rnd = Random.secure();
+    final pass = List.generate(24, (_) => chars[rnd.nextInt(chars.length)]).join();
+    Map created;
+    try {
+      created = await _req('POST', '/projects', {
+        'name': name,
+        'organization_slug': org['slug'] ?? org['id'],
+        'db_pass': pass,
+        'region': region,
+      }) as Map;
+    } catch (e) {
+      if (RegExp(r'limit|maximum|free', caseSensitive: false).hasMatch('$e')) {
+        throw Exception('وصلت لحد المشاريع المجانية في Supabase (مشروعان نشطان). أوقف مشروعاً قديماً، أو رقِّ الخطة، أو استخدم حساب الزبون.');
+      }
+      rethrow;
+    }
+    final ref = '${created['ref'] ?? created['id']}';
+    onStep?.call('تجهيز قاعدة البيانات (دقيقتان تقريباً)');
+    final until = DateTime.now().add(const Duration(minutes: 8));
+    while (DateTime.now().isBefore(until)) {
+      await Future<void>.delayed(const Duration(seconds: 10));
+      try {
+        final p = await project(ref);
+        if (p.status == 'ACTIVE_HEALTHY') return p;
+        if (p.status == 'INIT_FAILED') throw Exception('فشل Supabase في تجهيز المشروع. جرّب لاحقاً.');
+      } catch (e) {
+        if ('$e'.contains('INIT_FAILED') || '$e'.contains('فشل')) rethrow;
+      }
+    }
+    throw Exception('المشروع $ref ما زال يُجهَّز في Supabase. انتظر دقائق ثم أضفه من «مشروع في حساب الزبون» بنفس الرمز.');
   }
 
   Future<List<SupabaseProject>> projects() async =>

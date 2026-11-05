@@ -200,8 +200,20 @@ def check_smtp(smtp):
 
 
 def setup_supabase(proj, pdir):
-    token = need("SUPABASE_ACCESS_TOKEN", "the Supabase access token (supabase.com > Account > Access Tokens)")
-    ref = proj.get("supabaseRef") or need("SUPABASE_PROJECT_REF", "the Supabase project ref")
+    client_ref = os.environ.get("CLIENT_REF", "").strip()
+    if client_ref:
+        # A client's own database: its ref and that client's token (secret SUPABASE_TOKEN_<REF>), never the main project.
+        token = os.environ.get("SUPABASE_CLIENT_TOKEN", "").strip()
+        if not token:
+            raise SystemExit(f"The token of the client's database {client_ref} is missing (secret SUPABASE_TOKEN_{client_ref.upper()}). "
+                             "Add the client's database again in Alpha (لمين ← لزبون).")
+        ref = client_ref
+        if proj.get("supabaseRef") and proj["supabaseRef"] != ref:
+            raise SystemExit(f"projects/{proj.get('base')} belongs to Supabase project {proj['supabaseRef']}, not {ref}")
+        print(f"Client database: {ref}")
+    else:
+        token = need("SUPABASE_ACCESS_TOKEN", "the Supabase access token (supabase.com > Account > Access Tokens)")
+        ref = proj.get("supabaseRef") or need("SUPABASE_PROJECT_REF", "the Supabase project ref")
     p = proj["prefix"]
     sql = (pdir / "schema.sql").read_text(encoding="utf-8")
     print(f"Running the database script of {p} on Supabase project {ref}…")

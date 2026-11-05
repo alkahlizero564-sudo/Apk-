@@ -57,6 +57,7 @@ Map<String, dynamic> factoryProject(Project p) => {
       'push': p.push && p.lang.supportsPush,
       'admins': p.admins,
       if (p.supabaseRef.isNotEmpty) 'supabaseRef': p.supabaseRef,
+      if (p.forClient) 'client': p.clientName,
       'apps': [
         for (final a in p.apps) {'slug': a.slug, 'role': a.role, 'title': a.title, 'package': packageFor(a.slug)}
       ],
