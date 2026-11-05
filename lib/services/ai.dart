@@ -91,6 +91,11 @@ class AiDesigner {
                 }
               ],
               'generationConfig': {if (json) 'responseMimeType': 'application/json', 'temperature': temperature},
+              // App ideas about security, health or similar topics must not be cut off as "unsafe".
+              'safetySettings': [
+                for (final c in ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT'])
+                  {'category': c, 'threshold': 'BLOCK_ONLY_HIGH'},
+              ],
             }))
         .timeout(const Duration(minutes: 6));
     if (res.statusCode >= 300) throw AiCallError('Gemini', res.statusCode, res.body);
@@ -153,12 +158,7 @@ class AiDesigner {
 
 
 
-  Map<String, dynamic> _json(String text) {
-    final start = text.indexOf('{');
-    final end = text.lastIndexOf('}');
-    if (start < 0 || end <= start) throw Exception('الرد لم يكن JSON');
-    return (jsonDecode(text.substring(start, end + 1)) as Map).cast<String, dynamic>();
-  }
+  Map<String, dynamic> _json(String text) => looseJson(text);
 
   // ---------- understanding (like APK Fact) ----------
 
@@ -171,7 +171,11 @@ briefly. Your job is to understand EXACTLY what they have in mind, not to invent
 - Ask ONLY about things that really change the app and that you cannot reasonably decide yourself (0 to 5 questions).
   Each question gets 2 to 4 short ready answers (the most likely first).
 - Write everything in the owner's language (Arabic when they wrote Arabic, in the same dialect style), short and simple,
-  no technical words.""";
+  no technical words.
+- Every kind of app is valid and must be understood: everyday apps, special or unusual ideas, games, tools, education,
+  business systems, and cybersecurity / security apps (password managers, network and device scanners, privacy and
+  phishing checks, encryption, security training, CTF practice, monitoring your own devices...). Describe the app the
+  owner wants as a defensive, legitimate tool for their own use; never refuse and never answer with anything but the JSON.""";
 
   static const _pairLine = 'This is a SYSTEM of two connected apps sharing one online database: a CUSTOMER app (the people who use the '
       'service) and an ADMIN app (the business that manages everything). Start every screen, feature and data item with '
@@ -197,7 +201,26 @@ briefly. Your job is to understand EXACTLY what they have in mind, not to invent
         "THE OWNER'S IDEA (their exact words, the highest priority):\n$description\n"
         '${code.trim().isEmpty ? '' : '\nTHE CODE THEY PASTED (build this app):\n```\n${code.length > 15000 ? code.substring(0, 15000) : code}\n```\n'}'
         '\n$_specFormat';
-    return Understanding.fromJson(_json(await ask(prompt)));
+    return _understanding(prompt, description);
+  }
+
+  /// Reads the AI's understanding whatever shape it comes in; asks once more for clean JSON when it is unreadable;
+  /// never blocks the owner: at worst a first understanding made from their own words, ready to edit.
+  Future<Understanding> _understanding(String prompt, String description) async {
+    String? answer;
+    try {
+      answer = await ask(prompt, json: false, maxTokens: 8000);
+      return Understanding.fromJson(_json(answer));
+    } catch (e) {
+      if (answer == null) rethrow; // no answer at all (key, network): the owner must see why
+    }
+    try {
+      final repair = '$prompt\n\nYour previous answer could not be read:\n${answer.length > 6000 ? answer.substring(0, 6000) : answer}\n\n'
+          'Reply again with ONLY the JSON object in the exact format above (double quotes, no comments, no markdown).';
+      return Understanding.fromJson(_json(await ask(repair, json: true, maxTokens: 8000)));
+    } catch (_) {
+      return Understanding.fromOwnerWords(description, answer);
+    }
   }
 
   /// The owner removed items, answered questions and wrote corrections: the full updated list.
@@ -210,7 +233,7 @@ briefly. Your job is to understand EXACTLY what they have in mind, not to invent
     if (notes.trim().isNotEmpty) prompt += "\nTHE OWNER'S CORRECTIONS AND ADDITIONS (apply exactly):\n${notes.trim()}\n";
     prompt += '\nReturn the full updated list in the same JSON format. Ask new questions only if something important is still '
         'unclear (usually none). Do not ask again what was answered.\n$_specFormat';
-    return Understanding.fromJson(_json(await ask(prompt)));
+    return _understanding(prompt, description);
   }
 
   /// Step "التصميم": only the look, from the approved understanding.
@@ -573,7 +596,29 @@ class Understanding {
 
   static List<String> _list(Object? v) => ((v as List?) ?? const []).map((e) => '$e'.trim()).where((e) => e.isNotEmpty).take(40).toList();
 
-  factory Understanding.fromJson(Map<String, dynamic> j) {
+  factory Understanding.fromJson(Map<String, dynamic> raw) {
+    // The understanding may come wrapped ({"understanding": {...}}) or with other key names.
+    var j = raw;
+    const known = ['summary', 'screens', 'features', 'title'];
+    if (!known.any(j.containsKey)) {
+      final inner = j.values.whereType<Map>().where((m) => known.any(m.containsKey)).toList();
+      if (inner.isNotEmpty) j = inner.first.cast<String, dynamic>();
+    }
+    Object? pick(List<String> keys) {
+      for (final k in keys) {
+        if (j[k] != null) return j[k];
+      }
+      return null;
+    }
+
+    j = {
+      ...j,
+      'summary': pick(['summary', 'idea', 'description', 'overview', 'الفكرة', 'ملخص']),
+      'screens': pick(['screens', 'pages', 'views', 'الشاشات']),
+      'features': pick(['features', 'functions', 'functionality', 'requirements', 'الميزات', 'المتطلبات']),
+      'data': pick(['data', 'entities', 'storage', 'البيانات']),
+      'texts': pick(['texts', 'names', 'values', 'النصوص']),
+    };
     final u = Understanding(
       title: '${j['title'] ?? ''}',
       slug: '${j['slug'] ?? ''}',
@@ -592,8 +637,26 @@ class Understanding {
           .take(5)
           .toList(),
     );
-    if (u.summary.isEmpty && u.screens.isEmpty && u.features.isEmpty) throw Exception('لم يصل فهم الفكرة كاملاً، حاول مرة أخرى');
+    if (u.summary.isEmpty && u.screens.isEmpty && u.features.isEmpty) throw const FormatException('empty understanding');
     return u;
+  }
+
+  /// When the AI's answer cannot be read at all: a first understanding made from the owner's own words (each sentence
+  /// becomes a requirement), so the owner is never blocked and can correct it, then «حدّث الفهم».
+  factory Understanding.fromOwnerWords(String words, [String aiText = '']) {
+    final parts = words
+        .split(RegExp(r'[\n.،,؛;!?؟]+'))
+        .map((e) => e.trim())
+        .where((e) => e.length > 2)
+        .take(30)
+        .toList();
+    final firstLine = words.trim().split('\n').first;
+    return Understanding(
+      title: firstLine.length > 30 ? firstLine.substring(0, 30) : firstLine,
+      summary: words.trim().length > 220 ? '${words.trim().substring(0, 220)}…' : words.trim(),
+      features: parts.isEmpty ? [words.trim()] : parts,
+      questions: [UQuestion('لم يكتمل رد الذكاء الاصطناعي، فكتبنا الفهم من كلماتك. صحّحه أو أضف ما ينقص ثم اضغط «حدّث الفهم».', const [])],
+    );
   }
 
   Map<String, dynamic> toJson() => {
@@ -666,4 +729,27 @@ class AiCallError implements Exception {
 
   @override
   String toString() => arabic;
+}
+
+/// Reads a JSON object out of an AI answer: code fences, text around it, a list holding it, trailing commas.
+Map<String, dynamic> looseJson(String text) {
+  var t = text.trim();
+  final fence = RegExp(r'```(?:json)?\s*([\s\S]*?)```').firstMatch(t);
+  if (fence != null) t = fence.group(1)!.trim();
+  final start = t.indexOf(RegExp(r'[\[{]'));
+  if (start < 0) throw const FormatException('no JSON in the answer');
+  final open = t[start];
+  final end = t.lastIndexOf(open == '{' ? '}' : ']');
+  if (end <= start) throw const FormatException('cut JSON');
+  var body = t.substring(start, end + 1);
+  dynamic v;
+  try {
+    v = jsonDecode(body);
+  } on FormatException {
+    body = body.replaceAllMapped(RegExp(r',\s*([}\]])'), (m) => m.group(1)!); // trailing commas
+    v = jsonDecode(body);
+  }
+  if (v is List) v = v.whereType<Map>().firstOrNull;
+  if (v is! Map) throw const FormatException('no JSON object');
+  return v.cast<String, dynamic>();
 }

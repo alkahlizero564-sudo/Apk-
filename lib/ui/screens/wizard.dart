@@ -94,6 +94,7 @@ class _WizardScreenState extends State<WizardScreen> {
 
   final Map<String, String> _answers = {}; // question → chosen answer
   bool _refineBusy = false;
+  String _understandError = '';
 
   /// Step "الفهم": the AI only understands the description (and the pasted code).
   Future<void> _understand() async {
@@ -103,7 +104,10 @@ class _WizardScreenState extends State<WizardScreen> {
       if (mounted) showMessage(context, 'أضف مفتاح Claude أو Gemini في الإعدادات ليفهم الذكاء الاصطناعي فكرتك', error: true);
       return;
     }
-    setState(() => _understandBusy = true);
+    setState(() {
+      _understandBusy = true;
+      _understandError = '';
+    });
     try {
       final u = await ai.understand(_desc.text.trim(), code: _hasCode ? _code.text : '', kind: _kind, lang: _lang);
       setState(() {
@@ -111,7 +115,7 @@ class _WizardScreenState extends State<WizardScreen> {
         _answers.clear();
       });
     } catch (e) {
-      if (mounted) showMessage(context, '$e', error: true);
+      if (mounted) setState(() => _understandError = '$e'.replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _understandBusy = false);
     }
@@ -521,9 +525,21 @@ class _WizardScreenState extends State<WizardScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const Text('لم يصل الفهم بعد.', style: TextStyle(fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
-              const Text('تأكد من مفتاح الذكاء الاصطناعي في الإعدادات ثم اضغط:', style: TextStyle(color: AlphaColors.muted)),
+              Text(_understandError.isEmpty ? 'اضغط ليفهم الذكاء الاصطناعي فكرتك:' : 'السبب: $_understandError',
+                  style: TextStyle(color: _understandError.isEmpty ? AlphaColors.muted : AlphaColors.amber, height: 1.5)),
               const SizedBox(height: 10),
-              GradientButton(label: 'افهم فكرتي', icon: Icons.psychology_rounded, onPressed: _understand),
+              GradientButton(label: _understandError.isEmpty ? 'افهم فكرتي' : 'حاول مرة أخرى', icon: Icons.psychology_rounded, onPressed: _understand),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _desc.text.trim().isEmpty
+                    ? null
+                    : () => setState(() {
+                          _understood = Understanding.fromOwnerWords(_desc.text.trim());
+                          _understandError = '';
+                        }),
+                icon: const Icon(Icons.edit_note_rounded),
+                label: const Text('تابع بكلماتي (أصحّح الفهم بنفسي)'),
+              ),
             ]),
           ),
         if (u != null && !_understandBusy) ...[
