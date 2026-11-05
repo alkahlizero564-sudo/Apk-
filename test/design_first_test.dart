@@ -18,6 +18,19 @@ class _FakeAi extends AiDesigner {
 }
 
 void main() {
+  final p0 = Project(id: '1', base: 'cafe', title: 'مقهى', lang: Lang.html, kind: ProjectKind.single, apps: Project.unitsFor('cafe', 'مقهى', ProjectKind.single));
+
+  test('a design reply with no code fence and no closing tag is still recovered (not a failure)', () async {
+    final body = List.filled(80, '<section class="card">شاشة</section>').join();
+    final html = await _RawAi('<!doctype html><html dir="rtl"><body>$body').designPrototype(p0, p0.apps.first);
+    expect(html, startsWith('<!doctype html>'));
+    expect(html.toLowerCase(), contains('</html>'));
+  });
+
+  test('a too-short / non-HTML design reply is rejected', () async {
+    expect(() => _RawAi('عذراً لا أستطيع').designPrototype(p0, p0.apps.first), throwsException);
+  });
+
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('design first: each app drawn as a whole prototype, the admin app takes the customer brand, files written per app', () async {
@@ -66,4 +79,11 @@ class _BadAi extends AiDesigner {
   _BadAi() : super(claudeKey: 'x', geminiKeys: const []);
   @override
   Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 0, Duration perCall = const Duration(seconds: 50), Duration budget = const Duration(seconds: 100)}) async => 'sorry';
+}
+
+class _RawAi extends AiDesigner {
+  _RawAi(this.reply) : super(claudeKey: 'x', geminiKeys: const []);
+  final String reply;
+  @override
+  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 0, Duration perCall = const Duration(seconds: 50), Duration budget = const Duration(seconds: 100)}) async => reply;
 }

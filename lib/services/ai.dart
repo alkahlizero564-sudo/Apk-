@@ -78,19 +78,19 @@ class AiDesigner {
     return text;
   }
 
-  Future<String> _gemini(String model, String prompt, String geminiKey, {bool json = true, double temperature = 0.3, int? thinking, Duration timeout = const Duration(seconds: 90)}) async {
+  Future<String> _gemini(String model, String prompt, String geminiKey, {bool json = true, double temperature = 0.3, int? thinking, int maxTokens = 8000, Duration timeout = const Duration(seconds: 90)}) async {
     try {
-      return await _geminiOnce(model, prompt, geminiKey, json: json, temperature: temperature, thinking: thinking, timeout: timeout);
+      return await _geminiOnce(model, prompt, geminiKey, json: json, temperature: temperature, thinking: thinking, maxTokens: maxTokens, timeout: timeout);
     } on AiCallError catch (e) {
       // A model that does not take a thinking budget: the same call without it.
       if (thinking != null && e.status == 400 && e.body.toLowerCase().contains('thinking')) {
-        return _geminiOnce(model, prompt, geminiKey, json: json, temperature: temperature, timeout: timeout);
+        return _geminiOnce(model, prompt, geminiKey, json: json, temperature: temperature, maxTokens: maxTokens, timeout: timeout);
       }
       rethrow;
     }
   }
 
-  Future<String> _geminiOnce(String model, String prompt, String geminiKey, {bool json = true, double temperature = 0.3, int? thinking, Duration timeout = const Duration(seconds: 90)}) async {
+  Future<String> _geminiOnce(String model, String prompt, String geminiKey, {bool json = true, double temperature = 0.3, int? thinking, int maxTokens = 8000, Duration timeout = const Duration(seconds: 90)}) async {
     final res = await http
         .post(Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent'),
             headers: {'x-goog-api-key': geminiKey, 'content-type': 'application/json'},
@@ -105,6 +105,8 @@ class AiDesigner {
               'generationConfig': {
                 if (json) 'responseMimeType': 'application/json',
                 'temperature': temperature,
+                // How much the model may output: big enough for a full design, so the HTML is never cut off.
+                'maxOutputTokens': maxTokens,
                 // How long the model may think before answering: short for small tasks, so answers come fast.
                 if (thinking != null) 'thinkingConfig': {'thinkingBudget': thinking},
               },
@@ -119,8 +121,11 @@ class AiDesigner {
     final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map;
     final cands = (j['candidates'] as List?) ?? const [];
     final parts = cands.isEmpty ? const [] : (((cands.first as Map)['content'] as Map?)?['parts'] as List?) ?? const [];
+    final finish = cands.isEmpty ? '' : '${(cands.first as Map)['finishReason'] ?? ''}';
     final text = parts.map((p) => '${(p as Map)['text'] ?? ''}').join();
-    if (text.trim().isEmpty) throw AiCallError('Gemini', 0, 'empty answer (${cands.isEmpty ? 'blocked' : (cands.first as Map)['finishReason']})');
+    if (text.trim().isEmpty) throw AiCallError('Gemini', 0, 'empty answer (${cands.isEmpty ? 'blocked' : finish})');
+    // The answer was cut off at the output limit: treat as a failure so a bigger budget / another model is tried.
+    if (finish == 'MAX_TOKENS') throw AiCallError('Gemini', 0, 'answer cut off (MAX_TOKENS)');
     return text;
   }
 
@@ -163,7 +168,7 @@ class AiDesigner {
         for (final key in geminiKeys) {
           if (over()) return null;
           try {
-            return await _gemini(m, prompt, key, json: json, temperature: temperature, thinking: thinking, timeout: perCall);
+            return await _gemini(m, prompt, key, json: json, temperature: temperature, thinking: thinking, maxTokens: maxTokens, timeout: perCall);
           } on AiCallError catch (e) {
             last = e;
             if (e.status == 404) break; // this model is not available: the next model
@@ -373,11 +378,13 @@ high-fidelity, clickable prototype of the WHOLE app:
   }
 
   String _extractHtml(String text) {
-    final m = RegExp(r'```html\s*\n([\s\S]*?)```').firstMatch(text);
+    final m = RegExp(r'```html[ \t]*\n?([\s\S]*?)```', caseSensitive: false).firstMatch(text) ?? RegExp(r'```[\w-]*[ \t]*\n?([\s\S]*?)```').firstMatch(text);
     var html = (m?.group(1) ?? text).trim();
     final i = html.toLowerCase().indexOf('<!doctype');
     if (i > 0) html = html.substring(i);
-    if (!html.toLowerCase().contains('<html') || html.length < 1500) throw Exception('لم يكتمل التصميم من الذكاء الاصطناعي، جرّب مرة أخرى');
+    final low = html.toLowerCase();
+    if (!low.contains('<html') || html.length < 1200) throw Exception('لم يكتمل التصميم من الذكاء الاصطناعي، جرّب مرة أخرى');
+    if (!low.contains('</html>')) html = '$html\n</body></html>'; // the fence was missing: close the page
     return html;
   }
 
@@ -400,7 +407,7 @@ high-fidelity, clickable prototype of the WHOLE app:
         'Mobile-first full-height layout, no external resources (inline SVG or emoji icons), working navigation, '
         'buttons, forms and lists with realistic sample data, localStorage for state. RTL Arabic when the request is Arabic.\n\n'
         '${await designBrief()}\nReply with ONLY the file inside a single ```html code block.\n\nApp description:\n$description';
-    final html = _extractHtml(await ask(prompt, json: false, temperature: 0.5, maxTokens: 32000, thinking: 1024, perCall: const Duration(seconds: 120), budget: const Duration(seconds: 200)));
+    final html = _extractHtml(await ask(prompt, json: false, temperature: 0.6, maxTokens: 60000, thinking: 0, perCall: const Duration(seconds: 180), budget: const Duration(seconds: 320)));
     await prefs.setString(key, html);
     return html;
   }
@@ -421,7 +428,7 @@ high-fidelity, clickable prototype of the WHOLE app:
           '${brandFrom.isEmpty ? '' : '\nThis app belongs to the same business as the design below. Use the SAME brand: palette, fonts, corner radius, icon style and component look, so the two apps feel like one product:\n```html\n${brandFrom.length > 40000 ? brandFrom.substring(0, 40000) : brandFrom}\n```\n'}'
           '${change.isEmpty ? '' : '\nThe owner also wants: $change\n'}';
     }
-    return _extractHtml(await ask(prompt, json: false, temperature: current.isEmpty ? 0.7 : 0.5, maxTokens: 32000, thinking: 1024, perCall: const Duration(seconds: 120), budget: const Duration(seconds: 200)));
+    return _extractHtml(await ask(prompt, json: false, temperature: current.isEmpty ? 0.7 : 0.5, maxTokens: 60000, thinking: 0, perCall: const Duration(seconds: 180), budget: const Duration(seconds: 320)));
   }
 
   /// Step "التصميم": the AI itself designs the whole interface of the app from its description, as a senior UI designer:
@@ -475,7 +482,7 @@ Rules:
   Only the listed libraries (they exist as globals only if you use them by name).
 ${native ? '- The spec matters most: the real app is ${p.lang.label} code written from it; the CSS is its instant preview.' : '- The CSS and JS ARE the real app (${p.lang.label}); the spec documents it.'}
 """;
-    final text = await ask(prompt, json: false, temperature: 0.85, maxTokens: 16000, thinking: 512, perCall: const Duration(seconds: 120), budget: const Duration(seconds: 200));
+    final text = await ask(prompt, json: false, temperature: 0.7, maxTokens: 60000, thinking: 0, perCall: const Duration(seconds: 180), budget: const Duration(seconds: 320));
     final files = codeFiles(text);
     final css = files['design.css'] ?? files['css'] ?? '';
     if (css.trim().length < 400) throw Exception('لم يكتمل التصميم من الذكاء الاصطناعي، جرّب مرة أخرى');
