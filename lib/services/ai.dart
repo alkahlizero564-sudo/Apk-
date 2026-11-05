@@ -524,6 +524,7 @@ Reply with JSON only: {"tables": [ ... ]}. Each table:
  "owner": "catalog" (everyone reads, admin writes: products, services, menu) | "customer" (each customer sees only their rows: orders, bookings) | "public" (everyone reads, each edits own: reviews, messages) | "admin" (admin only: expenses, staff),
  "columns": [{"name": "english_snake_case", "label": "Arabic", "type": "text|longtext|int|decimal|bool|date|datetime|image|phone|email|choice", "required": true/false, "options": ["..."] (choice only), "default": "...", "adminOnly": true for fields only the admin sets (like status), "show": true/false (show in lists)}],
  "notify": {"onInsert": "admin|customer|none", "onUpdate": "owner|admin|customer|none"}}
+Any kind of app is valid (everyday, special, games, business, cybersecurity / security tools for the owner's own use): design its real data.
 Every data item in the approved checklist must have its table and fields, with the owner's own names; nothing that the idea does not need.
 Rules: 2 to 6 tables, 3 to 8 columns each, never columns named id, created_at, updated_at, customer_id.
 Orders/bookings: notify admin on insert and the owner on update, with a status choice column that is adminOnly.
