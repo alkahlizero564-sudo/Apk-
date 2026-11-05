@@ -41,7 +41,7 @@ Map<String, dynamic> appConfig(Project p, AppUnit unit, {Map<String, dynamic>? c
       if (p.brief.isNotEmpty) 'brief': p.brief,
     },
     if (p.lang == Lang.php && p.serverUrl.isNotEmpty) 'server': p.serverUrl,
-    'theme': p.theme.toJson(),
+    'theme': {...p.theme.toJson(), if (!p.design.isEmpty) 'ai': true},
     'backend': backend,
     'tables': p.schema.toJson(),
   };
@@ -79,6 +79,14 @@ Map<String, String?> projectFiles(Project p, {Map<String, Map<String, dynamic>> 
   }
   for (final a in p.apps) {
     files['apps/${a.slug}/alpha.json'] = '${_json.convert(appConfig(p, a, connection: connections[a.slug]))}\n';
+    // The AI-designed interface: the web engines load it, the native ones are coded from it (factory/ai_code.py).
+    // (Files of an older design may stay in the folder: the engines only use them while theme.ai is on.)
+    final d = p.design;
+    if (!d.isEmpty) {
+      files['apps/${a.slug}/design/design.css'] = d.css;
+      files['apps/${a.slug}/design/design.js'] = d.js;
+      files['apps/${a.slug}/design/spec.md'] = d.spec;
+    }
   }
   return files;
 }

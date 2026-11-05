@@ -141,18 +141,39 @@ function theme_attrs(array $C): string
 {
     $t = $C['theme'] ?? [];
     $k = theme_tokens($C);
-    $classes = trim((($t['mode'] ?? 'light') === 'light' ? 'light ' : '') . 's-' . $k['school'] . ' home-' . $k['home'] . ' list-' . $k['list'] . ' nav-' . $k['nav']);
-    $style = '--seed:' . e($t['seed'] ?? '#6750A4') . ';--accent:' . e($t['accent'] ?? '#7D5260');
-    if (isset(SCHOOLS[$t['school'] ?? '']) && isset($t['radius'])) $style .= ';--r:' . (int)$t['radius'] . 'px';
-    if (preg_match('/^[a-z]+$/', $t['font'] ?? '')) $style .= ";--font:'A-" . $t['font'] . "',system-ui,sans-serif";
+    $classes = trim((($t['mode'] ?? 'light') === 'light' ? 'light ' : '') . 's-' . $k['school'] . ' home-' . $k['home'] . ' list-' . $k['list'] . ' nav-' . $k['nav'] . (empty($t['ai']) ? '' : ' ai'));
     $dir = ($C['app']['rtl'] ?? true) === false ? 'ltr' : 'rtl';
-    return 'class="' . $classes . '" style="' . $style . '" dir="' . $dir . '" lang="' . ($dir === 'rtl' ? 'ar' : 'en') . '"';
+    return 'class="' . $classes . '" dir="' . $dir . '" lang="' . ($dir === 'rtl' ? 'ar' : 'en') . '"';
+}
+
+// The interface the AI designed (assets/design.css + its motion JS), written by factory/prepare.py when the app has one.
+function design_head(array $C): string
+{
+    $f = __DIR__ . '/../assets/design.html';
+    return !empty($C['theme']['ai']) && is_file($f) ? (string)file_get_contents($f) : '';
+}
+
+function design_tail(string $screen): string
+{
+    return '<script>try{window.AlphaDesign&&AlphaDesign.onRender&&AlphaDesign.onRender({screen:' . json_encode($screen) . ',root:document.body})}catch(e){console.warn(e)}</script>';
+}
+
+/// The theme values as the weakest rule (:root), so a school or the AI design (:root.ai) can redefine them.
+function theme_vars(array $C): string
+{
+    $t = $C['theme'] ?? [];
+    $style = '--seed:' . e($t['seed'] ?? '#6750A4') . ';--accent:' . e($t['accent'] ?? '#7D5260');
+    $own = '';
+    if (isset(SCHOOLS[$t['school'] ?? '']) && isset($t['radius'])) $own .= '--r:' . (int)$t['radius'] . 'px;';
+    if (preg_match('/^[a-z]+$/', $t['font'] ?? '')) $own .= "--font:'A-" . $t['font'] . "',system-ui,sans-serif;";
+    $css = 'html:root{' . $style . '}' . ($own === '' ? '' : ':root:not(.ai):not(.x){' . $own . '}');
+    return '<style>' . str_replace(['<', '>'], '', $css) . '</style>';
 }
 
 function head(array $C): string
 {
     return '<!doctype html><html ' . theme_attrs($C) . '><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' .
-        '<title>' . e($C['app']['title'] ?? 'Alpha') . '</title><link rel="stylesheet" href="assets/style.css"></head><body><div class="deco"></div>';
+        '<title>' . e($C['app']['title'] ?? 'Alpha') . '</title>' . theme_vars($C) . '<link rel="stylesheet" href="assets/style.css">' . design_head($C) . '</head><body><div class="deco"></div>';
 }
 
 function flash(): string
@@ -192,7 +213,7 @@ function render_login(array $C, Backend $B, string $mode): void
             '<button class="btn">' . ($signup ? 'إنشاء الحساب' : 'دخول') . '</button>' .
             '<a class="linkbtn" style="display:block;text-align:center" href="?' . ($signup ? '' : 'mode=signup') . '">' . ($signup ? 'عندي حساب، سجّل دخولي' : 'ما عندي حساب؟ أنشئ واحداً') . '</a></form>';
     }
-    echo '</div>' . flash() . '</body></html>';
+    echo '</div>' . flash() . design_tail('login') . '</body></html>';
 }
 
 function render_layout(array $C, Backend $B, string $current, string $title, string $body, bool $nav = true): void
@@ -212,7 +233,7 @@ function render_layout(array $C, Backend $B, string $current, string $title, str
         }
         echo '</nav>';
     }
-    echo flash() . '</body></html>';
+    echo flash() . design_tail($current) . '</body></html>';
 }
 
 function home_page(array $C, Backend $B, array $tables, array $stats): string

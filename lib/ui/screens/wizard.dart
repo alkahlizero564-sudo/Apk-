@@ -10,6 +10,7 @@ import '../../generator/presets.dart';
 import '../../models/project.dart';
 import '../../models/schema.dart';
 import '../../services/ai.dart';
+import '../ai_design_card.dart';
 import '../widgets.dart';
 import 'design_studio.dart';
 import 'preview.dart';
@@ -49,10 +50,11 @@ class _WizardScreenState extends State<WizardScreen> {
   String _themeReason = '';
   String _headline = '';
   String _subtitle = '';
+  AiDesign _design = AiDesign();
 
   bool get _pair => _kind == ProjectKind.pair;
 
-  static const _steps = ['الوصف', 'الفهم', 'اللغة', 'الاسم', 'التصميم', 'البيانات', 'السيرفر', 'المراجعة'];
+  static const _steps = ['الوصف', 'الفهم', 'اللغة', 'الاسم', 'البيانات', 'التصميم', 'السيرفر', 'المراجعة'];
 
   @override
   void initState() {
@@ -62,6 +64,8 @@ class _WizardScreenState extends State<WizardScreen> {
 
   void _setKind(ProjectKind k) {
     _kind = k;
+    // The customers' app alone reads what the business publishes: it needs a server.
+    if (k == ProjectKind.customer && _backend == BackendType.none) _backend = BackendType.supabase;
     if (k == ProjectKind.pair) {
       _backend = _backend == BackendType.none ? BackendType.supabase : _backend;
       if (_auth == AuthMode.none) _auth = AuthMode.emailPassword;
@@ -99,7 +103,6 @@ class _WizardScreenState extends State<WizardScreen> {
     final u = _understood;
     if (u == null) return;
     if (!_hasCode) _lang = u.lang;
-    if (u.kind != _kind) _setKind(u.kind);
     if (_title.text.trim().isEmpty && u.title.isNotEmpty) _title.text = u.title;
     if (u.slug.isNotEmpty && RegExp(r'^app-\d+$').hasMatch(_slug.text)) _slug.text = slugApp(u.slug);
     if (u.auth != AuthMode.none || !_pair) _auth = u.auth;
@@ -144,7 +147,7 @@ class _WizardScreenState extends State<WizardScreen> {
         if (slug != _slug.text.trim()) return 'المعرّف بالإنجليزي الصغير والأرقام و - فقط (مثلاً: $slug)';
         if (context.read<AppState>().projects.any((p) => p.base == slug)) return 'يوجد مشروع بنفس المعرّف';
         return null;
-      case 5:
+      case 4:
         final errors = _schema.validate();
         return errors.isEmpty ? null : errors.first;
       case 6:
@@ -181,6 +184,7 @@ class _WizardScreenState extends State<WizardScreen> {
       description: _desc.text.trim(),
       brief: _briefText,
       customCode: _hasCode ? _code.text : '',
+      design: _design,
       headline: _headline,
       subtitle: _subtitle,
       theme: _theme,
@@ -200,7 +204,18 @@ class _WizardScreenState extends State<WizardScreen> {
     try {
       await s.save(p, message: 'Alpha: new project ${p.title}');
       var note = 'تم إنشاء المشروع';
-      if (s.hasGitHub) {
+      final nativeDesign = !p.design.isEmpty && (p.lang == Lang.flutter || p.lang == Lang.python || p.lang == Lang.kotlin);
+      if (s.hasGitHub && nativeDesign) {
+        // The interface the AI designed becomes ${p.lang.label} code (written and built in GitHub Actions, errors fixed by itself).
+        final server = (p.backend == BackendType.supabase && s.hasSupabase && s.supabaseRef.isNotEmpty) || (p.backend == BackendType.firebase && s.hasFirebase);
+        if (server) await s.setupServer(p, buildAfter: false);
+        for (final a in p.apps) {
+          await s.generateWithAi(a, 'ابنِ كل واجهات هذا التطبيق بنفس التصميم المعتمد (design/spec.md) بدقة، مع كل الشاشات والجداول.');
+        }
+        note = server || p.backend == BackendType.none
+            ? 'تم الإنشاء: الذكاء الاصطناعي يكتب كود ${p.lang.label} بالتصميم المعتمد ثم يبنيه'
+            : 'تم الإنشاء ويُكتب الكود. أضف مفاتيح ${p.backend.label} في الإعدادات ثم اضغط «تجهيز السيرفر»';
+      } else if (s.hasGitHub) {
         if (p.backend == BackendType.none) {
           await s.buildAll(p);
           note = 'تم الإنشاء وبدأ البناء في GitHub Actions';
@@ -254,7 +269,7 @@ class _WizardScreenState extends State<WizardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_pair ? 'تطبيقين متصلين' : 'تطبيق جديد')),
+      appBar: AppBar(title: Text('تطبيق جديد: ${_kind.label}')),
       body: AuroraBackground(
         child: SafeArea(
           child: Column(
@@ -303,8 +318,8 @@ class _WizardScreenState extends State<WizardScreen> {
         1 => _understandStep(),
         2 => _langStep(),
         3 => _nameStep(),
-        4 => _designStep(),
-        5 => _dataStep(),
+        4 => _dataStep(),
+        5 => _designStep(),
         6 => _serverStep(),
         _ => _reviewStep(),
       };
@@ -406,13 +421,15 @@ class _WizardScreenState extends State<WizardScreen> {
                 Text(u.summary, style: const TextStyle(height: 1.6)),
                 const SizedBox(height: 10),
                 Wrap(spacing: 6, runSpacing: 6, children: [
-                  Pill(u.kind == ProjectKind.pair ? 'تطبيقان: عميل + إدارة' : 'تطبيق واحد', color: AlphaColors.blue),
+                  Pill('يقترح: ${u.kind.label}', color: AlphaColors.blue),
                   Pill('اللغة المقترحة: ${u.lang.label}', color: Color(u.lang.color)),
                   Pill(u.auth.label, color: AlphaColors.pink),
                 ]),
               ],
             ),
           ),
+          const SectionTitle('لمن التطبيق؟'),
+          KindPicker(value: _kind, suggested: u.kind, onPick: (k) => setState(() => _setKind(k))),
           list('شاشات العميل', Icons.phone_android_rounded, u.screensCustomer),
           list('شاشات الإدارة', Icons.admin_panel_settings_rounded, u.screensAdmin),
           list('البيانات', Icons.table_chart_rounded, u.data),
@@ -510,42 +527,57 @@ class _WizardScreenState extends State<WizardScreen> {
   Widget _designStep() => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SectionTitle('التصميم', subtitle: 'هذه الخطوة للشكل فقط: الألوان والأسلوب والواجهات'),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _themeBusy ? null : _suggestDesign,
-                  icon: _themeBusy
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.auto_awesome_rounded, color: AlphaColors.amber),
-                  label: Text(_themeBusy ? 'يصمّم…' : 'اقترح تصميماً من الفهم'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _preview,
-                  icon: const Icon(Icons.play_circle_rounded),
-                  label: const Text('معاينة فورية'),
-                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-                ),
-              ),
-            ],
+          const SectionTitle('التصميم', subtitle: 'هذه الخطوة للشكل فقط: الذكاء الاصطناعي يصمّم الواجهات، أو اختر مدرسة جاهزة'),
+          AiDesignCard(
+            draft: _build,
+            brief: _briefText,
+            autoStart: true,
+            onDesigned: (d, t, h, sub) => setState(() {
+              _design = d;
+              _theme = t;
+              if (h.isNotEmpty) _headline = h;
+              if (sub.isNotEmpty) _subtitle = sub;
+            }),
+            onClear: () => setState(() => _design = AiDesign()),
           ),
-          if (_themeReason.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(_themeReason, style: const TextStyle(color: AlphaColors.muted, fontSize: 12, height: 1.5)),
+          if (_design.isEmpty) ...[
+            const SectionTitle('أو اختر مدرسة تصميم جاهزة'),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _themeBusy ? null : _suggestDesign,
+                    icon: _themeBusy
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.auto_awesome_rounded, color: AlphaColors.amber),
+                    label: Text(_themeBusy ? 'يختار…' : 'اختر المدرسة بالذكاء'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _preview,
+                    icon: const Icon(Icons.play_circle_rounded),
+                    label: const Text('معاينة فورية'),
+                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                  ),
+                ),
+              ],
             ),
-          const SizedBox(height: 10),
-          DesignEditor(
-            theme: _theme,
-            title: _headline.isNotEmpty ? _headline : _title.text,
-            schema: _schema,
-            pair: _pair,
-            onChanged: (t) => setState(() => _theme = t),
-          ),
+            if (_themeReason.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(_themeReason, style: const TextStyle(color: AlphaColors.muted, fontSize: 12, height: 1.5)),
+              ),
+            const SizedBox(height: 10),
+            DesignEditor(
+              theme: _theme,
+              title: _headline.isNotEmpty ? _headline : _title.text,
+              schema: _schema,
+              pair: _pair,
+              onChanged: (t) => setState(() => _theme = t),
+            ),
+          ],
         ],
       );
 

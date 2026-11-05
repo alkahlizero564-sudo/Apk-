@@ -27,7 +27,8 @@
   "layout": "tabs",
   "school": "aurora",
   "home": "carousel",
-  "onboarding": true
+  "onboarding": true,
+  "ai": true
  },
  "backend": {
   "type": "none",

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/project.dart';
 import '../generator/ai_edit.dart';
+import '../generator/design_contract.dart';
 import '../generator/presets.dart';
 import '../models/schema.dart';
 
@@ -52,24 +53,24 @@ class AiDesigner {
 
   bool get available => claudeKey.isNotEmpty || geminiKeys.isNotEmpty;
 
-  Future<String> _claude(String prompt) async {
+  Future<String> _claude(String prompt, {int maxTokens = 8000}) async {
     final res = await http
         .post(Uri.parse('https://api.anthropic.com/v1/messages'),
             headers: {'x-api-key': claudeKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
             body: jsonEncode({
               'model': 'claude-sonnet-5-5',
-              'max_tokens': 8000,
+              'max_tokens': maxTokens,
               'messages': [
                 {'role': 'user', 'content': prompt}
               ],
             }))
-        .timeout(const Duration(minutes: 3));
+        .timeout(const Duration(minutes: 5));
     if (res.statusCode >= 300) throw Exception('Claude (${res.statusCode}): ${res.body}');
     final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map;
     return ((j['content'] as List).where((b) => b['type'] == 'text').map((b) => b['text'])).join();
   }
 
-  Future<String> _gemini(String prompt, String geminiKey) async {
+  Future<String> _gemini(String prompt, String geminiKey, {bool json = true, double temperature = 0.3}) async {
     final res = await http
         .post(Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$geminiModel:generateContent'),
             headers: {'x-goog-api-key': geminiKey, 'content-type': 'application/json'},
@@ -81,20 +82,21 @@ class AiDesigner {
                   ]
                 }
               ],
-              'generationConfig': {'responseMimeType': 'application/json', 'temperature': 0.3},
+              'generationConfig': {if (json) 'responseMimeType': 'application/json', 'temperature': temperature},
             }))
-        .timeout(const Duration(minutes: 3));
+        .timeout(const Duration(minutes: 5));
     if (res.statusCode >= 300) throw Exception('Gemini (${res.statusCode}): ${res.body}');
     final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map;
     return ((j['candidates'] as List).first['content']['parts'] as List).map((p) => p['text']).join();
   }
 
-  Future<String> ask(String prompt) async {
+  /// [json]: the answer is JSON (default); otherwise free text such as fenced code files.
+  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000}) async {
     Object? last;
     Future<String?> tryClaude() async {
       if (claudeKey.isEmpty) return null;
       try {
-        return await _claude(prompt);
+        return await _claude(prompt, maxTokens: maxTokens);
       } catch (e) {
         last = e;
         return null;
@@ -105,7 +107,7 @@ class AiDesigner {
       // Each Gemini key in turn: a key out of quota does not stop the work.
       for (final key in geminiKeys) {
         try {
-          return await _gemini(prompt, key);
+          return await _gemini(prompt, key, json: json, temperature: temperature);
         } catch (e) {
           last = e;
         }
@@ -141,7 +143,7 @@ ${code.trim().isEmpty ? '' : '\nThe owner also pasted existing code they want to
 Reply with JSON only:
 {"title": "short app name (Arabic ok)", "slug": "short english id, lowercase and dashes",
  "summary": "2-4 sentences: what the app is, for whom, the main flow",
- "kind": "single" or "pair" (pair = a customer app + an admin app that talk to each other, e.g. orders/bookings managed by the business),
+ "kind": "single" | "customer" | "pair" (single = one app for the business owner that manages everything; customer = the customers' app only; pair = a customer app + an admin app that talk to each other, e.g. orders/bookings managed by the business),
  "lang": "flutter|html|php|python|kotlin" (best fit; flutter by default; the language of the pasted code if any),
  "screens_customer": ["screen: what the user does there", ...],
  "screens_admin": ["screen: what the admin does there", ...] (empty for a single app without admin),
@@ -191,6 +193,89 @@ Then pick colors that fit (premium, modern, good contrast). Reply with JSON only
     return (theme: theme, headline: '${j['headline'] ?? ''}', subtitle: '${j['subtitle'] ?? ''}', reason: '${j['reason'] ?? ''}');
   }
 
+  /// Step "التصميم": the AI itself designs the whole interface of the app from its description, as a senior UI designer:
+  /// the visual layer (design.css), motion with the design libraries (design.js) and a spec for the native languages.
+  /// [note]: what the owner wants different from the last proposal.
+  Future<({AiDesign design, ThemeSpec theme, String headline, String subtitle})> designUi(String brief, Project p, {String note = '', AiDesign? previous}) async {
+    final native = p.lang == Lang.flutter || p.lang == Lang.python || p.lang == Lang.kotlin;
+    final prompt = """
+You are a world-class mobile UI designer and front-end engineer (Dribbble / Apple Design Award level). Design the COMPLETE
+interface of this app, unique to its brand and its customers. Not a template: a distinctive, professional, modern look,
+with strong typography, considered spacing, depth, shapes and tasteful motion. Arabic, right-to-left.
+
+The app (approved understanding):
+$brief
+
+Who it is for: ${p.kind.label} (${p.kind.hint}). Language it is built in: ${p.lang.label}.
+Sections (tables) the app shows: ${p.schema.tables.map((t) => '${t.label} (${t.columns.map((c) => c.label).join('، ')})').join(' | ')}
+${note.isEmpty ? '' : '\nThe owner saw your previous design and wants: $note\n'}${previous == null || previous.isEmpty ? '' : '\nPrevious design summary: ${previous.summary}\n'}
+You restyle a tested app engine. It draws the markup below; you write ONLY CSS and optional JS on top of it (never new HTML):
+$designContract
+
+Write these 4 files, each in its own fenced block with the file name after the language:
+
+```json design.json
+{"school": base school to start from (${looks.map((l) => l.id).join('|')}), "home": tiles|bento|carousel|feed|chat|focus,
+ "list": cards|compact|grid|timeline|reels, "nav": bar|floating|pill, "sheet": sheet|page, "font": cairo|tajawal|plex|readex|messiri|kufi|changa,
+ "seed": "#RRGGBB", "accent": "#RRGGBB", "mode": "light|dark", "onboarding": true|false,
+ "headline": "big Arabic title of the home", "subtitle": "short Arabic line", "summary": "one Arabic sentence describing the design"}
+```
+```css design.css
+/* every selector starts with :root.ai (e.g. :root.ai .card, :root.ai.light .hero), so it wins over the base school */
+```
+```js design.js
+// window.AlphaDesign = { onRender({screen, root}) { ... } }  (screen: home|list|rows|featured|sheet|login|notes|me)
+```
+```markdown spec.md
+(the design written precisely enough for a developer to rebuild it natively in Flutter / Jetpack Compose / Flet:
+palette with hex, typography (font, sizes, weights), radii, shadows, spacing, every screen's layout and components,
+the bottom bar, cards, list rows, buttons, inputs, empty states, and the motion with durations and curves)
+```
+
+Rules:
+- CSS: 6-16 KB. Restyle EVERY part: hero (use .o1/.o2 for shapes, maybe .marq or svg.wave), tiles, featured rail, rows,
+  pills, prices, chips, search, buttons, fab, nav, sheet, forms, login, empty states, toast, the .deco background.
+  Keep text readable (contrast 4.5:1), keep tap targets ≥ 44px, never hide or disable [data-tab], #add, #compose, .fab,
+  .nav, .btn, inputs or the sheet. No @import, no external URLs (only gradients and inline data: SVG). RTL-safe (use
+  inset-inline-start/end, margin-inline). Respect @media (prefers-reduced-motion: reduce).
+- JS: optional, at most 6 KB, only decoration and motion (entrance animations, stagger, parallax, tilt, typing headline,
+  confetti after a save button tap...). Idempotent: mark what you initialised (el.dataset.ai = 1) because onRender runs on
+  every screen change. Never change data, never fetch, never remove or move engine elements, wrap risky code in try/catch.
+  Only the listed libraries (they exist as globals only if you use them by name).
+${native ? '- The spec matters most: the real app is ${p.lang.label} code written from it; the CSS is its instant preview.' : '- The CSS and JS ARE the real app (${p.lang.label}); the spec documents it.'}
+""";
+    final text = await ask(prompt, json: false, temperature: 0.85, maxTokens: 16000);
+    final files = codeFiles(text);
+    final css = files['design.css'] ?? files['css'] ?? '';
+    if (css.trim().length < 400) throw Exception('لم يكتمل التصميم من الذكاء الاصطناعي، جرّب مرة أخرى');
+    Map<String, dynamic> tok = const {};
+    try {
+      tok = _json(files['design.json'] ?? files['json'] ?? '{}');
+    } catch (_) {}
+    String? one(Object? v, Map<String, String> ok) => v != null && ok.containsKey('$v') && '$v'.isNotEmpty ? '$v' : null;
+    String hex(Object? v, String d) => RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch('$v') ? '$v'.toUpperCase() : d;
+    final base = lookById('${tok['school'] ?? ''}') ?? lookById('material')!;
+    final theme = base.apply(p.theme).copyWith(
+      preset: 'ai',
+      seed: hex(tok['seed'], base.seed),
+      accent: hex(tok['accent'], base.accent),
+      mode: tok['mode'] == 'dark' ? 'dark' : (tok['mode'] == 'light' ? 'light' : base.mode),
+      home: one(tok['home'], homeLayouts),
+      list: one(tok['list'], listStyles),
+      nav: one(tok['nav'], navStyles),
+      sheet: one(tok['sheet'], sheetStyles),
+      font: one(tok['font'], fontChoices) ?? '',
+      onboarding: tok['onboarding'] == true,
+    );
+    final design = AiDesign(
+      css: sanitizeDesignCss(css),
+      js: files['design.js'] ?? files['js'] ?? '',
+      spec: files['spec.md'] ?? files['markdown'] ?? '',
+      summary: '${tok['summary'] ?? ''}',
+    );
+    return (design: design, theme: theme, headline: '${tok['headline'] ?? ''}', subtitle: '${tok['subtitle'] ?? ''}');
+  }
+
   /// Changing an app that already exists (and may be installed): add, remove or change anything the owner asks.
   /// The AI only proposes; Alpha shows the exact differences and applies them when the owner agrees.
   Future<AiEdit> planEdit(Project p, String request) async {
@@ -198,7 +283,7 @@ Then pick colors that fit (premium, modern, good contrast). Reply with JSON only
       'title': p.title,
       'headline': p.headline,
       'subtitle': p.subtitle,
-      'kind': p.isPair ? 'pair (customer app + admin app)' : 'single app',
+      'kind': p.isPair ? 'pair (customer app + admin app)' : p.kind == ProjectKind.customer ? 'customer app only' : 'single app for the owner',
       'language': p.lang.id,
       'backend': p.backend.id,
       'auth': p.auth.id,
@@ -310,7 +395,7 @@ class Understanding {
         title: '${j['title'] ?? ''}',
         slug: '${j['slug'] ?? ''}',
         summary: '${j['summary'] ?? ''}',
-        kind: j['kind'] == 'pair' ? ProjectKind.pair : ProjectKind.single,
+        kind: ProjectKind.parse(j['kind'] as String?),
         lang: Lang.parse('${j['lang']}'),
         screensCustomer: _list(j['screens_customer']),
         screensAdmin: _list(j['screens_admin']),
@@ -326,7 +411,7 @@ class Understanding {
     return [
       if (title.isNotEmpty) 'التطبيق: $title',
       if (summary.isNotEmpty) summary,
-      kind == ProjectKind.pair ? 'النوع: تطبيقان متصلان (عميل + إدارة)' : 'النوع: تطبيق واحد',
+      'النوع: ${kind.label} (${kind.hint})',
       section('شاشات العميل', screensCustomer),
       section('شاشات الإدارة', screensAdmin),
       section('البيانات', data),

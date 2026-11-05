@@ -82,13 +82,20 @@
     if (tok.home === "focus" && tok.nav === "none") tok.nav = "pill"; // the focus home needs a way back
     root.classList.toggle("light", mode === "light");
     root.classList.add("s-" + school);
+    if (t.ai) root.classList.add("ai"); // the interface the AI designed for this app (design.css / design.js)
     Object.entries(tok).forEach(([k, v]) => root.classList.add(k + "-" + v));
     if (!document.querySelector(".deco")) document.body.insertAdjacentHTML("afterbegin", '<div class="deco"></div>');
-    root.style.setProperty("--seed", t.seed || "#6750A4");
-    root.style.setProperty("--accent", t.accent || "#7D5260");
-    if (own && t.radius != null) root.style.setProperty("--r", t.radius + "px");
-    if (t.font) root.style.setProperty("--font", "'A-" + t.font + "', system-ui, sans-serif");
-    if (t.display) root.style.setProperty("--display", "'A-" + t.display + "', system-ui, sans-serif");
+    // Theme values (html:root beats the stylesheet defaults; a school or the AI design, :root.ai, can still redefine them).
+    const safe = (v) => String(v).replace(/[^#\w\s.,'()-]/g, "");
+    const vars = ["--seed:" + safe(t.seed || "#6750A4"), "--accent:" + safe(t.accent || "#7D5260")];
+    // The owner's radius and font beat the school's (higher specificity), but not the AI design.
+    const own2 = [];
+    if (own && t.radius != null) own2.push("--r:" + Number(t.radius) + "px");
+    if (t.font) own2.push("--font:'A-" + safe(t.font) + "', system-ui, sans-serif");
+    if (t.display) own2.push("--display:'A-" + safe(t.display) + "', system-ui, sans-serif");
+    const tag = document.createElement("style");
+    tag.textContent = "html:root{" + vars.join(";") + "}" + (own2.length ? ":root:not(.ai):not(.x){" + own2.join(";") + "}" : "");
+    document.head.insertBefore(tag, document.head.firstChild);
     root.dir = C.app.rtl === false ? "ltr" : "rtl";
     root.lang = C.app.rtl === false ? "en" : "ar";
     document.title = C.app.title || "Alpha";
@@ -116,6 +123,14 @@
     return '<div class="' + cls + ' art" style="--hue:' + hue + 'deg">' + artInner(key, icon, size) + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" onerror="this.remove()">' : "") + "</div>";
   }
 
+  // The AI-designed interface (design.js) adds its motion after every render: window.AlphaDesign.onRender({screen, root}).
+  function designHook(screen) {
+    const D = window.AlphaDesign;
+    if (!D || typeof D.onRender !== "function") return;
+    try { D.onRender({ screen: screen, root: document.getElementById("app"), theme: T, title: C.app.title }); }
+    catch (e) { console.warn("design.js:", e); }
+  }
+
   // Kinetic schools reveal cards as they scroll in.
   let io;
   function reveal() {
@@ -135,6 +150,7 @@
     $("#sheet-body").innerHTML = (T.sheet === "page" ? '<button class="iconbtn" id="sheet-x" style="margin-bottom:12px">' + ic("back", 20) + "</button>" : "") + html;
     $("#sheet").hidden = false;
     const x = $("#sheet-x"); if (x) x.onclick = closeSheet;
+    designHook("sheet");
   }
   function closeSheet() { $("#sheet").hidden = true; $("#sheet-body").innerHTML = ""; $(".sheet-card").style.transform = ""; }
   $("#sheet").addEventListener("click", (e) => { if (e.target.id === "sheet") closeSheet(); });
@@ -209,6 +225,7 @@
     app.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => go(b.dataset.tab)));
     bind();
     reveal();
+    designHook(S.tab === "home" ? "home" : S.tab.startsWith("t:") ? "list" : S.tab);
   }
 
   function go(tab) {
@@ -283,6 +300,7 @@
       };
     }
     draw();
+    designHook("login");
   }
 
   // In-app updates: the build publishes each version at a public link; the phone's browser downloads it.
@@ -370,6 +388,7 @@
       : '<div class="empty" style="padding:20px;width:100%">لا يوجد شيء في ' + esc(t.label) + " بعد</div>";
     el.querySelectorAll("[data-hit]").forEach((x) => (x.onclick = () => details(t, rows.find((r) => t.name + "|" + r.id === x.dataset.hit))));
     reveal();
+    designHook("featured");
   }
 
   // Chat home: what you type is searched in every table; answers come back as bubbles.
@@ -490,6 +509,7 @@
     }
     el.querySelectorAll("[data-row]").forEach((x) => (x.onclick = () => details(t, rows.find((r) => String(r.id) === x.dataset.row))));
     reveal();
+    designHook("rows");
   }
 
   function details(t, row) {

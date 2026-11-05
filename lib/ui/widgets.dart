@@ -567,3 +567,56 @@ Future<bool> confirm(BuildContext context, String title, String body, {String ok
       ),
     ) ==
     true;
+
+/// Who the app is for: the owner, the customers, or both (two connected apps).
+class KindPicker extends StatelessWidget {
+  const KindPicker({super.key, this.value, required this.onPick, this.suggested});
+  final ProjectKind? value;
+  final ProjectKind? suggested;
+  final ValueChanged<ProjectKind> onPick;
+
+  static const icons = {
+    ProjectKind.single: Icons.storefront_rounded,
+    ProjectKind.customer: Icons.person_rounded,
+    ProjectKind.pair: Icons.connecting_airports_rounded,
+  };
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          for (final k in ProjectKind.values)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () => onPick(k),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: value == k ? LinearGradient(colors: [AlphaColors.violet.withValues(alpha: 0.35), AlphaColors.teal.withValues(alpha: 0.15)]) : null,
+                    color: value == k ? null : AlphaColors.surface.withValues(alpha: 0.6),
+                    border: Border.all(color: value == k ? AlphaColors.violet : AlphaColors.line, width: value == k ? 1.5 : 1),
+                  ),
+                  child: Row(children: [
+                    Icon(icons[k], color: value == k ? Colors.white : AlphaColors.muted, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [
+                          Text(k.label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                          if (suggested == k) ...[const SizedBox(width: 8), const Pill('اقتراح الذكاء', color: AlphaColors.amber)],
+                        ]),
+                        const SizedBox(height: 2),
+                        Text(k.hint, style: const TextStyle(color: AlphaColors.muted, fontSize: 12, height: 1.4)),
+                      ]),
+                    ),
+                    if (value == k) const Icon(Icons.check_circle_rounded, color: AlphaColors.teal),
+                  ]),
+                ),
+              ),
+            ),
+        ],
+      );
+}
