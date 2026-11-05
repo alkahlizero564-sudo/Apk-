@@ -11,14 +11,14 @@ import 'project.dart';
 import 'wizard.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, required this.onOpenSettings});
+  const HomeScreen({super.key, required this.onOpenSettings, required this.onNewApp});
   final VoidCallback onOpenSettings;
+  final VoidCallback onNewApp;
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final running = s.runs.where((r) => r.running).length;
-    final apps = s.projects.fold<int>(0, (n, p) => n + p.apps.length);
     return SafeArea(
       bottom: false,
       child: RefreshIndicator(
@@ -26,57 +26,57 @@ class HomeScreen extends StatelessWidget {
           if (s.hasGitHub) await s.refreshRemote();
         },
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 120),
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 130),
           children: [
             Row(
               children: [
-                const AlphaLogo(size: 44),
-                const SizedBox(width: 12),
                 const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Alpha', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
-                      Text('ابنِ تطبيقاً أو تطبيقين متصلين', style: TextStyle(color: AlphaColors.muted, fontSize: 13)),
+                      Text('أهلاً بيك 👋', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+                      SizedBox(height: 2),
+                      Text('شنو التطبيق الجاي اللي حنبنيه؟', style: TextStyle(color: AlphaColors.muted, fontSize: 15)),
                     ],
                   ),
                 ),
-                IconButton.filledTonal(onPressed: onOpenSettings, icon: const Icon(Icons.tune_rounded)),
+                if (running > 0)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 8),
+                    child: Pill('يُبنى $running', color: AlphaColors.amber, icon: Icons.bolt_rounded),
+                  ),
+                const AlphaLogo(size: 42),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             if (!s.hasGitHub) _SetupCard(onOpenSettings: onOpenSettings),
             if (s.alphaUpdate != null) AlphaUpdateCard(version: s.alphaUpdate!),
+            _Hero(onNewApp: onNewApp),
+            const SizedBox(height: 6),
             GlassCard(
-              gradient: LinearGradient(colors: [AlphaColors.violet.withValues(alpha: 0.35), AlphaColors.teal.withValues(alpha: 0.18)]),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('ماذا نبني اليوم؟', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 6),
-                  const Text('اختر اللغة والتصميم وقاعدة البيانات، وAlpha يكتب الجداول والصلاحيات والإشعارات ويبني الـ APK.',
-                      style: TextStyle(color: AlphaColors.muted, height: 1.6)),
-                  const SizedBox(height: 16),
-                  _QuickAction(
-                    icon: Icons.add_circle_rounded,
-                    title: 'أنشئ تطبيقاً',
-                    gradient: AlphaColors.aurora,
-                    onTap: () => _choose(context),
-                  ),
-                ],
-              ),
+              borderColor: AlphaColors.teal.withValues(alpha: 0.35),
+              onTap: () => _newPair(context),
+              child: const Row(children: [
+                IconTile(Icons.account_tree_rounded, color: AlphaColors.teal, size: 52),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('تطبيقين متصلين', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                    SizedBox(height: 3),
+                    Text('زبون + إدارة على Supabase، دخول برمز البريد، وإشعارات حتى والتطبيق مقفول',
+                        style: TextStyle(color: AlphaColors.muted, fontSize: 13, height: 1.5)),
+                  ]),
+                ),
+                Icon(Icons.chevron_left_rounded, color: AlphaColors.muted),
+              ]),
             ),
             const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(child: _Stat(icon: Icons.folder_special_rounded, value: '${s.projects.length}', label: 'مشروع')),
-                const SizedBox(width: 10),
-                Expanded(child: _Stat(icon: Icons.phone_android_rounded, value: '$apps', label: 'تطبيق')),
-                const SizedBox(width: 10),
-                Expanded(child: _Stat(icon: Icons.bolt_rounded, value: '$running', label: 'يُبنى الآن', color: running > 0 ? AlphaColors.amber : null)),
+            Row(children: [
+              for (final l in Lang.values) ...[
+                if (l != Lang.values.first) const SizedBox(width: 8),
+                Expanded(child: _LangTile(lang: l, count: s.projects.where((p) => p.lang == l).length)),
               ],
-            ),
+            ]),
             SectionTitle('مشاريعك',
                 subtitle: s.projects.isEmpty ? null : 'اضغط على مشروع للتصميم والبيانات والبناء',
                 trailing: s.hasGitHub
@@ -98,11 +98,11 @@ class HomeScreen extends StatelessWidget {
                 padding: EdgeInsets.all(28),
                 child: Column(
                   children: [
-                    Icon(Icons.rocket_launch_rounded, size: 46, color: AlphaColors.violet),
+                    IconTile(Icons.rocket_launch_rounded, size: 60),
                     SizedBox(height: 12),
-                    Text('لا مشاريع بعد', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+                    Text('لسه ما في مشاريع', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
                     SizedBox(height: 6),
-                    Text('ابدأ بتطبيق واحد أو بتطبيقين متصلين (عميل + إدارة) بقاعدة بيانات وإشعارات.',
+                    Text('اضغط «تطبيق جديد» أو زر + تحت، وصف فكرتك: Alpha يفهمها ويصمّمها ويبنيها.',
                         textAlign: TextAlign.center, style: TextStyle(color: AlphaColors.muted, height: 1.6)),
                   ],
                 ),
@@ -114,12 +114,100 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// «أنشئ تطبيقاً»: «لمين؟» (mine, or a client and the client's database), then one app or both.
-  Future<void> _choose(BuildContext context) async {
-    final c = await pickNewProject(context);
+  Future<void> _newPair(BuildContext context) async {
+    final c = await pickNewProject(context, kind: ProjectKind.pair);
     if (c == null || !context.mounted) return;
     Navigator.push(context, MaterialPageRoute(builder: (_) => WizardScreen(kind: c.kind, clientName: c.clientName, clientRef: c.client?.ref ?? '')));
   }
+}
+
+/// The big brand card: what Alpha does, and the main action.
+class _Hero extends StatelessWidget {
+  const _Hero({required this.onNewApp});
+  final VoidCallback onNewApp;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [AlphaColors.violet, AlphaColors.blue], begin: AlignmentDirectional.topEnd, end: AlignmentDirectional.bottomStart),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [BoxShadow(color: AlphaColors.violet.withValues(alpha: 0.35), blurRadius: 30, offset: const Offset(0, 12))],
+        ),
+        child: Stack(children: [
+          PositionedDirectional(
+            end: -60,
+            top: -70,
+            child: Container(width: 190, height: 190, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.08))),
+          ),
+          PositionedDirectional(
+            start: 40,
+            bottom: -90,
+            child: Container(width: 150, height: 150, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.10))),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(99)),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 16),
+                  SizedBox(width: 6),
+                  Text('ذكاء اصطناعي · تصميم · APK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12.5)),
+                ]),
+              ),
+              const SizedBox(height: 14),
+              const Text('ابنِ تطبيقك في دقائق', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, height: 1.2)),
+              const SizedBox(height: 8),
+              Text('صف فكرتك أو الصق كودك، ونحن نفهمها ونصمّم الواجهات ونكتب الجداول والصلاحيات ونبني لك APK.',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.88), fontSize: 14.5, height: 1.6)),
+              const SizedBox(height: 18),
+              Material(
+                color: Colors.white,
+                shape: const StadiumBorder(),
+                child: InkWell(
+                  customBorder: const StadiumBorder(),
+                  onTap: onNewApp,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.add_circle_rounded, color: AlphaColors.violet, size: 24),
+                      SizedBox(width: 8),
+                      Text('تطبيق جديد', style: TextStyle(color: AlphaColors.violet, fontWeight: FontWeight.w800, fontSize: 17)),
+                    ]),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ]),
+      );
+}
+
+/// A language: its brand icon and how many projects use it.
+class _LangTile extends StatelessWidget {
+  const _LangTile({required this.lang, required this.count});
+  final Lang lang;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: AlphaColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AlphaColors.line),
+        ),
+        child: Column(children: [
+          Icon(langIcon(lang), color: Color(lang.color), size: 22),
+          const SizedBox(height: 8),
+          Text(count == 0 ? '–' : '$count', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 2),
+          FittedBox(child: Text(lang.label, style: const TextStyle(color: AlphaColors.muted, fontSize: 12, fontWeight: FontWeight.w600))),
+        ]),
+      );
 }
 
 class _SetupCard extends StatelessWidget {
@@ -129,10 +217,10 @@ class _SetupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GlassCard(
         onTap: onOpenSettings,
-        gradient: LinearGradient(colors: [AlphaColors.amber.withValues(alpha: 0.22), AlphaColors.pink.withValues(alpha: 0.12)]),
+        borderColor: AlphaColors.infoLine,
         child: const Row(
           children: [
-            Icon(Icons.key_rounded, color: AlphaColors.amber, size: 30),
+            IconTile(Icons.key_rounded, color: AlphaColors.infoText),
             SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -146,59 +234,6 @@ class _SetupCard extends StatelessWidget {
               ),
             ),
             Icon(Icons.chevron_left_rounded),
-          ],
-        ),
-      );
-}
-
-class _QuickAction extends StatelessWidget {
-  const _QuickAction({required this.icon, required this.title, required this.gradient, required this.onTap});
-  final IconData icon;
-  final String title;
-  final Gradient gradient;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onTap,
-          child: Ink(
-            height: 96,
-            decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(18)),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Icon(icon, color: Colors.white, size: 28),
-                  Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat({required this.icon, required this.value, required this.label, this.color});
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) => GlassCard(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        child: Column(
-          children: [
-            Icon(icon, color: color ?? AlphaColors.teal),
-            const SizedBox(height: 6),
-            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-            Text(label, style: const TextStyle(color: AlphaColors.muted, fontSize: 12)),
           ],
         ),
       );

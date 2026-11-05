@@ -37,7 +37,7 @@ class _LibrariesScreenState extends State<LibrariesScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
         children: [
-          const Text('المكتبات المثبّتة', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
+          const Text('المكتبات المثبّتة', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
           const Text('كل لغة معها مكتباتها بإصدارات مختبرة معاً؛ البناء يثبّتها والذكاء الاصطناعي يستخدمها فقط، فلا أخطاء إصدارات.',
               style: TextStyle(color: AlphaColors.muted, height: 1.6)),
           const SizedBox(height: 12),
@@ -65,7 +65,7 @@ class _LibrariesScreenState extends State<LibrariesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(children: [Icon(langIcon(_lang), color: c), const SizedBox(width: 8), Text(_lang.label, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18))]),
+                  Row(children: [Icon(langIcon(_lang), color: c), const SizedBox(width: 8), Text(_lang.label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18))]),
                   const SizedBox(height: 8),
                   Text('${info['runtime']}', style: const TextStyle(height: 1.5)),
                   const SizedBox(height: 4),

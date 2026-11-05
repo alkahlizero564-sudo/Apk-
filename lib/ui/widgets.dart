@@ -1,79 +1,47 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../app/theme.dart';
 import '../models/project.dart';
 import '../models/schema.dart';
 
-/// Background with soft aurora glows behind every screen.
+/// The screen background: a calm near-black night (APK Fact's design language), no glows behind the content.
 class AuroraBackground extends StatelessWidget {
   const AuroraBackground({super.key, required this.child});
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        const Positioned.fill(child: ColoredBox(color: AlphaColors.bg)),
-        Positioned(top: -120, right: -80, child: _glow(AlphaColors.violet, 320)),
-        Positioned(top: 160, left: -140, child: _glow(AlphaColors.teal, 280)),
-        Positioned(bottom: -120, right: -60, child: _glow(AlphaColors.blue, 300)),
-        Positioned.fill(child: child),
-      ],
-    );
-  }
-
-  Widget _glow(Color c, double size) => IgnorePointer(
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(colors: [c.withValues(alpha: 0.28), c.withValues(alpha: 0)]),
-          ),
-        ),
-      );
+  Widget build(BuildContext context) => ColoredBox(color: AlphaColors.bg, child: child);
 }
 
+/// A card: solid surface, thin border, 22 radius. With [gradient] it becomes a colored card (no border).
 class GlassCard extends StatelessWidget {
-  const GlassCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap, this.gradient, this.margin});
+  const GlassCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap, this.gradient, this.margin, this.borderColor});
   final Widget child;
   final EdgeInsets padding;
   final VoidCallback? onTap;
   final Gradient? gradient;
   final EdgeInsets? margin;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
+    const r = BorderRadius.all(Radius.circular(AlphaRadius.card));
     return Padding(
       padding: margin ?? const EdgeInsets.symmetric(vertical: 6),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap,
-              child: Container(
-                padding: padding,
-                decoration: BoxDecoration(
-                  gradient: gradient,
-                  color: gradient == null ? Colors.white.withValues(alpha: 0.045) : null,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: AlphaColors.line),
-                ),
-                child: child,
-              ),
-            ),
-          ),
+      child: Material(
+        color: gradient == null ? AlphaColors.surface : Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: r, side: BorderSide(color: borderColor ?? (gradient == null ? AlphaColors.line : Colors.transparent))),
+        clipBehavior: Clip.antiAlias,
+        child: Ink(
+          decoration: BoxDecoration(gradient: gradient, borderRadius: r),
+          child: InkWell(onTap: onTap, child: Padding(padding: padding, child: child)),
         ),
       ),
     );
   }
 }
 
+/// The main button: brand gradient, 16 radius.
 class GradientButton extends StatelessWidget {
   const GradientButton({super.key, required this.label, required this.onPressed, this.icon, this.busy = false, this.gradient = AlphaColors.aurora});
   final String label;
@@ -92,23 +60,29 @@ class GradientButton extends StatelessWidget {
         height: 54,
         decoration: BoxDecoration(
           gradient: gradient,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [BoxShadow(color: AlphaColors.violet.withValues(alpha: 0.35), blurRadius: 22, offset: const Offset(0, 8))],
+          borderRadius: BorderRadius.circular(AlphaRadius.button),
+          boxShadow: [BoxShadow(color: AlphaColors.violet.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 6))],
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(AlphaRadius.button),
             onTap: enabled ? onPressed : null,
             child: Center(
               child: busy
                   ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (icon != null) ...[Icon(icon, color: Colors.white, size: 20), const SizedBox(width: 8)],
-                        Text(label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-                      ],
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (icon != null) ...[Icon(icon, color: Colors.white, size: 20), const SizedBox(width: 8)],
+                          Flexible(
+                            child: Text(label,
+                                maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
                     ),
             ),
           ),
@@ -116,6 +90,85 @@ class GradientButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A colored icon in a rounded square (list rows, cards).
+class IconTile extends StatelessWidget {
+  const IconTile(this.icon, {super.key, this.color = AlphaColors.violet, this.size = 44});
+  final IconData icon;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(size * 0.3)),
+        child: Icon(icon, color: color, size: size * 0.52),
+      );
+}
+
+/// One row of a grouped list (settings and the like): icon tile, title, subtitle, status dot, chevron.
+class ListRow extends StatelessWidget {
+  const ListRow({super.key, required this.icon, required this.title, this.subtitle, this.color = AlphaColors.violet, this.onTap, this.status, this.last = false, this.trailing});
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Color color;
+  final VoidCallback? onTap;
+  final bool? status; // true: set up (green dot), false: not yet (grey dot), null: no dot
+  final bool last;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: AlphaColors.line))),
+          child: Row(children: [
+            IconTile(icon, color: color, size: 38),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                if (subtitle != null && subtitle!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(subtitle!, style: const TextStyle(color: AlphaColors.muted, fontSize: 12.5, height: 1.4)),
+                  ),
+              ]),
+            ),
+            if (status != null)
+              Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsetsDirectional.only(start: 8),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: status! ? AlphaColors.ok : AlphaColors.line),
+              ),
+            ?trailing,
+            if (onTap != null) const Padding(padding: EdgeInsetsDirectional.only(start: 6), child: Icon(Icons.chevron_left_rounded, color: AlphaColors.muted)),
+          ]),
+        ),
+      );
+}
+
+/// A grouped list: rows in one card.
+class GroupCard extends StatelessWidget {
+  const GroupCard({super.key, required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AlphaColors.surface,
+          borderRadius: BorderRadius.circular(AlphaRadius.card),
+          border: Border.all(color: AlphaColors.line),
+        ),
+        child: Material(color: Colors.transparent, child: Column(children: children)),
+      );
 }
 
 class SectionTitle extends StatelessWidget {
@@ -133,7 +186,7 @@ class SectionTitle extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                   if (subtitle != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
@@ -207,7 +260,7 @@ class AlphaLogo extends StatelessWidget {
           boxShadow: [BoxShadow(color: AlphaColors.violet.withValues(alpha: 0.5), blurRadius: size * 0.5, offset: Offset(0, size * 0.12))],
         ),
         alignment: Alignment.center,
-        child: Text('α', style: TextStyle(color: Colors.white, fontSize: size * 0.6, fontWeight: FontWeight.w900, height: 1.05, fontFamily: 'Tajawal')),
+        child: Text('α', style: TextStyle(color: Colors.white, fontSize: size * 0.6, fontWeight: FontWeight.w800, height: 1.05, fontFamily: 'Plex')),
       );
 }
 
@@ -300,7 +353,7 @@ class PhonePreview extends StatelessWidget {
     final plain = t.hero == 'minimal';
     final headerText = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       Text(title.isEmpty ? 'تطبيقي' : title, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: plain ? text : (t.hero == 'block' ? ink : Colors.white), fontWeight: t.type == 'light' ? FontWeight.w300 : FontWeight.w900, fontSize: 15 * s)),
+          style: TextStyle(color: plain ? text : (t.hero == 'block' ? ink : Colors.white), fontWeight: t.type == 'light' ? FontWeight.w300 : FontWeight.w800, fontSize: 15 * s)),
       SizedBox(height: 2 * s),
       Text(role == 'admin' ? 'لوحة التحكم' : 'أهلاً بك', style: TextStyle(color: plain ? muted : Colors.white70, fontSize: 9 * s)),
       if (plain) ...[SizedBox(height: 6 * s), bar(18, seed, 2.5)],
@@ -463,7 +516,7 @@ class PhonePreview extends StatelessWidget {
                         child: Row(children: [
                           Icon(tableIcon(first.icon), color: brutal ? ink : Colors.white, size: 14 * s),
                           SizedBox(width: 6 * s),
-                          Text('12', style: TextStyle(color: brutal ? ink : Colors.white, fontWeight: FontWeight.w900, fontSize: 13 * s)),
+                          Text('12', style: TextStyle(color: brutal ? ink : Colors.white, fontWeight: FontWeight.w800, fontSize: 13 * s)),
                           const Spacer(),
                           Text(first.label, style: TextStyle(color: brutal ? ink : Colors.white70, fontSize: 8 * s)),
                         ]),
