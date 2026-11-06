@@ -1,0 +1,226 @@
+{
+ "id": "179393039093488",
+ "base": "nmap-metasploit-tool",
+ "title": "تطبيق أداة Nmap",
+ "lang": "flutter",
+ "kind": "single",
+ "description": "تطبيق أداة Nmap للبحث الاجهزه تطبيق يحتوي على أداة Nmap فعليه تتحيح البحث الفعلي عن الاجهزه القريبه مني على شكل ايقونات (ايفون اندرويد وندوس لينكس واي فاي) وتظهر معلوماتها الثغرات الموجوده فيها فعليا وليس محاكاة ويوجد قايمه آخره لاداة Meosplite لحقن الاجهزه الموجوده فيها ثغرات بي بايلود فعلي يتحكم بالجهاز َواستطيع فتح ملافاته وفتح الكاميرا الاماميه والخلفية فعليا وليس محاكاة وتسجيل لروية الشاشه وسجل البحث فعليا واتحكم بالجهاز من خلال قايمه التحكم الفعلي واجهه رسومية وليس عن طريق كتابه الأوامر التطبيق ليس محاكاة",
+ "theme": {
+  "preset": "material",
+  "seed": "#6750A4",
+  "accent": "#7D5260",
+  "mode": "light",
+  "style": "soft",
+  "radius": 22.0,
+  "layout": "tabs",
+  "look": "material",
+  "hero": "curve",
+  "list": "cards",
+  "nav": "bar",
+  "deco": "none",
+  "type": "heavy",
+  "school": "material",
+  "home": "tiles",
+  "sheet": "sheet",
+  "onboarding": false
+ },
+ "schema": [
+  {
+   "name": "devices",
+   "label": "الأجهزة المكتشفة",
+   "icon": "phone",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "device_type",
+     "label": "نوع الجهاز",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "ايفون",
+      "اندرويد",
+      "وندوس",
+      "لينكس",
+      "واي فاي"
+     ],
+     "default": "اندرويد",
+     "show": true
+    },
+    {
+     "name": "ip_address",
+     "label": "عنوان آي بي",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "vulnerabilities",
+     "label": "الثغرات",
+     "type": "longtext",
+     "show": true
+    },
+    {
+     "name": "connection_status",
+     "label": "حالة الاتصال",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "متصل",
+      "غير متصل"
+     ],
+     "default": "متصل",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "search_logs",
+   "label": "سجل البحث",
+   "icon": "checklist",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "search_date",
+     "label": "التاريخ",
+     "type": "datetime",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "target_device",
+     "label": "الجهاز المستهدف",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "search_results",
+     "label": "النتائج",
+     "type": "longtext",
+     "required": true,
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "payload_injects",
+   "label": "حقن البايلود",
+   "icon": "star",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "target_ip",
+     "label": "عنوان آي بي المستهدف",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "tool_name",
+     "label": "اسم الأداة",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "Nmap",
+      "Meosplite"
+     ],
+     "default": "Meosplite",
+     "show": true
+    },
+    {
+     "name": "injection_status",
+     "label": "حالة الحقن",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "ناجح",
+      "فاشل"
+     ],
+     "default": "ناجح",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "device_controls",
+   "label": "التحكم الفعلي",
+   "icon": "photo",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "target_device",
+     "label": "الجهاز المستهدف",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "action_type",
+     "label": "نوع الإجراء",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "فتح الملفات",
+      "الكاميرا الامامية",
+      "الكاميرا الخلفية",
+      "تسجيل الشاشة"
+     ],
+     "default": "فتح الملفات",
+     "show": true
+    },
+    {
+     "name": "action_result",
+     "label": "نتيجة التحكم",
+     "type": "longtext",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  }
+ ],
+ "backend": "none",
+ "auth": "none",
+ "push": false,
+ "codeMode": "engine",
+ "admins": [],
+ "serverUrl": "",
+ "headline": "",
+ "subtitle": "",
+ "apps": [
+  {
+   "slug": "nmap-metasploit-tool",
+   "role": "single",
+   "title": "تطبيق أداة Nmap"
+  }
+ ],
+ "createdAt": "2026-11-06T03:59:50.935046",
+ "supabaseUrl": "",
+ "supabaseAnonKey": "",
+ "supabaseRef": "",
+ "brief": "=== فكرة صاحب التطبيق بكلماته (الأولوية الأعلى) ===\nتطبيق أداة Nmap للبحث الاجهزه تطبيق يحتوي على أداة Nmap فعليه تتحيح البحث الفعلي عن الاجهزه القريبه مني على شكل ايقونات (ايفون اندرويد وندوس لينكس واي فاي) وتظهر معلوماتها الثغرات الموجوده فيها فعليا وليس محاكاة ويوجد قايمه آخره لاداة Meosplite لحقن الاجهزه الموجوده فيها ثغرات بي بايلود فعلي يتحكم بالجهاز َواستطيع فتح ملافاته وفتح الكاميرا الاماميه والخلفية فعليا وليس محاكاة وتسجيل لروية الشاشه وسجل البحث فعليا واتحكم بالجهاز من خلال قايمه التحكم الفعلي واجهه رسومية وليس عن طريق كتابه الأوامر التطبيق ليس محاكاة\n\n=== المواصفات التي وافق عليها صاحب التطبيق (نفّذها كلها بنداً بنداً، ولا تبنِ تطبيقاً مختلفاً) ===\nالفكرة: تطبيق أداة Nmap وMetasploit بواجهة رسومية للبحث عن الأجهزة واكتشاف الثغرات والتحكم بالأجهزة بحسب طلب المالك.\nالشاشات:\n- شاشة البحث الرئيسية وعرض الأجهزة القريبة كأيقونات (ايفون، اندرويد، وندوس، لينكس، واي فاي)\n- شاشة تفاصيل الجهاز والمعلومات والثغرات المكتشفة\n- شاشة قائمة أداة Metasploit وحقن البايلود\n- شاشة التحكم الفعلي (فتح الملفات، الكاميرا الأمامية والخلفية، تسجيلي لرؤية الشاشة)\n- شاشة سجل البحث\nالميزات والوظائف:\n- البحث الفعلي عن الأجهزة القريبة وإظهارها كأيقونات حسب نوع الجهاز\n- عرض الثغرات الموجودة في الأجهزة فعلياً\n- حقن الأجهزة التي تحتوي على ثغرات ببايلود فعلي\n- التحكم الكامل بالجهاز واستعراض ملفاته\n- فتح الكاميرا الأمامية والخلفية فعلياً\n- تسجيل ورؤية الشاشة\n- سجل البحث الفعلي\n- واجهة رسومية بالكامل بدون كتابة الأوامر\nالبيانات التي يحفظها التطبيق:\n- سجل البحث: (التاريخ، الجهاز المستهدف، النتائج)\n- قائمة الأجهزة المكتشفة: (نوع الجهاز، عنوان آي بي، الثغرات، حالة الاتصال)\nالأسماء والنصوص والأرقام والألوان:\n- Nmap\n- Meosplite\n- ايفون\n- اندرويد\n- وندوس\n- لينكس\n- واي فاي",
+ "design": {
+  "summary": "",
+  "screens": {
+   "nmap-metasploit-tool": "<!doctype html>\n<html lang=\"ar\" dir=\"rtl\" class=\"\">\n<head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n<title>تطبيق أداة Nmap</title>\n<style>@import url(\"fonts/fonts.css\");\n*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}\nhtml,body{margin:0;background:#0C0D13;color:#F3F4FB;font-family:'A-tajawal',system-ui,\"Segoe UI\",Tahoma,sans-serif;line-height:1.5}\n:root{--p:#00FF66;--a:#1F2937;--bg:#0C0D13;--s:#16171F;--s2:#1F212B;--l:rgba(255,255,255,.09);--tx:#F3F4FB;--mut:#9A97AE;--r:12px;\n  --grad:linear-gradient(135deg,#00FF66,#1F2937)}\n#alpha-screens{position:sticky;top:0;z-index:30;display:flex;gap:6px;overflow-x:auto;padding:8px 12px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);scrollbar-width:none}\n#alpha-screens::-webkit-scrollbar{display:none}\n#alpha-screens button{flex:none;border:0;border-radius:99px;padding:6px 12px;font:inherit;font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.12);cursor:pointer}\n#alpha-screens button.on{background:var(--grad)}\n#app{max-width:460px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:0}\n.screen{display:none;padding:0 0 10px}\n.screen.on{display:block;animation:up .35s cubic-bezier(.2,.8,.2,1)}\n@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}\n.wrap{padding:0 16px}\n.hero{position:relative;overflow:hidden;color:#fff;background:var(--grad);padding:calc(26px + env(safe-area-inset-top)) 20px 26px;border-radius:0 0 calc(var(--r) + 10px) calc(var(--r) + 10px)}\n.hero h1{margin:0;font-size:27px;font-weight:800;letter-spacing:-.01em}\n.hero p{margin:7px 0 0;opacity:.9;font-size:14px}\n.hero .o1{position:absolute;inset-inline-end:-50px;top:-50px;width:170px;height:170px;border-radius:50%;background:rgba(255,255,255,.12)}\n.hero .o2{position:absolute;inset-inline-end:40px;bottom:-40px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.10)}\n.sec{display:flex;align-items:center;justify-content:space-between;margin:22px 2px 12px}\n.sec h3{margin:0;font-size:18px;font-weight:800}\n.sec a{color:var(--p);font-size:13px;font-weight:700;text-decoration:none}\n.card{background:var(--s);border:1px solid var(--l);border-radius:var(--r);padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 24px rgba(0,0,0,.05)}\n.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}\n.stat{display:flex;flex-direction:column;gap:2px}\n.stat .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--p);background:color-mix(in srgb,var(--p) 14%,transparent);margin-bottom:8px}\n.stat b{font-size:26px;font-weight:800;letter-spacing:-.02em}\n.stat span{color:var(--mut);font-size:13px}\n.search{display:flex;align-items:center;gap:10px;background:var(--s);border:1px solid var(--l);border-radius:99px;padding:12px 16px;color:var(--mut);margin-top:14px}\n.chips{display:flex;gap:8px;overflow-x:auto;padding:14px 0 4px;scrollbar-width:none}\n.chips::-webkit-scrollbar{display:none}\n.chip{flex:none;border:1px solid var(--l);border-radius:99px;padding:8px 16px;font-size:13px;font-weight:700;color:var(--mut);background:var(--s)}\n.chip.on{background:var(--grad);color:#fff;border-color:transparent}\n.rail{display:flex;gap:12px;overflow-x:auto;padding:4px 16px 6px;margin:0 -16px;scrollbar-width:none}\n.rail::-webkit-scrollbar{display:none}\n.feat{flex:none;width:74%;max-width:300px;border-radius:var(--r);overflow:hidden;background:var(--s);border:1px solid var(--l)}\n.feat .img{height:140px;background:var(--grad);display:grid;place-items:center;color:rgba(255,255,255,.9)}\n.feat .b{padding:12px 14px}\n.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px}\n.tile{border-radius:var(--r);overflow:hidden;background:var(--s);border:1px solid var(--l)}\n.tile .img{aspect-ratio:1;background:var(--grad);display:grid;place-items:center;color:rgba(255,255,255,.9)}\n.tile .b{padding:10px 12px}\n.title{font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n.meta{display:flex;align-items:center;gap:8px;margin-top:7px}\n.price{color:var(--p);font-weight:800;margin-inline-start:auto}\n.pill{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;background:color-mix(in srgb,var(--a) 16%,transparent);color:var(--a)}\n.row{display:flex;align-items:center;gap:12px;background:var(--s);border:1px solid var(--l);border-radius:var(--r);padding:12px;margin-top:10px}\n.row .thumb{width:52px;height:52px;border-radius:14px;background:var(--grad);display:grid;place-items:center;color:#fff;flex:none}\n.row .grow{flex:1;min-width:0}\n.row .sub{color:var(--mut);font-size:13px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n.tl{position:relative;padding-inline-start:26px;margin-top:12px}\n.tl::before{content:\"\";position:absolute;inset-inline-start:8px;top:6px;bottom:6px;width:2px;background:var(--grad);opacity:.5}\n.tl .row::before{content:\"\";position:absolute;inset-inline-start:2px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:3px solid var(--p);margin-top:18px}\n.field{margin-top:12px}\n.field label{display:block;font-size:13px;font-weight:700;color:var(--mut);margin:0 4px 6px}\n.field .inp{background:var(--s);border:1px solid var(--l);border-radius:14px;padding:13px 15px;color:var(--mut)}\n.btn{display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;padding:15px;font:inherit;font-size:15px;font-weight:800;color:#fff;background:var(--grad);width:100%;margin-top:16px}\n.btns{display:flex;gap:10px;margin-top:14px}\n.btns .btn{margin-top:0}\n.btns .ghost{background:var(--s);color:var(--tx);border:1px solid var(--l)}\n.banner{background:var(--grad);color:#fff;border-radius:var(--r);padding:18px;margin-top:14px}\n.banner h4{margin:0 0 4px;font-size:17px}\n.banner p{margin:0;opacity:.9;font-size:13px}\n.empty{text-align:center;color:var(--mut);padding:40px 16px}\n.empty .big{width:80px;height:80px;border-radius:26px;display:inline-grid;place-items:center;color:var(--p);background:color-mix(in srgb,var(--p) 12%,transparent);margin-bottom:12px}\n.prof{display:flex;align-items:center;gap:14px;margin-top:14px}\n.prof .av{width:62px;height:62px;border-radius:50%;background:var(--grad);display:grid;place-items:center;color:#fff;font-size:24px;font-weight:800}\n.kv{display:flex;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--l)}\n.kv span:last-child{color:var(--mut)}\n.fab{position:absolute;inset-inline-start:18px;bottom:96px;width:56px;height:56px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;box-shadow:0 10px 24px color-mix(in srgb,var(--p) 45%,transparent)}\n.nav{position:sticky;bottom:0;display:flex;justify-content:space-around;gap:4px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--s) 92%,transparent);backdrop-filter:blur(16px);border-top:1px solid var(--l)}\n.nav button{flex:1;border:0;background:none;color:var(--mut);font:inherit;font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px}\n.nav i{width:52px;height:30px;display:grid;place-items:center;border-radius:99px}\n.nav button.on{color:var(--p)}\n.nav button.on i{background:color-mix(in srgb,var(--p) 16%,transparent)}\n.nav-floating .nav{position:fixed;left:14px;right:14px;bottom:calc(12px + env(safe-area-inset-bottom));max-width:432px;margin:0 auto;border-radius:24px;border:1px solid var(--l);box-shadow:0 16px 40px rgba(0,0,0,.3)}\n.nav-pill .nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));width:min(92%,420px);border-radius:99px;background:color-mix(in srgb,var(--tx) 92%,transparent);border:0}\n.nav-pill .nav button{color:color-mix(in srgb,var(--bg) 60%,transparent)}\n.nav-pill .nav button.on{color:#fff}\n.nav-pill .nav button.on i{background:var(--grad)}\n</style></head>\n<body>\n<div id=\"alpha-screens\"><button data-go=\"0\" class=\"on\">1. الرئيسية</button><button data-go=\"1\">2. المنظومة</button><button data-go=\"2\">3. التحكم</button><button data-go=\"3\">4. السجل</button><button data-go=\"4\">5. حسابي</button></div>\n<main id=\"app\" class=\"nav-bar\">\n<section class=\"screen on\" data-screen=\"0\">\n<header class=\"hero\"><span class=\"o1\"></span><span class=\"o2\"></span><h1>أداة Nmap و Meosplite</h1><p>البحث عن الأجهزة واكتشاف الثغرات والتحكم الفعلي</p></header>\n<div class=\"wrap\"><div class=\"stats\"><div class=\"card stat\"><div class=\"ic\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 3v18h18M7 14v4M12 9v9M17 5v13\"/></svg></div><b>12</b><span>الأجهزة المكتشفة</span></div><div class=\"card stat\"><div class=\"ic\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><b>5</b><span>الثغرات النشطة</span></div></div></div>\n<div class=\"wrap\"><div class=\"sec\"><h3>الأجهزة القريبة</h3><a>الكل</a></div></div>\n<div class=\"wrap\"><div class=\"sec\"><h3>الأجهزة المكتشفة</h3><a>الكل</a></div><div class=\"row\"><div class=\"thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><div class=\"grow\"><div class=\"title\">ايفون</div><div class=\"sub\">عنوان آي بي الثاني</div></div><div style=\"text-align:center\"><span class=\"pill\">ايفون</span></div></div><div class=\"row\"><div class=\"thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><div class=\"grow\"><div class=\"title\">اندرويد</div><div class=\"sub\">عنوان آي بي الثالث</div></div><div style=\"text-align:center\"><span class=\"pill\">اندرويد</span></div></div><div class=\"row\"><div class=\"thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><div class=\"grow\"><div class=\"title\">وندوس</div><div class=\"sub\">عنوان آي بي الأول</div></div><div style=\"text-align:center\"><span class=\"pill\">وندوس</span></div></div><div class=\"row\"><div class=\"thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><div class=\"grow\"><div class=\"title\">لينكس</div><div class=\"sub\">عنوان آي بي الثاني</div></div><div style=\"text-align:center\"><span class=\"pill\">لينكس</span></div></div></div>\n<div style=\"height:110px\"></div></section>\n<section class=\"screen\" data-screen=\"1\">\n<header class=\"hero\"><span class=\"o1\"></span><span class=\"o2\"></span><h1>قائمة Meosplite</h1><p>حقن البايلود الفعلي والأوامر</p></header>\n<div class=\"wrap\"><div class=\"sec\"><h3>إضافة إلى حقن البايلود</h3><a>الكل</a></div><div class=\"field\"><label>عنوان آي بي المستهدف</label><div class=\"inp\">عنوان آي بي المستهدف الأول</div></div><div class=\"field\"><label>اسم الأداة</label><div class=\"inp\">Nmap</div></div><div class=\"field\"><label>حالة الحقن</label><div class=\"inp\">ناجح</div></div><button class=\"btn\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg> حفظ</button></div>\n<div style=\"height:110px\"></div></section>\n<section class=\"screen\" data-screen=\"2\">\n<header class=\"hero\"><span class=\"o1\"></span><span class=\"o2\"></span><h1>التحكم الفعلي</h1><p>الكاميرا، الملفات، وتسجيل الشاشة</p></header>\n<div class=\"wrap\"><div class=\"sec\"><h3>التحكم الفعلي</h3><a>الكل</a></div><div class=\"row\"><div class=\"thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><div class=\"grow\"><div class=\"title\">الجهاز المستهدف الأول</div><div class=\"sub\">الجهاز المستهدف الثاني</div></div><div style=\"text-align:center\"><span class=\"pill\">فتح الملفات</span></div></div><div class=\"row\"><div class=\"thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><div class=\"grow\"><div class=\"title\">الجهاز المستهدف الثاني</div><div class=\"sub\">الجهاز المستهدف الثالث</div></div><div style=\"text-align:center\"><span class=\"pill\">الكاميرا الامامية</span></div></div><div class=\"row\"><div class=\"thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><div class=\"grow\"><div class=\"title\">الجهاز المستهدف الثالث</div><div class=\"sub\">الجهاز المستهدف الأول</div></div><div style=\"text-align:center\"><span class=\"pill\">الكاميرا الخلفية</span></div></div><div class=\"row\"><div class=\"thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><div class=\"grow\"><div class=\"title\">الجهاز المستهدف الأول</div><div class=\"sub\">الجهاز المستهدف الثاني</div></div><div style=\"text-align:center\"><span class=\"pill\">تسجيل الشاشة</span></div></div></div>\n<div style=\"height:110px\"></div></section>\n<section class=\"screen\" data-screen=\"3\">\n<header class=\"hero\"><span class=\"o1\"></span><span class=\"o2\"></span><h1>سجل البحث</h1><p>سجل عمليات البحث والنتائج السابقة</p></header>\n<div class=\"wrap\"><div class=\"search\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3\"/></svg><span>بحث في سجل البحث…</span></div></div>\n<div class=\"wrap\"><div class=\"sec\"><h3>سجل البحث</h3><a>الكل</a></div><div class=\"row\"><div class=\"thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><div class=\"grow\"><div class=\"title\">الجهاز المستهدف الأول</div><div class=\"sub\">الجهاز المستهدف الثاني</div></div><div style=\"text-align:center\"></div></div><div class=\"row\"><div class=\"thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><div class=\"grow\"><div class=\"title\">الجهاز المستهدف الثاني</div><div class=\"sub\">الجهاز المستهدف الثالث</div></div><div style=\"text-align:center\"></div></div><div class=\"row\"><div class=\"thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><div class=\"grow\"><div class=\"title\">الجهاز المستهدف الثالث</div><div class=\"sub\">الجهاز المستهدف الأول</div></div><div style=\"text-align:center\"></div></div><div class=\"row\"><div class=\"thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5\"/></svg></div><div class=\"grow\"><div class=\"title\">الجهاز المستهدف الأول</div><div class=\"sub\">الجهاز المستهدف الثاني</div></div><div style=\"text-align:center\"></div></div></div>\n<div style=\"height:110px\"></div></section>\n<section class=\"screen\" data-screen=\"4\">\n<div class=\"wrap\"><div class=\"card\"><div class=\"prof\"><div class=\"av\">ت</div><div><div class=\"title\" style=\"font-size:18px\">سارة محمد</div><div class=\"sub\" style=\"color:var(--mut)\">عضو منذ ٢٠٢٦</div></div></div></div><div class=\"card\" style=\"margin-top:12px\"><div class=\"kv\"><span>الإشعارات</span><span>مفعّلة</span></div><div class=\"kv\"><span>اللغة</span><span>العربية</span></div><div class=\"kv\" style=\"border:0\"><span>المظهر</span><span>داكن</span></div></div><div class=\"btns\"><button class=\"btn ghost\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg> الإعدادات</button></div></div>\n<div style=\"height:110px\"></div></section>\n\n<nav class=\"nav\"><button data-go=\"0\"><i><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z\"/></svg></i><span>الرئيسية</span></button><button data-go=\"1\"><i><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg></i><span>المنظومة</span></button><button data-go=\"2\"><i><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 7h4l2-2h6l2 2h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z\"/></svg></i><span>التحكم</span></button><button data-go=\"3\"><i><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01\"/></svg></i><span>السجل</span></button><button data-go=\"4\"><i><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10z\"/></svg></i><span>حسابي</span></button></nav>\n</main>\n<script>\n(function(){\n  var go=function(i){\n    document.querySelectorAll('.screen').forEach(function(s){s.classList.toggle('on', s.dataset.screen==i)});\n    document.querySelectorAll('[data-go]').forEach(function(b){b.classList.toggle('on', b.dataset.go==i)});\n    window.scrollTo(0,0);\n  };\n  document.querySelectorAll('[data-go]').forEach(function(b){b.onclick=function(){go(b.dataset.go)}});\n})();\n</script>\n</body></html>"
+  }
+ }
+}

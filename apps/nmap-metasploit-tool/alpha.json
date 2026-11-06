@@ -1,0 +1,211 @@
+{
+ "alpha": 1,
+ "project": "nmap-metasploit-tool",
+ "lang": "flutter",
+ "app": {
+  "title": "تطبيق أداة Nmap",
+  "slug": "nmap-metasploit-tool",
+  "role": "single",
+  "rtl": true,
+  "package": "com.alpha.nmap_metasploit_tool",
+  "brief": "=== فكرة صاحب التطبيق بكلماته (الأولوية الأعلى) ===\nتطبيق أداة Nmap للبحث الاجهزه تطبيق يحتوي على أداة Nmap فعليه تتحيح البحث الفعلي عن الاجهزه القريبه مني على شكل ايقونات (ايفون اندرويد وندوس لينكس واي فاي) وتظهر معلوماتها الثغرات الموجوده فيها فعليا وليس محاكاة ويوجد قايمه آخره لاداة Meosplite لحقن الاجهزه الموجوده فيها ثغرات بي بايلود فعلي يتحكم بالجهاز َواستطيع فتح ملافاته وفتح الكاميرا الاماميه والخلفية فعليا وليس محاكاة وتسجيل لروية الشاشه وسجل البحث فعليا واتحكم بالجهاز من خلال قايمه التحكم الفعلي واجهه رسومية وليس عن طريق كتابه الأوامر التطبيق ليس محاكاة\n\n=== المواصفات التي وافق عليها صاحب التطبيق (نفّذها كلها بنداً بنداً، ولا تبنِ تطبيقاً مختلفاً) ===\nالفكرة: تطبيق أداة Nmap وMetasploit بواجهة رسومية للبحث عن الأجهزة واكتشاف الثغرات والتحكم بالأجهزة بحسب طلب المالك.\nالشاشات:\n- شاشة البحث الرئيسية وعرض الأجهزة القريبة كأيقونات (ايفون، اندرويد، وندوس، لينكس، واي فاي)\n- شاشة تفاصيل الجهاز والمعلومات والثغرات المكتشفة\n- شاشة قائمة أداة Metasploit وحقن البايلود\n- شاشة التحكم الفعلي (فتح الملفات، الكاميرا الأمامية والخلفية، تسجيلي لرؤية الشاشة)\n- شاشة سجل البحث\nالميزات والوظائف:\n- البحث الفعلي عن الأجهزة القريبة وإظهارها كأيقونات حسب نوع الجهاز\n- عرض الثغرات الموجودة في الأجهزة فعلياً\n- حقن الأجهزة التي تحتوي على ثغرات ببايلود فعلي\n- التحكم الكامل بالجهاز واستعراض ملفاته\n- فتح الكاميرا الأمامية والخلفية فعلياً\n- تسجيل ورؤية الشاشة\n- سجل البحث الفعلي\n- واجهة رسومية بالكامل بدون كتابة الأوامر\nالبيانات التي يحفظها التطبيق:\n- سجل البحث: (التاريخ، الجهاز المستهدف، النتائج)\n- قائمة الأجهزة المكتشفة: (نوع الجهاز، عنوان آي بي، الثغرات، حالة الاتصال)\nالأسماء والنصوص والأرقام والألوان:\n- Nmap\n- Meosplite\n- ايفون\n- اندرويد\n- وندوس\n- لينكس\n- واي فاي"
+ },
+ "theme": {
+  "preset": "material",
+  "seed": "#6750A4",
+  "accent": "#7D5260",
+  "mode": "light",
+  "style": "soft",
+  "radius": 22.0,
+  "layout": "tabs",
+  "look": "material",
+  "hero": "curve",
+  "list": "cards",
+  "nav": "bar",
+  "deco": "none",
+  "type": "heavy",
+  "school": "material",
+  "home": "tiles",
+  "sheet": "sheet",
+  "onboarding": false
+ },
+ "backend": {
+  "type": "none",
+  "prefix": "nmap_metasploit_tool",
+  "auth": "none",
+  "push": false
+ },
+ "tables": [
+  {
+   "name": "devices",
+   "label": "الأجهزة المكتشفة",
+   "icon": "phone",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "device_type",
+     "label": "نوع الجهاز",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "ايفون",
+      "اندرويد",
+      "وندوس",
+      "لينكس",
+      "واي فاي"
+     ],
+     "default": "اندرويد",
+     "show": true
+    },
+    {
+     "name": "ip_address",
+     "label": "عنوان آي بي",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "vulnerabilities",
+     "label": "الثغرات",
+     "type": "longtext",
+     "show": true
+    },
+    {
+     "name": "connection_status",
+     "label": "حالة الاتصال",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "متصل",
+      "غير متصل"
+     ],
+     "default": "متصل",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "search_logs",
+   "label": "سجل البحث",
+   "icon": "checklist",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "search_date",
+     "label": "التاريخ",
+     "type": "datetime",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "target_device",
+     "label": "الجهاز المستهدف",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "search_results",
+     "label": "النتائج",
+     "type": "longtext",
+     "required": true,
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "payload_injects",
+   "label": "حقن البايلود",
+   "icon": "star",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "target_ip",
+     "label": "عنوان آي بي المستهدف",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "tool_name",
+     "label": "اسم الأداة",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "Nmap",
+      "Meosplite"
+     ],
+     "default": "Meosplite",
+     "show": true
+    },
+    {
+     "name": "injection_status",
+     "label": "حالة الحقن",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "ناجح",
+      "فاشل"
+     ],
+     "default": "ناجح",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  },
+  {
+   "name": "device_controls",
+   "label": "التحكم الفعلي",
+   "icon": "photo",
+   "owner": "catalog",
+   "columns": [
+    {
+     "name": "target_device",
+     "label": "الجهاز المستهدف",
+     "type": "text",
+     "required": true,
+     "show": true
+    },
+    {
+     "name": "action_type",
+     "label": "نوع الإجراء",
+     "type": "choice",
+     "required": true,
+     "options": [
+      "فتح الملفات",
+      "الكاميرا الامامية",
+      "الكاميرا الخلفية",
+      "تسجيل الشاشة"
+     ],
+     "default": "فتح الملفات",
+     "show": true
+    },
+    {
+     "name": "action_result",
+     "label": "نتيجة التحكم",
+     "type": "longtext",
+     "show": true
+    }
+   ],
+   "notify": {
+    "onInsert": "none",
+    "onUpdate": "none"
+   },
+   "realtime": true
+  }
+ ]
+}

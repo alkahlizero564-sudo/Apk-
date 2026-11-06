@@ -1,0 +1,17 @@
+{
+ "base": "nmap-metasploit-tool",
+ "prefix": "nmap_metasploit_tool",
+ "lang": "flutter",
+ "backend": "none",
+ "auth": "none",
+ "push": false,
+ "admins": [],
+ "apps": [
+  {
+   "slug": "nmap-metasploit-tool",
+   "role": "single",
+   "title": "تطبيق أداة Nmap",
+   "package": "com.alpha.nmap_metasploit_tool"
+  }
+ ]
+}
