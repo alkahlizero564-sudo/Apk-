@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/project.dart';
 import '../generator/ai_edit.dart';
 import '../generator/design_contract.dart';
+import '../generator/screen_plan.dart';
 import '../generator/presets.dart';
 import '../models/schema.dart';
 
@@ -342,23 +343,6 @@ Then pick colors that fit (premium, modern, good contrast). Reply with JSON only
     Lang.kotlin: 'a native Android app in Kotlin with Jetpack Compose Material 3: use Material 3 components, shapes and motion so every element maps 1:1 to a Compose composable',
   };
 
-  static const _designer = '''You are a world-class mobile product designer and senior front-end engineer.
-This is the DESIGN STAGE only: focus entirely on the user interface, visual design and user experience.
-No real backend: use realistic sample data inside the page.
-
-Deliver ONE self-contained HTML file (inline CSS and JS, no external files, fonts or images) that is a
-high-fidelity, clickable prototype of the WHOLE app:
-- Every main screen of the app, each as its own view, connected with working navigation (bottom bar, tabs,
-  buttons, back arrows, sheets and dialogs open and close).
-- A slim, elegant "screens" switcher fixed at the very top (element with id="alpha-screens"): a horizontally
-  scrollable row of small pills with each screen's name, so the reviewer can jump to any screen. Keep it
-  visually separate from the app (dark translucent bar). Everything else is the app itself.
-- Show key states too: at least one empty state and one loading skeleton (reachable from the switcher).
-- Phone-first layout (360-430px wide, full height), right-to-left with Arabic text when the description is
-  in Arabic.
-- Keep the file compact (about 25-45 KB) so it is ready fast: shared CSS classes and design tokens, and small JS
-  render functions fed by sample-data arrays instead of repeating the same markup.
-''';
 
   String _role(AppUnit a) => switch (a.role) {
         'admin' => 'This is the ADMIN / management app of the business: dashboard with KPI cards and charts, managing every record, statuses, reports, customers list, notifications inbox, settings.',
@@ -366,69 +350,87 @@ high-fidelity, clickable prototype of the WHOLE app:
         _ => 'One app that does everything for its owner.',
       };
 
-  String _appFacts(Project p) {
-    final tables = p.schema.tables.map((t) => '- ${t.label} (${t.name}): ${t.columns.map((c) => '${c.label} [${c.type.id}${c.options.isEmpty ? '' : ': ${c.options.join('/')}'}]').join('، ')}').join('\n');
-    final auth = switch (p.auth) {
-      AuthMode.none => 'No sign-in: the app opens straight to its main screen.',
-      AuthMode.emailPassword => 'Sign-in and sign-up screens: name, phone, email, password.',
-      AuthMode.emailCode => 'Sign-up with name, phone and email, then a 6-digit email code (6 separate boxes, resend timer), then sign-in.',
-    };
-    return 'The real data of the app (use these sections and fields, with realistic Arabic sample values):\n$tables\n$auth'
-        '${p.backend != BackendType.none ? '\nIt has a notifications inbox (new orders, status changes...).' : ''}';
-  }
 
-  String _extractHtml(String text) {
-    final m = RegExp(r'```html[ \t]*\n?([\s\S]*?)```', caseSensitive: false).firstMatch(text) ?? RegExp(r'```[\w-]*[ \t]*\n?([\s\S]*?)```').firstMatch(text);
-    var html = (m?.group(1) ?? text).trim();
-    final i = html.toLowerCase().indexOf('<!doctype');
-    if (i > 0) html = html.substring(i);
-    final low = html.toLowerCase();
-    if (!low.contains('<html') || html.length < 1200) throw Exception('لم يكتمل التصميم من الذكاء الاصطناعي، جرّب مرة أخرى');
-    if (!low.contains('</html>')) html = '$html\n</body></html>'; // the fence was missing: close the page
-    return html;
-  }
+
+
 
   /// «معاينة فورية قبل الإنشاء» (like APK Fact): straight from the description, one HTML file that IS the app (HTML,
   /// PHP) or a faithful interactive imitation of it (Flutter / Kotlin / Python, Material 3). Cached per description.
   Future<String> instantPreview(Lang lang, String description, {bool fresh = false}) async {
-    final key = 'ip_${lang.id}_${stableHash(description)}';
+    final key = 'ip2_${lang.id}_${stableHash(description)}';
     final prefs = await SharedPreferences.getInstance();
     if (!fresh) {
       final hit = prefs.getString(key);
       if (hit != null && hit.isNotEmpty) return hit;
     }
-    final what = switch (lang) {
-      Lang.html || Lang.php => 'Build the app itself as ONE complete, self-contained HTML file (inline CSS and JS).',
-      _ => 'Build an interactive PREVIEW of a ${switch (lang) { Lang.flutter => 'Flutter (Material 3)', Lang.kotlin => 'native Android Kotlin Jetpack Compose (Material 3)', _ => 'Python Flet (Material 3)' }} '
-          'mobile app as ONE self-contained HTML file (inline CSS and JS) that looks and behaves like that native app: '
-          'Material 3 components, app bar, bottom navigation, cards, FAB, ripple-like pressed states.',
-    };
-    final prompt = 'You are an expert mobile app designer and front-end developer. $what '
-        'Mobile-first full-height layout, no external resources (inline SVG or emoji icons), working navigation, '
-        'buttons, forms and lists with realistic sample data, localStorage for state. RTL Arabic when the request is Arabic.\n\n'
-        '${await designBrief()}\nReply with ONLY the file inside a single ```html code block.\n\nApp description:\n$description';
-    final html = _extractHtml(await ask(prompt, json: false, temperature: 0.6, maxTokens: 60000, thinking: null, perCall: const Duration(seconds: 150), budget: const Duration(seconds: 240)));
+    // Same engine as the design step: a small JSON plan + a local render. Here the AI also proposes the tables,
+    // since the data step has not run yet, so the preview shows the app's real sections.
+    final prompt = """
+You are a senior mobile product designer. Plan the screens of this app from the description, as COMPACT JSON (no HTML).
+Design EXACTLY the described app. It will look like ${_platform[lang]}.
+
+Description:
+$description
+
+Reply with ONLY this JSON (no markdown):
+{"title":"short app name","mode":"light|dark","primary":"#RRGGBB","accent":"#RRGGBB",
+ "font":"cairo|tajawal|plex|readex|messiri|kufi|changa","radius":8-28,"nav":"bar|floating|pill",
+ "tables":[{"name":"english_snake","label":"Arabic","columns":[{"name":"english_snake","label":"Arabic","type":"text|longtext|int|decimal|bool|date|datetime|image|phone|email|choice","options":["..only for choice.."]}]}],
+ "screens":[{"name":"short Arabic name","icon":"icon","tab":true,"blocks":[ ... ]}]}
+Rules: 3 to 5 screens (first is home; include an account screen); 1 to 4 tables that fit the idea.
+Choose a palette that fits the business.
+$planBlockGuide
+""";
+    final j = looseJson(await ask(prompt, json: true, temperature: 0.6, maxTokens: 8000, thinking: 512,
+        perCall: const Duration(seconds: 50), budget: const Duration(seconds: 90)));
+    final plan = ScreenPlan.fromJson(j, fallbackTitle: 'التطبيق');
+    final schema = DbSchema.fromJson(j['tables'] as List?);
+    final html = renderPlan(plan, schema: schema);
     await prefs.setString(key, html);
     return html;
   }
 
+
   /// The whole app as a clickable high-fidelity prototype (one HTML file), from its approved understanding.
   /// [brandFrom]: the other app's approved design (pair): same brand. [current] + [change]: revise a design.
   Future<String> designPrototype(Project p, AppUnit app, {String brandFrom = '', String current = '', String change = ''}) async {
-    final standard = await designBrief();
-    final system = '$_designer\n$standard\nReply with ONLY the file inside a single ```html code block.';
-    final base = 'App name: ${app.title}\nDesign it as ${_platform[p.lang]}.\n${_role(app)}\n';
-    String prompt;
-    if (current.isNotEmpty) {
-      prompt = '$system\n\n$base\nCurrent design:\n```html\n$current\n```\n\nChange requested by the owner (apply it fully and precisely; '
-          'keep everything else as it is unless the change needs it; keep the screens switcher):\n$change\n';
-    } else {
-      prompt = '$system\n\n$base\nWhat the app is and does (the owner\'s own words first, then the checklist they approved; build EXACTLY this app, every item):\n${forApp(p.brief.isEmpty ? p.description : p.brief, p.isPair ? app.role : '')}\n\n${_appFacts(p)}\n'
-          '${p.isPair ? '\nDesign ONLY the ${app.role == 'admin' ? 'ADMIN' : 'CUSTOMER'} app; the other app of the pair is designed separately.\n' : ''}'
-          '${brandFrom.isEmpty ? '' : '\nThis app belongs to the same business as the design below. Use the SAME brand: palette, fonts, corner radius, icon style and component look, so the two apps feel like one product:\n```html\n${brandFrom.length > 40000 ? brandFrom.substring(0, 40000) : brandFrom}\n```\n'}'
-          '${change.isEmpty ? '' : '\nThe owner also wants: $change\n'}';
-    }
-    return _extractHtml(await ask(prompt, json: false, temperature: current.isEmpty ? 0.7 : 0.5, maxTokens: 60000, thinking: null, perCall: const Duration(seconds: 150), budget: const Duration(seconds: 240)));
+    // New engine: the AI returns a small JSON PLAN (fast, reliable), Alpha renders the screens locally.
+    final brand = RegExp(r'--p:(#[0-9A-Fa-f]{6})').firstMatch(brandFrom)?.group(1) ?? '';
+    final note = [current.isEmpty ? '' : 'Improve on the previous design.', change].where((x) => x.isNotEmpty).join(' ');
+    final plan = await screenPlan(p, app, brandPrimary: brand, change: note);
+    return renderPlan(plan, schema: p.schema);
+  }
+
+  /// A compact JSON plan of the app's screens (palette, font, shape, and each screen's blocks bound to the tables).
+  Future<ScreenPlan> screenPlan(Project p, AppUnit app, {String brandPrimary = '', String change = ''}) async {
+    final facts = forApp(p.brief.isEmpty ? p.description : p.brief, p.isPair ? app.role : '');
+    final tableList = p.schema.tables.map((t) => '- ${t.name} («${t.label}»): ${t.columns.map((c) => '${c.name}[${c.type.id}${c.options.isEmpty ? '' : ':${c.options.join('/')}'}]').join(', ')}').join('\n');
+    final prompt = """
+You are a senior mobile product designer. Plan the screens of this app as a COMPACT JSON object (no HTML, no CSS).
+Design EXACTLY the owner's app: use their sections and fields, nothing unrelated.
+
+App: «${app.title}» — built as ${_platform[p.lang]}.
+${_role(app)}
+What it is and does (owner's words first, then the approved checklist):
+$facts
+
+Its data tables (use these names in "table"):
+${tableList.isEmpty ? '(no tables)' : tableList}
+${p.isPair ? 'Plan ONLY the ${app.role == 'admin' ? 'ADMIN' : 'CUSTOMER'} app.' : ''}
+${brandPrimary.isEmpty ? '' : 'Use primary color $brandPrimary to match the other app of the pair.'}
+${change.isEmpty ? '' : 'The owner also wants: $change'}
+
+Reply with ONLY this JSON (no markdown):
+{"title":"${app.title}","mode":"light|dark","primary":"#RRGGBB","accent":"#RRGGBB",
+ "font":"cairo|tajawal|plex|readex|messiri|kufi|changa","radius":8-28,"nav":"bar|floating|pill",
+ "screens":[ {"name":"short Arabic name","icon":"icon","tab":true,"blocks":[ ... ]} ]}
+Rules: 3 to 5 screens (the first is the home; include an account/profile screen); mark the main 3-5 as "tab":true.
+Choose a palette that fits the business (food warm, health teal, finance deep blue, kids playful, luxury dark+gold).
+$planBlockGuide
+""";
+    final answer = await ask(prompt, json: true, temperature: 0.6, maxTokens: 8000, thinking: 512,
+        perCall: const Duration(seconds: 50), budget: const Duration(seconds: 90));
+    return ScreenPlan.fromJson(looseJson(answer), fallbackTitle: app.title);
   }
 
   /// Step "التصميم": the AI itself designs the whole interface of the app from its description, as a senior UI designer:

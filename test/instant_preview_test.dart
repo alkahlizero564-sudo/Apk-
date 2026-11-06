@@ -13,25 +13,29 @@ class _FakeAi extends AiDesigner {
   @override
   Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 0, Duration perCall = const Duration(seconds: 50), Duration budget = const Duration(seconds: 100)}) async {
     prompts.add(prompt);
-    return '```html\n<!doctype html><html dir="rtl"><body>${List.filled(200, '<p>شاشة</p>').join()}</body></html>\n```';
+    return '```json\n{"title":"متجر ورد","mode":"light","primary":"#E11D48","accent":"#F59E0B","font":"tajawal","radius":18,"nav":"bar",'
+        '"tables":[{"name":"products","label":"المنتجات","columns":[{"name":"title","label":"الاسم","type":"text"},{"name":"price","label":"السعر","type":"decimal"}]}],'
+        '"screens":[{"name":"الرئيسية","icon":"home","tab":true,"blocks":[{"type":"hero","title":"متجر ورد"},{"type":"grid","table":"products"}]},'
+        '{"name":"حسابي","icon":"person","tab":true,"blocks":[{"type":"profile"}]}]}\n```';
   }
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('instant preview straight from the description: the app (HTML) or a Material 3 imitation (native), cached', () async {
+  test('instant preview from the description: a small plan rendered locally, cached', () async {
     SharedPreferences.setMockInitialValues({});
     final ai = _FakeAi();
     final html = await ai.instantPreview(Lang.html, 'متجر ورد بسلة وطلب عبر واتساب');
     expect(html, startsWith('<!doctype html>'));
-    expect(ai.prompts.single, contains('Build the app itself'));
-    expect(ai.prompts.single, contains('PROFESSIONAL DESIGN STANDARD'));
+    expect(html, contains('متجر ورد')); // rendered from the plan
+    expect(html, contains('--p:#E11D48'));
+    expect(ai.prompts.single, contains('COMPACT JSON'));
     expect(ai.prompts.single, contains('متجر ورد'));
     await ai.instantPreview(Lang.html, 'متجر ورد بسلة وطلب عبر واتساب');
     expect(ai.prompts.length, 1, reason: 'the same description comes from the cache');
     await ai.instantPreview(Lang.kotlin, 'متجر ورد بسلة وطلب عبر واتساب');
-    expect(ai.prompts.last, contains('Jetpack Compose (Material 3)'));
+    expect(ai.prompts.last, contains('Kotlin'));
     await ai.instantPreview(Lang.html, 'متجر ورد بسلة وطلب عبر واتساب', fresh: true);
     expect(ai.prompts.length, 3);
   });
