@@ -4,36 +4,29 @@ import 'package:alpha/models/project.dart';
 import 'package:alpha/services/ai.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The AI is replaced by a stand-in that records the prompts and answers with a prototype.
+// The new design engine: the AI returns a small JSON PLAN; Alpha renders the screens locally.
+const _plan = '{"title":"مخبز","mode":"light","primary":"#C8873A","accent":"#F2C14E","font":"readex","radius":22,'
+    '"nav":"floating","screens":[{"name":"الرئيسية","icon":"home","tab":true,"blocks":[{"type":"hero","title":"صباحك أحلى"},'
+    '{"type":"grid","table":"products"}]},{"name":"حسابي","icon":"person","tab":true,"blocks":[{"type":"profile"}]}]}';
+
 class _FakeAi extends AiDesigner {
   _FakeAi() : super(claudeKey: 'x', geminiKeys: const []);
   final prompts = <String>[];
-
   @override
   Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 0, Duration perCall = const Duration(seconds: 50), Duration budget = const Duration(seconds: 100)}) async {
     prompts.add(prompt);
-    final body = List.filled(80, '<div class="card">منتج</div>').join();
-    return 'Here it is:\n```html\n<!doctype html><html dir="rtl"><body><nav id="alpha-screens"></nav>$body</body></html>\n```';
+    return '```json\n$_plan\n```';
   }
 }
 
+class _BadAi extends AiDesigner {
+  _BadAi() : super(claudeKey: 'x', geminiKeys: const []);
+  @override
+  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 0, Duration perCall = const Duration(seconds: 50), Duration budget = const Duration(seconds: 100)}) async => 'عذراً';
+}
+
 void main() {
-  final p0 = Project(id: '1', base: 'cafe', title: 'مقهى', lang: Lang.html, kind: ProjectKind.single, apps: Project.unitsFor('cafe', 'مقهى', ProjectKind.single));
-
-  test('a design reply with no code fence and no closing tag is still recovered (not a failure)', () async {
-    final body = List.filled(80, '<section class="card">شاشة</section>').join();
-    final html = await _RawAi('<!doctype html><html dir="rtl"><body>$body').designPrototype(p0, p0.apps.first);
-    expect(html, startsWith('<!doctype html>'));
-    expect(html.toLowerCase(), contains('</html>'));
-  });
-
-  test('a too-short / non-HTML design reply is rejected', () async {
-    expect(() => _RawAi('عذراً لا أستطيع').designPrototype(p0, p0.apps.first), throwsException);
-  });
-
-  TestWidgetsFlutterBinding.ensureInitialized();
-
-  test('design first: each app drawn as a whole prototype, the admin app takes the customer brand, files written per app', () async {
+  test('design first: a plan becomes a full rendered prototype, the admin app takes the customer brand, files per app', () async {
     final p = Project(
       id: '1', base: 'bakery', title: 'مخبز', lang: Lang.flutter, kind: ProjectKind.pair, backend: BackendType.supabase,
       auth: AuthMode.emailCode, brief: 'مخبز يستقبل طلبات التوصيل',
@@ -43,47 +36,31 @@ void main() {
     final ai = _FakeAi();
     final customer = await ai.designPrototype(p, p.apps[0]);
     final admin = await ai.designPrototype(p, p.apps[1], brandFrom: customer);
+    // The rendered prototype is a full interactive page with the review switcher and the owner's data.
     expect(customer, startsWith('<!doctype html>'));
-    final first = ai.prompts[0], second = ai.prompts[1];
-    expect(first, contains('PROFESSIONAL DESIGN STANDARD'));
-    expect(first, contains('alpha-screens'));
-    expect(first, contains('Flutter Material 3'));
-    expect(first, contains('CUSTOMER app'));
-    expect(first, contains('6-digit email code'));
-    expect(first, contains('المنتجات'));
-    expect(second, contains('ADMIN'));
-    expect(second, contains('Use the SAME brand'));
+    expect(customer, contains('alpha-screens'));
+    expect(customer, contains('--p:#C8873A'));
+    expect(customer, contains('صباحك أحلى'));
+    // The plan prompt states the platform, role, the owner's data and the block guide.
+    final first = ai.prompts[0];
+    expect(first, contains('Flutter'));
+    expect(first, contains('CUSTOMER'));
+    expect(first, contains('products'));
+    expect(first, contains('"type":"grid"'));
+    // The admin app is asked to reuse the customer's primary color.
+    expect(ai.prompts[1], contains('#C8873A'));
 
-    final revised = await ai.designPrototype(p, p.apps[0], current: customer, change: 'ألوان ذهبية');
-    expect(ai.prompts.last, contains('Change requested by the owner'));
-    expect(ai.prompts.last, contains('ألوان ذهبية'));
-
-    p.design = AiDesign(screens: {p.apps[0].slug: revised, p.apps[1].slug: admin});
+    p.design = AiDesign(screens: {p.apps[0].slug: customer, p.apps[1].slug: admin});
     expect(p.design.hasPrototype, isTrue);
     expect(p.design.hasSkin, isFalse);
-    final again = Project.fromJson(p.toJson());
-    final files = projectFiles(again);
+    final files = projectFiles(Project.fromJson(p.toJson()));
     expect(files['apps/bakery-customer/design/design.html'], contains('alpha-screens'));
     expect(files['apps/bakery-admin/design/design.html'], isNotNull);
-    expect(files['apps/bakery-customer/alpha.json'], isNot(contains('"ai": true')), reason: 'a prototype is built as code, not as a skin');
+    expect(files['apps/bakery-customer/alpha.json'], isNot(contains('"ai": true')));
   });
 
-  test('a design answer without a real page is refused', () async {
+  test('a plan with no screens is refused (so a broken answer never produces an empty design)', () async {
     final p = Project(id: '1', base: 'x', title: 'x', lang: Lang.html, kind: ProjectKind.single, apps: Project.unitsFor('x', 'x', ProjectKind.single));
-    final ai = _BadAi();
-    expect(() => ai.designPrototype(p, p.apps.first), throwsException);
+    expect(() => _BadAi().designPrototype(p, p.apps.first), throwsA(anything));
   });
-}
-
-class _BadAi extends AiDesigner {
-  _BadAi() : super(claudeKey: 'x', geminiKeys: const []);
-  @override
-  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 0, Duration perCall = const Duration(seconds: 50), Duration budget = const Duration(seconds: 100)}) async => 'sorry';
-}
-
-class _RawAi extends AiDesigner {
-  _RawAi(this.reply) : super(claudeKey: 'x', geminiKeys: const []);
-  final String reply;
-  @override
-  Future<String> ask(String prompt, {bool json = true, double temperature = 0.3, int maxTokens = 8000, int? thinking = 0, Duration perCall = const Duration(seconds: 50), Duration budget = const Duration(seconds: 100)}) async => reply;
 }
