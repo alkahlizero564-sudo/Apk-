@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import '../alpha/wiring.dart';
 import '../alpha/config.dart';
 
 class MetasploitScreen extends StatefulWidget {
-  final Backend backend;
+  final dynamic backend;
   const MetasploitScreen({super.key, required this.backend});
 
   @override
@@ -15,7 +14,7 @@ class _MetasploitScreenState extends State<MetasploitScreen> {
   String _selectedTool = 'Meosplite';
   String _selectedStatus = 'ناجح';
   bool _isInjecting = false;
-  List<Rec> _injects = [];
+  List<Map<String, dynamic>> _injects = [];
 
   @override
   void initState() {
@@ -27,7 +26,7 @@ class _MetasploitScreenState extends State<MetasploitScreen> {
     try {
       final table = AlphaConfig.instance.tables.firstWhere((t) => t.name == 'payload_injects');
       _injects = await widget.backend.list(table);
-      setState(() {});
+      if (mounted) setState(() {});
     } catch (e) {
       // Handle error
     }
@@ -55,7 +54,7 @@ class _MetasploitScreenState extends State<MetasploitScreen> {
         );
       }
     } finally {
-      setState(() => _isInjecting = false);
+      if (mounted) setState(() => _isInjecting = false);
     }
   }
 
@@ -186,9 +185,9 @@ class _MetasploitScreenState extends State<MetasploitScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('الآي بي: ${inj['target_ip']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                            Text('الأداة: ${inj['tool_name']}', style: const TextStyle(color: Color(0xFF00FF66))),
-                            Text('الحالة: ${inj['injection_status']}', style: const TextStyle(color: Color(0xFF9A97AE))),
+                            Text('الآي بي: ${inj['target_ip'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text('الأداة: ${inj['tool_name'] ?? ''}', style: const TextStyle(color: Color(0xFF00FF66))),
+                            Text('الحالة: ${inj['injection_status'] ?? ''}', style: const TextStyle(color: Color(0xFF9A97AE))),
                           ],
                         ),
                       )),

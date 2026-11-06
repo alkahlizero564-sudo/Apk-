@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import '../alpha/wiring.dart';
 import '../alpha/config.dart';
 
 class ControlScreen extends StatefulWidget {
-  final Backend backend;
+  final dynamic backend;
   const ControlScreen({super.key, required this.backend});
 
   @override
@@ -11,7 +10,7 @@ class ControlScreen extends StatefulWidget {
 }
 
 class _ControlScreenState extends State<ControlScreen> {
-  List<Rec> _controls = [];
+  List<Map<String, dynamic>> _controls = [];
   bool _isLoading = true;
 
   @override
@@ -51,7 +50,7 @@ class _ControlScreenState extends State<ControlScreen> {
     } catch (e) {
       // Handle error
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

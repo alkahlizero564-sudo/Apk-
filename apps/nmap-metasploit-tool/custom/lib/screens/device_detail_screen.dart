@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import '../alpha/wiring.dart';
 import '../alpha/config.dart';
 
 class DeviceDetailScreen extends StatelessWidget {
-  final Backend backend;
-  final Rec device;
+  final dynamic backend;
+  final Map<String, dynamic> device;
 
   const DeviceDetailScreen({super.key, required this.backend, required this.device});
 
@@ -91,7 +90,6 @@ class DeviceDetailScreen extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    // Inject payload shortcut
                     final table = AlphaConfig.instance.tables.firstWhere((t) => t.name == 'payload_injects');
                     await backend.insert(table, {
                       'target_ip': ipAddress,

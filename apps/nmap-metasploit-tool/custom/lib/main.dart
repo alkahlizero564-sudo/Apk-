@@ -16,7 +16,7 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  final Backend backend;
+  final dynamic backend;
   const MyApp({super.key, required this.backend});
 
   @override
@@ -49,7 +49,7 @@ class MyApp extends StatelessWidget {
 }
 
 class MainShell extends StatefulWidget {
-  final Backend backend;
+  final dynamic backend;
   const MainShell({super.key, required this.backend});
 
   @override

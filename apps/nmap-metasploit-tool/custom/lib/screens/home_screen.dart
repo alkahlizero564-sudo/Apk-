@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import '../alpha/wiring.dart';
 import '../alpha/config.dart';
 import 'device_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final Backend backend;
+  final dynamic backend;
   const HomeScreen({super.key, required this.backend});
 
   @override
@@ -12,7 +11,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Rec> _devices = [];
+  List<Map<String, dynamic>> _devices = [];
   bool _isLoading = true;
 
   @override
@@ -27,7 +26,6 @@ class _HomeScreenState extends State<HomeScreen> {
       final devicesTable = AlphaConfig.instance.tables.firstWhere((t) => t.name == 'devices');
       _devices = await widget.backend.list(devicesTable);
       if (_devices.isEmpty) {
-        // Seed default sample data matching requirements
         await widget.backend.insert(devicesTable, {
           'device_type': 'ايفون',
           'ip_address': '192.168.1.15',
@@ -55,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
         await widget.backend.insert(devicesTable, {
           'device_type': 'واي فاي',
           'ip_address': '192.168.1.1',
-          'vulnerabilities': 'KRACK Attack Vulnerability (فعلية: هقت إعادة تثبيت المفتاح)',
+          'vulnerabilities': 'KRACK Attack Vulnerability (فعلية: هجوم إعادة تثبيت المفتاح)',
           'connection_status': 'متصل',
         });
         _devices = await widget.backend.list(devicesTable);
@@ -69,7 +67,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   IconData _getDeviceIcon(String type) {
     switch (type) {
-      case 'ايفon':
       case 'ايفون':
         return Icons.phone_iphone;
       case 'اندرويد':
@@ -92,7 +89,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Hero Header
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -149,8 +145,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-
-            // Stats Cards
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
@@ -215,14 +209,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-
-            // Devices Section Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('الأجهزة المكتشفة (ايفون، اندرويد، وندوس، لينكس، واي فاي)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  const Text('الأجهزة المكتشفة (ايفون، اندرويد، وندوس، لينكس، واي فاي)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
                   TextButton(
                     onPressed: _loadData,
                     child: const Text('تحديث', style: TextStyle(color: Color(0xFF00FF66), fontSize: 13, fontWeight: FontWeight.w700)),
@@ -230,8 +222,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-
-            // Devices List
             _isLoading
                 ? const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: Color(0xFF00FF66))))
                 : _devices.isEmpty

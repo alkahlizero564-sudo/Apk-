@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import '../alpha/wiring.dart';
 import '../alpha/config.dart';
 
 class LogsScreen extends StatefulWidget {
-  final Backend backend;
+  final dynamic backend;
   const LogsScreen({super.key, required this.backend});
 
   @override
@@ -11,7 +10,7 @@ class LogsScreen extends StatefulWidget {
 }
 
 class _LogsScreenState extends State<LogsScreen> {
-  List<Rec> _logs = [];
+  List<Map<String, dynamic>> _logs = [];
   bool _isLoading = true;
   String _searchQuery = '';
 
@@ -47,7 +46,7 @@ class _LogsScreenState extends State<LogsScreen> {
     } catch (e) {
       // Handle error
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -172,7 +171,7 @@ class _LogsScreenState extends State<LogsScreen> {
                                             const SizedBox(height: 2),
                                             Text(results, style: const TextStyle(color: Color(0xFF9A97AE), fontSize: 13)),
                                             const SizedBox(height: 2),
-                                            Text('$date', style: const TextStyle(color: Color(0xFF00FF66), fontSize: 11)),
+                                            Text(date, style: const TextStyle(color: Color(0xFF00FF66), fontSize: 11)),
                                           ],
                                         ),
                                       ),

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../alpha/wiring.dart';
 
 class ProfileScreen extends StatelessWidget {
-  final Backend backend;
+  final dynamic backend;
   const ProfileScreen({super.key, required this.backend});
 
   @override
